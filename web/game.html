@@ -210,9 +210,16 @@ function packRev() {
 }
 function unpackRev(u) {
   const dv = new DataView(u.buffer);
+  unpackRev.chunks = [];                                   // 顺手记下哪些块有东西，分块缓存就不用再扫一遍 rev
   for (let o = 0; o + 132 <= u.length; o += 132) {
-    const cx = dv.getInt16(o) * CH, cy = dv.getInt16(o + 2) * CH;
-    for (let i = 0; i < CH * CH; i++) if (u[o + 4 + (i >> 3)] >> (i & 7) & 1) rev.add(key(cx + i % CH, cy + Math.floor(i / CH)));
+    const bx = dv.getInt16(o), by = dv.getInt16(o + 2), cx = bx * CH, cy = by * CH;
+    unpackRev.chunks.push(bx + ',' + by);
+    for (let bi = 0; bi < 128; bi++) {                     // 一个字节 8 格，全空的字节直接跳过
+      const b = u[o + 4 + bi];
+      if (!b) continue;
+      const y = cy + (bi >> 2), x0 = cx + (bi & 3) * 8;
+      for (let bit = 0; bit < 8; bit++) if (b >> bit & 1) rev.add(key(x0 + bit, y));
+    }
   }
 }
 
@@ -372,42 +379,79 @@ const FSHP = [
 const isFlat = (x, y, t) => (t === 'grass' || t === 'sand' || t === 'forest') && h(x, y, G.seed + 99) < FLATP;
 const flatOf = (x, y) => [FCOL[Math.floor(h(x, y, G.seed + 5) * 4)], FSHP[Math.floor(h(x, y, G.seed + 6) * 3)]];
 
-// --- 分块画布：每格 4×4 个美术像素 ---------------------------------------------
-const chunks = new Map();
-function chunk(cx, cy) {
+// --- 分块画布：每格 4×4 个美术像素，32×32 格一块 --------------------------------------
+// 只给看得见的地方准备画布：展开过的格子记在 rev 里，某一块第一次要上屏时才整块画出来，
+// 每帧最多新画 CHUNK_BUDGET 块（缩小视野时地图一块块铺开，不会卡一下）。
+// 缓存最多留 CHUNK_CAP 块（至少比屏幕上能看见的多一点），久没看的扔掉，下次看到再画。
+// 八十万格的存档打开时不用先把整张地图画一遍，内存也不会跟着地图一直长。
+const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = 10;   // 一块约 1 ms
+const ckey = (x, y) => Math.floor(x / CH) + ',' + Math.floor(y / CH);
+if (unpackRev.chunks) for (const ck of unpackRev.chunks) hasChunk.add(ck);
+else for (const k of rev) hasChunk.add(ckey(kx(k), ky(k)));   // 旧格式存档才需要扫一遍
+let chunkTick = 0, chunkBudget = CHUNK_BUDGET;
+const chunkBuf = new ImageData(CH * TP, CH * TP), tileBuf = new ImageData(TP, TP);
+// 颗粒噪声预先算一张 64×64 的表（按种子），不用每个像素现算哈希
+const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed + 3) - .5) * 12);
+
+// 把一格画进像素缓冲区 d（每行 stride 个像素，从 ox, oy 开始）。每格要查的东西在循环外查一次。
+function paintTile(x, y, d, stride, ox, oy) {
+  const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
+  const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
+  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0];
+  for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
+    const pv = pat(i, j, r0);
+    let c = pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
+    if (fl && fl[1][1][j][i] === '#') c = fl[0][0];
+    if (rk && i > 0 && i < 3 && j > 0 && j < 3) c = RC[rk];
+    const hc = house && house[j][i];
+    if (hc && hc !== '.') c = hc === 'R' ? roof : hk === 'ruin' ? RUIN_C : HCOL[hc];
+    const n = GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];
+    let r = c[0] + n, g = c[1] + n, b = c[2] + n;
+    if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
+    const o = ((oy + j) * stride + ox + i) * 4;
+    d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+  }
+}
+const RUIN_C = [150, 144, 134];
+// 把一整块画进 chunkBuf：没展开的格子留透明
+function fillChunk(cx, cy) {
+  const d = chunkBuf.data;
+  d.fill(0);
+  for (let ty = 0; ty < CH; ty++) for (let tx = 0; tx < CH; tx++) {
+    const x = cx * CH + tx, y = cy * CH + ty;
+    if (rev.has(key(x, y))) paintTile(x, y, d, CH * TP, tx * TP, ty * TP);
+  }
+  return chunkBuf;
+}
+// 拿一块画好的画布；这一帧的新画额度用完了就返回 null，下一帧再画
+function getChunk(cx, cy) {
   const k = cx + ',' + cy;
   let c = chunks.get(k);
   if (!c) {
+    if (chunkBudget <= 0) return null;
+    chunkBudget--;
     const cvs = document.createElement('canvas');
     cvs.width = cvs.height = CH * TP;
-    const g = cvs.getContext('2d');
-    c = { cvs, g, img: g.createImageData(CH * TP, CH * TP), dirty: false };
+    c = { cvs, g: cvs.getContext('2d') };
+    c.g.putImageData(fillChunk(cx, cy), 0, 0);
     chunks.set(k, c);
   }
+  c.used = chunkTick;
   return c;
 }
-
-function paint(x, y) {
-  const cx = Math.floor(x / CH), cy = Math.floor(y / CH), c = chunk(cx, cy), d = c.img.data;
-  const t = tile(x, y), lx = (x - cx * CH) * TP, ly = (y - cy * CH) * TP;
-  const colour = L('color') > 0, r0 = h(x, y, G.seed + 11);
-  const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(key(x, y));
-  for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
-    const q = T[t], pv = PAT[q.p](i, j, r0);
-    let [r, g, b] = pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
-    if (fl && fl[1][1][j][i] === '#') [r, g, b] = fl[0][0];
-    if (rk && i > 0 && i < 3 && j > 0 && j < 3) [r, g, b] = RC[rk];
-    const hk = seen() && TOWN.get(key(x, y)), hc = hk && HOUSE[hk][j][i];
-    if (hc && hc !== '.') [r, g, b] = hc === 'R' ? FCOL[Math.floor(r0 * 4)][0] : hk === 'ruin' ? [150, 144, 134] : HCOL[hc];
-    const n = (h(x * TP + i, y * TP + j, G.seed + 3) - .5) * 12;
-    r += n; g += n; b += n;
-    if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
-    const o = ((ly + j) * CH * TP + lx + i) * 4;
-    d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
-  }
-  c.dirty = true;
+function trimChunks(visible) {
+  const cap = Math.max(CHUNK_CAP, visible + 40);
+  if (chunks.size <= cap) return;
+  for (const [k] of [...chunks].sort((a, b) => a[1].used - b[1].used).slice(0, chunks.size - cap)) chunks.delete(k);
 }
-const repaintAll = () => { for (const k of rev) paint(kx(k), ky(k)); };
+// 一格变了（刚展开、盖了房子）：它那块已经在缓存里才补一笔，不在的话以后整块画时自然就有
+function paint(x, y) {
+  const cx = Math.floor(x / CH), cy = Math.floor(y / CH), c = chunks.get(cx + ',' + cy);
+  if (!c) return;
+  paintTile(x, y, tileBuf.data, TP, 0, 0);
+  c.g.putImageData(tileBuf, (x - cx * CH) * TP, (y - cy * CH) * TP);
+}
+const repaintAll = () => chunks.clear();                 // 颜色、居民这类全局变化：缓存作废，按需重画
 
 // --- 升级 --------------------------------------------------------------------
 const L = id => G.lv[id] || 0;
@@ -517,6 +561,7 @@ function reveal(cx, cy, r) {
     const x = cx + dx, y = cy + dy, k = key(x, y);
     if (rev.has(k)) continue;
     rev.add(k);
+    hasChunk.add(ckey(x, y));
     paint(x, y);
     const t = tile(x, y);
     gain += T[t].v;
@@ -765,13 +810,16 @@ function draw() {
     for (let y = ((oy % g) + g) % g; y < H; y += g) ctx.fillRect(x, y, s, s);
 
   const cp = CH * tp;
+  chunkTick++; chunkBudget = CHUNK_BUDGET;
+  let visible = 0;
   for (let cy = Math.floor(-oy / cp); cy * cp + oy < H; cy++)
     for (let cx = Math.floor(-ox / cp); cx * cp + ox < W; cx++) {
-      const c = chunks.get(cx + ',' + cy);
-      if (!c) continue;
-      if (c.dirty) { c.g.putImageData(c.img, 0, 0); c.dirty = false; }
-      ctx.drawImage(c.cvs, cx * cp + ox, cy * cp + oy, cp, cp);
+      if (!hasChunk.has(cx + ',' + cy)) continue;
+      visible++;
+      const c = getChunk(cx, cy);
+      if (c) ctx.drawImage(c.cvs, cx * cp + ox, cy * cp + oy, cp, cp);
     }
+  trimChunks(visible);
 
   drawWonders(ox, oy, tp, s, ctx, W, H, sunVec(), s >= 3);
   shade(W, H, daylight(), ox, oy, tp, s);
@@ -785,7 +833,10 @@ cv.addEventListener('wheel', e => {
 
 // --- 主循环 ------------------------------------------------------------------
 let last = performance.now(), secT = 0, hudT = 0, saveT = 0, civT = 0;
+// 挂机游戏一开就是几小时，不需要 60 帧：完整画面 30 帧，桌宠 20 帧。模拟按真实经过的时间走，少画几帧不影响进度
+const FRAME_MS = () => pet ? 50 : 33;
 function frame(now) {
+  if (now - last < FRAME_MS() - 2) { requestAnimationFrame(frame); return; }
   let dt = (now - last) / 1000;
   last = now;
   if (dt > 5) away(dt);          // 标签页被切走过
@@ -827,7 +878,7 @@ function frame(now) {
   G.phase = phase;
   if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
   if ((civT += dt) >= 1) { civT = 0; annals(); }
-  if ((saveT += dt) >= 5) { saveT = 0; save(); }
+  if ((saveT += dt) >= 10) { saveT = 0; save(); }   // 大存档一次约 50 ms；关页面、切走时另外会存
   if ((museAt -= dt) <= 0) { museAt = 60 + Math.random() * 60; muse(); }   // 独白 1–2 分钟一句
 
   if (pet) petTick(dt);
@@ -1228,10 +1279,12 @@ function renderPoster() {
   g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
   g.imageSmoothingEnabled = px < 1;
   const ox = M - x0 * px, oy = M + HEAD - y0 * px;
-  for (const [ck, ch] of chunks) {
-    const [cx, cy] = ck.split(',').map(Number);
-    if (ch.dirty) { ch.g.putImageData(ch.img, 0, 0); ch.dirty = false; }
-    g.drawImage(ch.cvs, ox + cx * CH * px, oy + cy * CH * px, CH * px, CH * px);
+  const tmp = document.createElement('canvas'), tg = tmp.getContext('2d');   // 逐块画完就贴，不进缓存，海报再大内存也不涨
+  tmp.width = tmp.height = CH * TP;
+  for (const ck of hasChunk) {
+    const [cx, cy] = ck.split(',').map(Number), c = chunks.get(ck);
+    if (!c) tg.putImageData(fillChunk(cx, cy), 0, 0);
+    g.drawImage(c ? c.cvs : tmp, ox + cx * CH * px, oy + cy * CH * px, CH * px, CH * px);
   }
   const P = SRC.path || [];                                 // 对话之路：读过的实线，没读到的淡淡的虚线
   g.lineWidth = Math.max(1.5, px * .7); g.lineCap = 'round';
@@ -1761,7 +1814,13 @@ function posterView(mode) {
   spin = requestAnimationFrame(loop);
 }
 $('p4d').hidden = !Array.isArray(SRC.shape);
-$('mapBtn').onclick = () => { $('poster').hidden = false; $('mapBtn').classList.remove('ready'); posterView('map'); };
+$('mapBtn').onclick = () => {
+  $('poster').hidden = false; $('mapBtn').classList.remove('ready');
+  const c = $('pcv'), g = c.getContext('2d');                // 大地图要画一两秒，先说一声再画
+  c.width = 480; c.height = 120; g.fillStyle = PAPER; g.fillRect(0, 0, 480, 120);
+  g.fillStyle = INK; g.font = `12px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`; g.fillText('正在把整张纸铺开……', 24, 64);
+  setTimeout(() => posterView('map'), 30);
+};
 $('pmap').onclick = () => posterView('map');
 $('p4d').onclick = () => posterView('4d');
 $('pclose').onclick = () => { cancelAnimationFrame(spin); $('poster').hidden = true; };
@@ -1790,7 +1849,6 @@ if (fresh && n('split')) { G.lv.clone = 1; G.ws.push([G.ws[0][0], G.ws[0][1]]); 
     o.append(d);
   }
 }
-if (!fresh) repaintAll();
 for (const [x, y] of G.ws) addWalker(x, y);
 cam.x = ws[0].x; cam.y = ws[0].y;
 if (fresh) {
