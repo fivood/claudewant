@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "桌宠要挪窗口、改大小、展开收起，还要自动更新",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-decorations",
+    "core:window:allow-set-resizable",
+    "core:window:allow-center",
+    "core:window:allow-set-focus",
+    "core:window:allow-destroy",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

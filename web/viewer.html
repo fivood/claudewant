@@ -1,0 +1,304 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>会话查看器</title>
+<meta name="description" content="把 Claude Code、Codex、Kimi、Antigravity、ChatGPT 等的会话记录变成能读的对话。全程在浏览器里跑，文件不上传。">
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#fff; --line:#e6e2dc; --fg:#1f1d1b; --dim:#6f6a63;
+    --user:#c96442; --tool:#3b6ea5; --think:#7a6ea5; --err:#b3261e; --code:#f4f2ee;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#171614; --panel:#1f1e1b; --line:#33312d; --fg:#eceae6; --dim:#9c968d;
+    --user:#e08a68; --tool:#7fb0e0; --think:#a99ed6; --err:#f2836f; --code:#26251f;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 ui-sans-serif,system-ui,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  code,pre{font-family:ui-monospace,"Cascadia Code",Consolas,monospace}
+  #app{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+  aside{border-right:1px solid var(--line);background:var(--panel);padding:16px;position:sticky;top:0;height:100vh;overflow:auto}
+  h1{font-size:15px;margin:0 0 2px}
+  .home{display:inline-block;color:var(--dim);font-size:12px;text-decoration:none;margin-bottom:8px}
+  .home:hover{color:var(--user)}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:16px}
+  .drop{border:1.5px dashed var(--line);border-radius:10px;padding:18px 12px;text-align:center;color:var(--dim);cursor:pointer;font-size:13px}
+  .drop:hover,.drop.over{border-color:var(--user);color:var(--fg)}
+  #acct{width:100%;margin:12px 0 2px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--fg);font:inherit;font-size:12.5px}
+  .files .row{display:flex;align-items:center;border-radius:6px}
+  .files .row:hover,.files .row:has([aria-current=true]){background:var(--code)}
+  .files button{flex:1;min-width:0;text-align:left;border:0;background:none;color:var(--fg);padding:7px 8px;cursor:pointer;font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .files button[aria-current=true]{font-weight:600}
+  .files .x{opacity:0;padding:0 9px;cursor:pointer;color:var(--dim);font-size:17px;line-height:1}
+  .files .row:hover .x{opacity:1}
+  .files .x:hover{color:var(--err)}
+  .stats{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;font-size:12.5px}
+  .stats div{display:flex;justify-content:space-between;gap:10px;padding:2px 0;color:var(--dim)}
+  .stats b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+  .stats h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:14px 0 6px}
+  main{padding:20px 26px 80px;max-width:1000px;min-width:0}
+  .bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;position:sticky;top:0;background:var(--bg);padding:8px 0 12px;z-index:2;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .bar input[type=search]{flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--fg);font:inherit}
+  .bar label{color:var(--dim);font-size:13px;cursor:pointer;user-select:none}
+  .bar button{border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--fg);padding:6px 11px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+  .bar button:hover:not(:disabled){border-color:var(--user);color:var(--user)}
+  .bar button:disabled{opacity:.4;cursor:default}
+  .turn{margin-bottom:22px}
+  .who{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);display:flex;gap:8px;align-items:baseline;margin-bottom:6px}
+  .turn.user .who{color:var(--user)}
+  .who time{font-weight:400;text-transform:none;letter-spacing:0;font-size:11.5px}
+  .tag{border:1px solid var(--line);border-radius:20px;padding:0 7px;font-size:10.5px;text-transform:none;letter-spacing:0}
+  .body{border-left:2px solid var(--line);padding-left:14px}
+  .turn.user .body{border-color:var(--user)}
+  .text{white-space:pre-wrap;overflow-wrap:anywhere}
+  details{margin:8px 0;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
+  summary{cursor:pointer;padding:7px 11px;font-size:13px;display:flex;gap:8px;align-items:baseline;overflow:hidden}
+  summary::-webkit-details-marker{display:none}
+  summary:hover{background:var(--code)}
+  summary .n{font-weight:600;flex:none}
+  details[open]>summary .a{display:none}
+  summary .a{color:var(--dim);font-family:ui-monospace,monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tool>summary .n{color:var(--tool)}
+  .think>summary{color:var(--think);font-style:italic}
+  .reminder>summary{color:var(--dim);font-size:12px}
+  .bad>summary .n{color:var(--err)}
+  pre{margin:0;padding:10px 12px;border-top:1px solid var(--line);background:var(--code);overflow:auto;max-height:460px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+  .think pre,.reminder pre{font-family:inherit;font-size:13px}
+  .lbl{padding:6px 12px 0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);border-top:1px solid var(--line)}
+  .lbl+pre{border-top:0}
+  .empty{color:var(--dim);text-align:center;margin-top:16vh;line-height:2}
+  .empty code{background:var(--code);padding:2px 6px;border-radius:5px}
+  @media (max-width:820px){#app{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:16px}}
+</style>
+
+<div id="app">
+  <aside>
+    <a class="home" href="./">← 四维来客</a>
+    <h1>会话查看器</h1>
+    <div class="sub">全程在本地浏览器解析，文件不会上传。</div>
+    <div class="drop" id="drop">拖入会话记录 <code>.jsonl</code><br>或 claude.ai / ChatGPT 导出的 <code>conversations.json</code></div>
+    <input type="file" id="pick" accept=".jsonl,.json" multiple hidden>
+    <select id="acct" hidden></select>
+    <div class="files" id="files"></div>
+    <div class="stats" id="stats"></div>
+  </aside>
+  <main>
+    <div class="bar" id="bar" hidden>
+      <input type="search" id="q" placeholder="过滤内容…">
+      <label><input type="checkbox" id="noThink"> 隐藏思考</label>
+      <label><input type="checkbox" id="noTool"> 隐藏工具</label>
+      <label><input type="checkbox" id="noSide"> 隐藏子代理</label>
+      <button id="copy" title="复制成 markdown，粘给 Claude 让它审">复制改动</button>
+      <button id="dl" title="存成 .md 文件">下载 .md</button>
+      <button id="play" title="用这条会话当随机种子，打开《四维来客》">生成世界</button>
+    </div>
+    <div id="out"></div>
+  </main>
+</div>
+
+<script type="module">
+import { loadFile, exportEdits, editsOf, worldOf } from './parse.js';
+
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') n.className = v;
+    else if (k in n) n[k] = v;
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c);
+  return n;
+};
+const num = n => n.toLocaleString('en-US');
+
+// ponytail: 单块截断到 20k 字，避免 244MB 的会话把 DOM 撑爆。
+// 要看全文再加"展开"按钮。
+const CAP = 20000;
+const clip = s => s.length > CAP ? s.slice(0, CAP) + `\n\n… 已截断，共 ${num(s.length)} 字` : s;
+
+const sessions = [];
+let active = -1;
+
+// --- loading ---------------------------------------------------------------
+async function addFiles(fileList) {
+  for (const f of fileList) {
+    if (!/\.jsonl?$/i.test(f.name)) continue;
+    sessions.push(...loadFile(await f.text(), f.name));
+  }
+  if (sessions.length) { active = sessions.length - 1; renderAll(); }
+}
+$('pick').onchange = e => addFiles(e.target.files);
+$('drop').onclick = () => $('pick').click();
+for (const ev of ['dragenter', 'dragover'])
+  document.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); });
+for (const ev of ['dragleave', 'drop'])
+  document.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); });
+document.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+// --- sidebar ---------------------------------------------------------------
+const ACCT = s => s.account || '(无标记)';
+
+function renderSide() {
+  // 账号下拉：只有真的混了多个账号时才出现
+  const accounts = [...new Set(sessions.map(ACCT))];
+  const sel = $('acct'), keep = sel.value;
+  sel.hidden = accounts.length < 2;
+  sel.replaceChildren(
+    el('option', { value: '', textContent: `全部账号 · ${sessions.length} 条` }),
+    ...accounts.map(a => el('option', {
+      value: a,
+      textContent: `${a === '(无标记)' ? a : a.slice(0, 8)} · ${sessions.filter(s => ACCT(s) === a).length} 条`,
+    })));
+  sel.value = accounts.includes(keep) ? keep : '';
+
+  const f = $('files'); f.replaceChildren();
+  sessions.forEach((s, i) => {
+    if (sel.value && ACCT(s) !== sel.value) return;
+    const b = el('button', { textContent: s.name || `会话 ${i + 1}`, title: '双击重命名' });
+    b.setAttribute('aria-current', String(i === active));
+    b.onclick = () => { active = i; renderAll(); };
+    b.ondblclick = () => {
+      const n = prompt('重命名', s.name);
+      if (n && n.trim()) { s.name = n.trim(); renderAll(); }
+    };
+    const x = el('span', { class: 'x', textContent: '×', title: '移除' });
+    x.onclick = () => {
+      const cur = sessions[active];
+      sessions.splice(i, 1);
+      const j = sessions.indexOf(cur);            // 删的不是当前项就跟着它走
+      active = j >= 0 ? j : Math.min(i, sessions.length - 1);
+      renderAll();
+    };
+    f.append(el('div', { class: 'row' }, b, x));
+  });
+
+  const s = sessions[active], st = $('stats'); st.replaceChildren();
+  if (!s) return;
+  const row = (k, v) => st.append(el('div', {}, el('span', { textContent: k }), el('b', { textContent: v })));
+  const mins = s.start && s.end ? Math.round((new Date(s.end) - new Date(s.start)) / 6e4) : null;
+
+  st.append(el('h3', { textContent: '会话' }));
+  row('来源', s.source || 'Claude Code');
+  if (s.account) row('账号', s.account.slice(0, 8));
+  if (s.project) row('项目', s.project.slice(0, 8));
+  if (s.cwd) row('目录', s.cwd.split(/[\\/]/).pop());
+  if (s.gitBranch) row('分支', s.gitBranch);
+  if (s.version) row('版本', s.version);
+  if (s.start) row('开始', new Date(s.start).toLocaleString());
+  if (mins != null) row('时长', mins >= 60 ? `${(mins / 60).toFixed(1)} 小时` : `${mins} 分钟`);
+  row('轮次', num(s.turns.length));
+  for (const m of s.models) row('模型', m.replace(/^claude-/, ''));
+
+  if (Object.values(s.usage).some(v => v > 0)) {
+    st.append(el('h3', { textContent: 'Token' }));
+    row('输入', num(s.usage.input));
+    row('输出', num(s.usage.output));
+    row('缓存写入', num(s.usage.cacheWrite));
+    row('缓存读取', num(s.usage.cacheRead));
+  }
+
+  if (s.tools.length) {
+    st.append(el('h3', { textContent: `工具调用 · ${num(s.tools.reduce((a, t) => a + t[1], 0))}` }));
+    for (const [name, n] of s.tools.slice(0, 14)) row(name, num(n));
+  }
+}
+
+// --- turns -----------------------------------------------------------------
+const ARG_KEYS = ['command', 'cmd', 'file_path', 'AbsolutePath', 'pattern', 'path', 'url', 'query', 'skill', 'prompt', 'description', 'input'];
+const gist = input => {
+  for (const k of ARG_KEYS) if (typeof input?.[k] === 'string') return input[k].replace(/\s+/g, ' ').slice(0, 160);
+  return Object.keys(input || {}).join(', ');
+};
+
+const fold = (cls, head, arg, ...bodies) =>
+  el('details', { class: cls },
+    el('summary', {},
+      el('span', { class: 'n', textContent: head }),
+      arg ? el('span', { class: 'a', textContent: arg }) : null),
+    ...bodies);
+
+function renderBlock(b) {
+  if (b.kind === 'text') return el('div', { class: 'text', textContent: clip(b.text) });
+  if (b.kind === 'thinking')
+    return fold('think', '思考', b.text.replace(/\s+/g, ' ').slice(0, 120), el('pre', { textContent: clip(b.text) }));
+  if (b.kind === 'fold')
+    return fold('reminder', b.label || '折叠内容', '', el('pre', { textContent: clip(b.text) }));
+  const bad = b.result?.isError;
+  return fold('tool' + (bad ? ' bad' : ''), b.name, gist(b.input),
+    el('div', { class: 'lbl', textContent: '输入' }),
+    el('pre', { textContent: clip(JSON.stringify(b.input, null, 2)) }),
+    b.result ? el('div', { class: 'lbl', textContent: bad ? '错误' : '结果' }) : null,
+    b.result ? el('pre', { textContent: clip(b.result.text) }) : null);
+}
+
+function renderTurns() {
+  const s = sessions[active], out = $('out'); out.replaceChildren();
+  $('bar').hidden = !s;
+  if (!s) {
+    out.append(el('div', { class: 'empty' },
+      el('p', { textContent: '会话记录在这里（Windows 上 ~ 是 C:\\Users\\你）：' }),
+      ...[['Claude Code', '~/.claude/projects/<项目>/<会话id>.jsonl'],
+        ['Codex', '~/.codex/sessions/<年>/<月>/<日>/rollout-*.jsonl'],
+        ['Kimi Code', '~/.kimi/sessions/<项目>/<会话>/context.jsonl'],
+        ['Antigravity', '~/.gemini/antigravity/brain/<id>/.system_generated/logs/transcript.jsonl'],
+        ['claude.ai / ChatGPT', '设置里导出数据 → conversations.json']]
+        .map(([k, v]) => el('p', {}, k + '　', el('code', { textContent: v })))));
+    return;
+  }
+  const n = editsOf(s).length;
+  for (const id of ['copy', 'dl']) {
+    $(id).disabled = !n;
+    $(id).textContent = (id === 'copy' ? '复制改动' : '下载 .md') + (n ? ` (${n})` : '');
+  }
+  const q = $('q').value.trim().toLowerCase();
+  const skip = { thinking: $('noThink').checked, tool: $('noTool').checked };
+  let shown = 0;
+  for (const t of s.turns) {
+    if (t.sidechain && $('noSide').checked) continue;
+    const blocks = t.blocks.filter(b => !skip[b.kind]);
+    if (!blocks.length) continue;
+    if (q && !JSON.stringify(blocks).toLowerCase().includes(q)) continue;
+    shown++;
+    out.append(el('div', { class: 'turn ' + t.role },
+      el('div', { class: 'who' },
+        el('span', { textContent: t.role === 'user' ? '你' : 'Claude' }),
+        t.ts ? el('time', { textContent: new Date(t.ts).toLocaleTimeString() }) : null,
+        t.sidechain ? el('span', { class: 'tag', textContent: '子代理' }) : null),
+      el('div', { class: 'body' }, blocks.map(renderBlock))));
+  }
+  if (!shown) out.append(el('div', { class: 'empty', textContent: '没有匹配的内容。' }));
+}
+
+$('copy').onclick = async (e) => {
+  const b = e.target, was = b.textContent;
+  try {
+    await navigator.clipboard.writeText(exportEdits(sessions[active]));
+    b.textContent = '已复制 ✓';
+  } catch { b.textContent = '复制失败，用下载'; }
+  setTimeout(() => { b.textContent = was; }, 1800);
+};
+$('dl').onclick = () => {
+  const s = sessions[active];
+  const url = URL.createObjectURL(new Blob([exportEdits(s)], { type: 'text/markdown;charset=utf-8' }));
+  el('a', { href: url, download: (s.name || 'session').replace(/\.jsonl?$/i, '') + '-改动.md' }).click();
+  URL.revokeObjectURL(url);
+};
+
+$('play').onclick = () => {
+  const w = worldOf(sessions[active]);
+  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); } catch { /* 没存上就只用种子 */ }
+  open(`game.html?seed=${w.seed}`, '_blank');
+};
+
+const renderAll = () => { renderSide(); renderTurns(); };
+for (const id of ['q', 'noThink', 'noTool', 'noSide']) $(id).oninput = renderTurns;
+$('acct').onchange = () => {
+  const sel = $('acct');
+  if (sel.value && ACCT(sessions[active]) !== sel.value) {
+    const j = sessions.findIndex(s => ACCT(s) === sel.value);
+    if (j >= 0) active = j;
+  }
+  renderAll();
+};
+renderAll();
+</script>

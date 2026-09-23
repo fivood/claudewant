@@ -1,0 +1,56 @@
+/* 假操作系统风的像素窗口。窗框是放大两倍的 8x8 九宫格 SVG（描边/高光/面/阴影四色）；字体 Fusion Pixel（OFL-1.1，见 fonts/LICENSE-OFL.txt） */
+@import url("fonts/Fusion-Pixel-12px-Proportional-Simplified-Chinese.css");
+
+:root{
+    --f-mint:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%234e8f69' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23bde6c9' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%238ecba3' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%236db087' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-beige:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%239e987f' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23f8f6ec' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%23e7e3d2' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23c9c3ab' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-light:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23a19b98' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23ffffff' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%23f1efed' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23d3cecb' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-sunk-mint:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%234e8f69' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%236db087' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%237fbf96' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23a9dcb8' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-sunk-beige:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%239e987f' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23c9c3ab' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%23dedac7' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23f8f6ec' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-sunk-light:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23a19b98' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23cfcac6' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%23e9e6e3' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23ffffff' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --f-sunk-clay:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23c35f3f' d='M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM2 7h4v1h-4z'/%3E%3Cpath fill='%23e39a7e' d='M2 1h4v1h-4zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1z'/%3E%3Cpath fill='%23fbeee6' d='M2 2h4v1h-4zM2 3h4v1h-4zM2 4h4v1h-4zM2 5h4v1h-4z'/%3E%3Cpath fill='%23ffffff' d='M6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4z'/%3E%3C/svg%3E");
+    --g-red:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='6' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath fill='%23e0413c' d='M2 1h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM0 3h5v1h-5zM1 4h3v1h-3zM2 5h1v1h-1z'/%3E%3Cpath fill='%23ffb3ad' d='M2 2h1v1h-1z'/%3E%3C/svg%3E");
+    --g-violet:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='6' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath fill='%23a98bd6' d='M2 1h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM0 3h5v1h-5zM1 4h3v1h-3zM2 5h1v1h-1z'/%3E%3Cpath fill='%23e3d6f7' d='M2 2h1v1h-1z'/%3E%3C/svg%3E");
+    --g-cyan:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='6' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath fill='%235fc7d6' d='M2 1h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM0 3h5v1h-5zM1 4h3v1h-3zM2 5h1v1h-1z'/%3E%3Cpath fill='%23d2f4f8' d='M2 2h1v1h-1z'/%3E%3C/svg%3E");
+
+  --px:"Fusion Pixel 12px Proportional Simplified Chinese",ui-monospace,monospace;
+  --ink:#3d3a3f; --dim:#7d7780; --clay:#d97757; --paper:#fbfaf7;
+}
+
+/* 像素字只在 12 的整数倍字号下才是清楚的：正文 12px，大数字 24px */
+html{font:12px/18px var(--px);color:var(--ink);-webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed}
+button,input,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+/* 窗口：8×8 的九宫格 SVG 放大两倍当边框，拐角是一格格的台阶 */
+.win{box-sizing:border-box;border:6px solid transparent;border-image:var(--f-light) 3 fill / 6px stretch;
+  padding:0 4px 4px;filter:drop-shadow(4px 4px 0 rgba(74,52,64,.32));
+  --lo:#d3cecb; --hi:#fff; --tx:#4a4648}
+.win.mint{border-image-source:var(--f-mint);--lo:#6db087;--hi:#bde6c9;--tx:#2c5a40}
+.win.beige{border-image-source:var(--f-beige);--lo:#c9c3ab;--hi:#f8f6ec;--tx:#5a5546}
+.win{color:var(--tx)}
+
+.bar{display:flex;align-items:center;gap:6px;height:18px;margin:0 -4px 8px;padding:0 4px 4px;
+  border-bottom:2px solid var(--lo);box-shadow:0 2px 0 var(--hi)}
+.bar b{flex:1;font-weight:400;white-space:nowrap;overflow:hidden}
+.bar .ico{width:14px;height:8px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23d97757' d='M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z'/%3E%3Cpath fill='%231f1d1b' d='M4 1h1v2H4zM9 1h1v2H9z'/%3E%3C/svg%3E") 0 0/100% 100%}
+.bar .gems{display:flex;gap:1px;flex:none}
+.bar .gems i{width:10px;height:12px;background:var(--g-red) 0 0/100% 100%}
+.bar .gems i:nth-child(2){background-image:var(--g-violet)}
+.bar .gems i:nth-child(3){background-image:var(--g-cyan)}
+.bar .knob{width:12px;height:10px;flex:none;border:2px solid var(--lo);box-shadow:inset 2px 2px 0 var(--hi)}
+
+/* 凹进去的格子 */
+.field{box-sizing:border-box;border:6px solid transparent;border-image:var(--f-sunk-light) 3 fill / 6px stretch;padding:0 2px}
+.mint .field{border-image-source:var(--f-sunk-mint)}
+.beige .field{border-image-source:var(--f-sunk-beige)}
+.field.clay{border-image-source:var(--f-sunk-clay)}
+
+/* 按钮：凸起，按下变凹 */
+.btn{all:unset;box-sizing:border-box;display:inline-block;border:6px solid transparent;border-image:var(--f-light) 3 fill / 6px stretch;
+  padding:0 8px;line-height:18px;text-align:center;cursor:pointer;color:var(--ink);white-space:nowrap}
+.btn:hover{color:var(--clay)}
+.btn:active{border-image-source:var(--f-sunk-light)}
+.btn:focus-visible{outline:2px dashed var(--clay);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

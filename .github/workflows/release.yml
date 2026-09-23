@@ -1,0 +1,49 @@
+# 推一个 v* 标签就出一版 Windows 桌宠安装包，并附带 latest.json 给已安装的客户端自动更新。
+# 需要仓库 secret：TAURI_SIGNING_PRIVATE_KEY（本机 ~/.tauri/claudewant.key 的内容）
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - run: node test.mjs
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 四维来客 ${{ github.ref_name }}
+          releaseBody: |
+            下载 `SiweiLaike_*_x64-setup.exe` 安装。装好后 Clawd 会住在任务栏上面，点它展开完整游戏，关掉窗口又缩回去。
+            之后的版本会自动更新，不用再来下载。
+
+            网页版：https://claude.70015.net
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

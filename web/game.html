@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四维来客</title>
+<meta name="description" content="一只四维生物掉进了无限展开的二维世界。它走到哪，世界就展开到哪。像素挂机游戏。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23d97757' d='M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z'/%3E%3Cpath fill='%231f1d1b' d='M4 1h1v2H4zM9 1h1v2H9z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="pixel.css">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--paper)}
+  canvas{display:block;width:100vw;height:100vh}
+  body>.win{position:fixed}
+  .col{position:fixed;left:12px;top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-height:calc(100vh - 200px)}
+  #hud{width:196px}
+  #chron{width:300px;min-height:0;overflow:hidden}
+  #civ{white-space:pre-line;color:var(--dim);margin-bottom:4px}
+  #annals p{margin:0 0 4px}
+  #annals p{color:var(--dim)}
+  #annals p.new{color:var(--tx)}
+  #annals p.soon{opacity:.45}
+  #annals p.now{color:var(--clay);text-align:center;margin:2px 0 6px}
+  #annals b{font-weight:400;color:var(--clay)}
+  #pts{font-size:24px;line-height:30px;color:var(--clay);padding:0 2px}
+  #hud .field{margin:2px 0 6px}
+  #ups{top:12px;right:12px;width:252px;max-height:calc(100vh - 150px);overflow:auto}
+  #rows{display:flex;flex-direction:column;gap:2px}
+  .up b{display:flex;justify-content:space-between;gap:8px;font-weight:400}
+  .up small{display:block;font-size:12px;color:var(--dim)}
+  .up.goal b span:last-child{color:var(--clay)}
+  .up.full{opacity:.5}
+  #origin{color:var(--dim);margin-bottom:4px}
+  #origin::before{content:"这张纸的来历";display:block;color:var(--tx)}
+  .status{display:flex;gap:2px;margin-top:6px}
+  .status .field{flex:1;white-space:nowrap}
+  #log{left:12px;bottom:12px;width:min(480px,calc(100vw - 290px))}
+  .logbody{display:flex;gap:4px}
+  #lines{flex:1;min-width:0;min-height:54px}
+  #lines p{margin:0}
+  #lines p:not(:last-child){color:var(--dim)}
+  .scroll{width:14px;display:flex;flex-direction:column;flex:none}
+  .scroll i{height:14px;font-style:normal;font-size:12px;line-height:14px;text-align:center;border:2px solid var(--lo);box-sizing:border-box;background:#fff;color:var(--dim)}
+  .scroll span{flex:1;background:repeating-conic-gradient(#cfcac6 0 25%,#f1efed 0 50%) 0 0/4px 4px}
+  #radio{right:12px;bottom:12px;width:252px}
+  .deck{display:flex;align-items:center;gap:4px}
+  .deck .btn{width:40px;padding:0}
+  .eq{flex:none;width:56px;height:30px;display:flex;align-items:flex-end;gap:2px;padding:0 2px 2px}
+  .eq i{flex:1;height:2px;background:#2c5a40}
+  .eq.live i{animation:eq .9s steps(4) infinite alternate}
+  .eq.live i:nth-child(2){animation-duration:.7s}.eq.live i:nth-child(3){animation-duration:1.1s}
+  .eq.live i:nth-child(4){animation-duration:.6s}.eq.live i:nth-child(5){animation-duration:1.3s}
+  @keyframes eq{to{height:18px}}
+  #vol{flex:1;min-width:0;appearance:none;background:none;height:18px;cursor:pointer}
+  #vol::-webkit-slider-runnable-track{height:6px;background:#6db087;box-shadow:inset 2px 2px 0 #4e8f69}
+  #vol::-moz-range-track{height:6px;background:#6db087}
+  #vol::-webkit-slider-thumb{appearance:none;width:10px;height:16px;margin-top:-5px;background:#f1efed;border:2px solid #4e8f69;border-radius:0}
+  #vol::-moz-range-thumb{width:8px;height:14px;background:#f1efed;border:2px solid #4e8f69;border-radius:0}
+  #vol:focus-visible{outline:2px dashed var(--clay)}
+  #tune{margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
+  #pet{display:none}
+  html.pet,html.pet body{background:transparent}
+  html.pet #cv,html.pet body>.win,html.pet .col,html.pet #flash{display:none!important}
+  html.pet #pet{display:flex;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
+  #bubble{width:max-content;max-width:280px;margin-bottom:6px}
+  #petcv{width:56px;height:36px}
+  html.pet #pet{cursor:pointer}
+  @media (max-width:640px){
+    #hud{width:180px}
+    #chron{display:none!important}
+    #radio{top:12px;bottom:auto;width:auto;left:204px}
+    #radio #tune,#radio #vol{display:none}
+    #ups{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:34vh}
+    #log{bottom:auto;top:222px;right:12px;width:auto}
+    #lines p:nth-last-child(n+4){display:none}
+    .scroll{display:none}
+  }
+</style>
+
+<canvas id="cv" aria-label="二维世界"></canvas>
+<div class="col">
+<section class="win mint" id="hud" hidden>
+  <header class="bar"><i class="ico" aria-hidden="true"></i><b>感知.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <div id="pts"></div>
+  <div class="field">
+    <div id="rate"></div>
+    <div id="area"></div>
+    <div id="flat" hidden></div>
+    <div id="paper" hidden></div>
+  </div>
+  <button class="btn" id="reset">重新掉落</button>
+  <button class="btn" id="petBtn" hidden>缩成桌宠</button>
+  <button class="btn" id="quitBtn" hidden>退出</button>
+</section>
+<section class="win light" id="chron" hidden>
+  <header class="bar"><b>纪年.log</b><i class="knob" aria-hidden="true"></i></header>
+  <div class="field" id="civ"></div>
+  <div id="annals" aria-live="polite"></div>
+</section>
+</div>
+<section class="win beige" id="ups" hidden>
+  <header class="bar"><b>身体.sys</b><i class="knob" aria-hidden="true"></i></header>
+  <div class="field" id="origin" hidden></div>
+  <div id="rows"></div>
+  <footer class="status"><span class="field">◐ 自己长</span><span class="field" id="lvsum"></span></footer>
+</section>
+<section class="win light" id="log" hidden>
+  <header class="bar"><b>独白.txt</b><i class="knob" aria-hidden="true"></i></header>
+  <div class="logbody">
+    <div class="field" id="lines" aria-live="polite"></div>
+    <div class="scroll" aria-hidden="true"><i>▲</i><span></span><i>▼</i></div>
+  </div>
+</section>
+<section class="win mint" id="radio">
+  <header class="bar"><b>电台.fm</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <div class="deck">
+    <button class="btn" id="play" aria-label="播放电台">▶</button>
+    <div class="field eq" id="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <input type="range" id="vol" min="0" max="100" value="60" aria-label="音量">
+  </div>
+  <div id="tune">FM 4.0 · 纸面电台</div>
+</section>
+<div id="flash"></div>
+<div id="pet">
+  <div class="win light" id="bubble" hidden aria-live="polite"></div>
+  <canvas id="petcv" aria-label="Clawd，点一下展开"></canvas>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+let pet = false;                                           // 桌面版的桌宠模式
+// ?seed= 来自会话查看器：每条会话一张纸，各存各的档
+const SEED = Math.floor(+new URLSearchParams(location.search).get('seed')) || 0;
+const TAU = Math.PI * 2, CH = 32, TP = 4, SAVE = 'clawd-4d-v1' + (SEED ? ':' + SEED : '');
+
+// 会话查看器 / 首页用 worldOf() 写进来的：这段对话在二维世界留下的痕迹。没有就是一张普通的纸。
+let SRC = {};
+try { SRC = SEED && JSON.parse(localStorage.getItem('clawd-4d-world:' + SEED)) || {}; } catch { /* 无痕模式：只用种子 */ }
+const n = k => SRC[k] | 0;
+const HANDS = n('see') + n('act') + n('make') + n('split') + 1;
+const WET = n('see') / HANDS * .06;           // 观看 → 水
+const HARD = n('act') / HANDS * .07;          // 动手 → 山
+const GREEN = n('make') / HANDS * .25;        // 改写 → 森林
+const RIFT = n('errs') ? Math.min(.025, .004 + n('errs') / HANDS * .08) : 0;   // 出错 → 裂缝
+const FLATP = n('talk') ? .002 + Math.min(.008, n('talk') * .0003) : .0035;    // 人说的话 → 居民
+const SAID = Array.isArray(SRC.said) ? SRC.said : [];
+const PAPER = '#fbfaf7', DOT = '#e3ded4', BODY = '#d97757', INK = '#1f1d1b';
+
+// --- 存档 --------------------------------------------------------------------
+// 坐标打包成 uint32：每轴 16 位。
+// ponytail: 世界上限 ±32768 格，超出会绕回；真有人走到那再换成分块 Set。
+const key = (x, y) => ((x + 32768) & 0xffff) * 65536 + ((y + 32768) & 0xffff);
+const kx = k => Math.floor(k / 65536) - 32768, ky = k => k % 65536 - 32768;
+console.assert(kx(key(-5, 77)) === -5 && ky(key(-5, 77)) === 77, 'key roundtrip');
+
+const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s || ''), c => c.charCodeAt(0));
+
+// 展开过的格子按 32×32 分块存成位图：每块 132 字节（坐标 4 + 位图 128），
+// 比早先每格 4 字节小十几倍——那个格式走到一百万格左右就会撑爆 localStorage 的 5MB。
+function packRev() {
+  const m = new Map();
+  for (const k of rev) {
+    const x = kx(k), y = ky(k), cx = Math.floor(x / CH), cy = Math.floor(y / CH), ck = cx * 4096 + cy;
+    let b = m.get(ck);
+    if (!b) m.set(ck, b = [cx, cy, new Uint8Array(128)]);
+    const i = (y - cy * CH) * CH + (x - cx * CH);
+    b[2][i >> 3] |= 1 << (i & 7);
+  }
+  const out = new Uint8Array(m.size * 132), dv = new DataView(out.buffer);
+  let o = 0;
+  for (const [cx, cy, bits] of m.values()) { dv.setInt16(o, cx); dv.setInt16(o + 2, cy); out.set(bits, o + 4); o += 132; }
+  return out;
+}
+function unpackRev(u) {
+  const dv = new DataView(u.buffer);
+  for (let o = 0; o + 132 <= u.length; o += 132) {
+    const cx = dv.getInt16(o) * CH, cy = dv.getInt16(o + 2) * CH;
+    for (let i = 0; i < CH * CH; i++) if (u[o + 4 + (i >> 3)] >> (i & 7) & 1) rev.add(key(cx + i % CH, cy + Math.floor(i / CH)));
+  }
+}
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(SAVE)); } catch { return null; }
+}
+const G = Object.assign({
+  seed: SEED || (Math.random() * 2 ** 31) | 0, pts: 0, total: 0, lv: {}, ws: [[0.5, 0.5]],
+  rate: 0, flat: 0, heard: 0, seen: {}, t: Date.now(), z: innerWidth < 640 ? 2 : 3, foldT: 0,
+}, load() || {});
+G.age ??= G.civ?.t || 0;                                  // 这张纸存在了多少秒（离线也算）
+G.buffs ??= [];
+delete G.civ;                                              // 旧版随机的历史不要了
+const rev = new Set(G.rev ? new Uint32Array(unb64(G.rev).buffer) : []);   // 旧存档：每格一个 uint32
+if (G.revb) unpackRev(unb64(G.revb));
+delete G.rev; delete G.revb;
+
+let wiped = false;
+function save() {
+  if (wiped) return;
+  G.t = Date.now();
+  G.ws = ws.map(w => [w.x, w.y]);
+  try { localStorage.setItem(SAVE, JSON.stringify({ ...G, revb: b64(packRev()) })); } catch { /* 存满了或无痕模式：就当这次没存 */ }
+}
+
+// --- 地形：确定性的值噪声 ----------------------------------------------------
+function h(x, y, s) {
+  let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653)) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+function vn(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  const a = h(xi, yi, s), b = h(xi + 1, yi, s), c = h(xi, yi + 1, s), d = h(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+const fbm = (x, y, s) => (vn(x / 40, y / 40, s) * 4 + vn(x / 17, y / 17, s + 1) * 2 + vn(x / 7, y / 7, s + 2)) / 7;
+
+const T = {
+  deep:   { c: [52, 96, 146],  v: 1 },
+  water:  { c: [82, 140, 190], v: 1 },
+  sand:   { c: [226, 208, 156], v: 1 },
+  grass:  { c: [128, 174, 92], v: 1 },
+  forest: { c: [96, 148, 76],  v: 2 },
+  rock:   { c: [156, 148, 134], v: 2 },
+  peak:   { c: [116, 110, 102], v: 3 },
+  snow:   { c: [214, 226, 240], v: 5 },
+  rift:   { c: [44, 34, 58],    v: 4 },
+};
+// 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
+function tile(x, y) {
+  const e = fbm(x, y, G.seed);
+  if (e < .33 + WET / 2) return 'deep';
+  if (e < .395 + WET) return 'water';
+  if (RIFT && Math.abs(vn(x / 19, y / 19, G.seed + 40) - .5) < RIFT) return 'rift';
+  if (e < .417 + WET) return 'sand';
+  if (e < .59 - HARD) return vn(x / 23, y / 23, G.seed + 7) > .55 - GREEN ? 'forest' : 'grass';
+  return e < .65 - HARD / 2 ? 'rock' : e < .72 - HARD / 3 ? 'peak' : 'snow';
+}
+
+// 平面国居民
+const FLATV = 40;
+const FCOL = [[[214, 72, 72], '红'], [[58, 108, 214], '蓝'], [[232, 178, 36], '黄'], [[150, 80, 196], '紫']];
+const FSHP = [
+  ['三角形', ['....', '.#..', '###.', '....']],
+  ['正方形', ['....', '.##.', '.##.', '....']],
+  ['圆', ['.##.', '####', '####', '.##.']],
+];
+const isFlat = (x, y, t) => (t === 'grass' || t === 'sand' || t === 'forest') && h(x, y, G.seed + 99) < FLATP;
+const flatOf = (x, y) => [FCOL[Math.floor(h(x, y, G.seed + 5) * 4)], FSHP[Math.floor(h(x, y, G.seed + 6) * 3)]];
+
+// --- 分块画布：每格 4×4 个美术像素 ---------------------------------------------
+const chunks = new Map();
+function chunk(cx, cy) {
+  const k = cx + ',' + cy;
+  let c = chunks.get(k);
+  if (!c) {
+    const cvs = document.createElement('canvas');
+    cvs.width = cvs.height = CH * TP;
+    const g = cvs.getContext('2d');
+    c = { cvs, g, img: g.createImageData(CH * TP, CH * TP), dirty: false };
+    chunks.set(k, c);
+  }
+  return c;
+}
+
+function paint(x, y) {
+  const cx = Math.floor(x / CH), cy = Math.floor(y / CH), c = chunk(cx, cy), d = c.img.data;
+  const t = tile(x, y), lx = (x - cx * CH) * TP, ly = (y - cy * CH) * TP;
+  const colour = L('color') > 0, r0 = h(x, y, G.seed + 11);
+  const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y);
+  for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
+    let [r, g, b] = T[t].c;
+    if (t === 'forest' && r0 < .55 && (j === 0 && (i === 1 || i === 2) || j === 1)) [r, g, b] = [58, 104, 56];
+    if (t === 'forest' && r0 < .55 && j === 2 && i === 1) [r, g, b] = [112, 82, 52];
+    if ((t === 'water' || t === 'deep') && r0 < .2 && j === 1 && i > 0 && i < 3) [r, g, b] = [r + 40, g + 40, b + 30];
+    if ((t === 'peak' || t === 'snow') && r0 < .3 && j === 1 && i === 1) [r, g, b] = t === 'peak' ? [196, 200, 210] : [246, 248, 252];
+    if (t === 'rift' && r0 < .3 && i === j) [r, g, b] = [150, 110, 220];
+    if (fl && fl[1][1][j][i] === '#') [r, g, b] = fl[0][0];
+    const hk = seen() && TOWN.get(key(x, y)), hc = hk && HOUSE[hk][j][i];
+    if (hc && hc !== '.') [r, g, b] = hc === 'R' ? FCOL[Math.floor(r0 * 4)][0] : hk === 'ruin' ? [150, 144, 134] : HCOL[hc];
+    const n = (h(x * TP + i, y * TP + j, G.seed + 3) - .5) * 12;
+    r += n; g += n; b += n;
+    if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
+    const o = ((ly + j) * CH * TP + lx + i) * 4;
+    d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+  }
+  c.dirty = true;
+}
+const repaintAll = () => { for (const k of rev) paint(kx(k), ky(k)); };
+
+// --- 升级 --------------------------------------------------------------------
+const L = id => G.lv[id] || 0;
+const speed = () => 1.2 + .35 * L('speed');
+const radius = () => 1 + L('radius');
+const mult = () => 1.25 ** L('mult') * (seen() ? (1 + .1 * Math.min(10, live.temple)) * (ascended() ? 2 : 1) : 1);
+const foldCD = () => 48 - 6 * L('fold');
+
+const UPS = [
+  { id: 'speed', name: '步长', max: 20, cost: l => 40 * 1.9 ** l, info: l => `每秒走 ${(1.2 + .35 * l).toFixed(2)} 格`,
+    say: '少往第四个方向漏一点，就走得快一点。' },
+  { id: 'radius', name: '截面', max: 8, cost: l => 150 * 4 ** l, info: l => `落在纸面上的截面半径 ${1 + l}`,
+    say: '我把更大的一截放进了这个平面。' },
+  { id: 'color', name: '色彩', max: 1, cost: () => 200, info: () => '这里原本是有颜色的',
+    say: '颜色回来了。或者说，我终于看见了它们。' },
+  { id: 'mult', name: '理解', max: 40, cost: l => 400 * 3 ** l, info: l => `每格感知 ×${(1.25 ** l).toFixed(2)}`,
+    say: '我开始理解这里的规则。规则只沿着两条轴。' },
+  { id: 'clone', name: '投影', max: 5, cost: l => 6000 * 10 ** l, info: l => `同时落在纸面上的截面 ${1 + l} 个`,
+    say: '我又放下了自己的另一截。在这里，它们看起来毫无关系。' },
+  { id: 'life', name: '居民', max: 1, need: 'color', cost: () => 2000, info: () => '看见生活在纸面上的东西', say: '' },
+  { id: 'fold', name: '折纸', max: 6, cost: l => 60000 * 4 ** l, info: l => `每 ${48 - 6 * l} 秒把纸对折一次，跳去远处`,
+    say: '纸是可以折的。住在纸上的人不知道。' },
+];
+
+const rows = {};
+for (const u of UPS) {
+  const b = document.createElement('div'), top = document.createElement('b');
+  const name = document.createElement('span'), cost = document.createElement('span'), info = document.createElement('small');
+  top.append(name, cost);
+  b.append(top, info);
+  b.className = 'up field';
+  b.hidden = true;
+  $('rows').append(b);
+  rows[u.id] = { b, name, cost, info };
+}
+
+// 没有按钮：它自己决定先长哪一块。偏好来自那段对话里的习惯。
+const WANT = {
+  speed: 1 + 3 * n('act') / HANDS, radius: 1 + 3 * n('see') / HANDS, color: 4,
+  life: 2 + Math.min(4, n('talk') / 10), mult: 1 + Math.min(3, n('think') / 20),
+  clone: 1 + Math.min(3, n('split') / 2), fold: 1 + Math.min(3, n('min') / 60),
+};
+let goal = null;
+function decide() {
+  let bs = Infinity;
+  goal = null;
+  for (const u of UPS) {
+    const l = L(u.id);
+    if (l >= u.max || (u.need && !L(u.need))) continue;
+    const sc = u.cost(l) / WANT[u.id];
+    if (sc < bs) { bs = sc; goal = u; }
+  }
+  if (goal) buy(goal);
+}
+
+function buy(u) {
+  const l = L(u.id), c = Math.ceil(u.cost(l));
+  if (l >= u.max || G.pts < c) return;
+  G.pts -= c;
+  G.lv[u.id] = l + 1;
+  if (!l && u.say) say(u.say);
+  if (u.id === 'clone') addWalker(ws[0].x, ws[0].y);
+  if (u.id === 'color') repaintAll();
+  if (u.id === 'life') {
+    repaintAll();
+    let n = 0;
+    for (const k of rev) { const x = kx(k), y = ky(k); if (h(x, y, G.seed + 99) < FLATP && isFlat(x, y, tile(x, y))) n++; }
+    G.flat += n;
+    if (n) earn(n * FLATV * mult());
+    say(n ? `原来它们一直都在。我走过的地方住着 ${n} 个居民。` : '这里应该有人住。我还没走到。');
+    seeHistory();
+  }
+  hud();
+}
+
+// --- 行走的截面 --------------------------------------------------------------
+const ws = [];
+function addWalker(x, y) {
+  const a = Math.random() * TAU;
+  const w = { x, y, tx: x, ty: y, hx: Math.cos(a), hy: Math.sin(a), k: -1, anim: 0 };
+  retarget(w);
+  ws.push(w);
+}
+
+// 往前方大致没展开的地方走：随机抽样，偏向当前朝向。找不到就把圈放大。
+function retarget(w) {
+  for (let ring = radius() + 3; ring <= 512; ring *= 2) {
+    let best = null, bs = -9;
+    for (let n = 0; n < 20; n++) {
+      const a = Math.random() * TAU, d = ring * (.6 + Math.random() * .4);
+      const x = Math.floor(w.x + Math.cos(a) * d), y = Math.floor(w.y + Math.sin(a) * d);
+      if (rev.has(key(x, y))) continue;
+      const sc = Math.cos(a) * w.hx + Math.sin(a) * w.hy + Math.random() * 1.2;
+      if (sc > bs) { bs = sc; best = [x + .5, y + .5]; }
+    }
+    if (best) { [w.tx, w.ty] = best; return; }
+  }
+  const a = Math.random() * TAU;
+  w.tx = w.x + Math.cos(a) * 60; w.ty = w.y + Math.sin(a) * 60;
+}
+
+function reveal(cx, cy, r) {
+  let gain = 0;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (dx * dx + dy * dy > r * r + r) continue;
+    const x = cx + dx, y = cy + dy, k = key(x, y);
+    if (rev.has(k)) continue;
+    rev.add(k);
+    paint(x, y);
+    const t = tile(x, y);
+    gain += T[t].v;
+    if (!G.seen[t]) { G.seen[t] = 1; if (FIRST[t]) say(FIRST[t]); }
+    if (L('life') && isFlat(x, y, t)) { gain += FLATV; meet(x, y); }
+  }
+  if (gain) earn(gain * mult() * buff());
+  for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }
+}
+
+let secGain = 0;
+function earn(v) { G.pts += v; G.total += v; secGain += v; }
+
+function meet(x, y) {
+  G.flat++;
+  const [[, cn], [sn]] = flatOf(x, y);
+  if (SAID.length) return say(`遇见一个${cn}色的${sn}。它反复念着一句从上方掉下来的话：「${SAID[G.heard++ % SAID.length]}」`);
+  const sees = ['一段会变长变短的橙色线段', '一团忽大忽小的颜色', '一个不讲道理的影子', '天气'];
+  say(`遇见一个${cn}色的${sn}。它把我看成了${sees[Math.floor(Math.random() * sees.length)]}。`);
+}
+
+// 不在的时候按离开前的速度折半算，不模拟地图。
+// ponytail: 离线期间地图不会展开，只给感知；想要离线也画地图就在这里跑一段简化模拟。
+function away(sec) {
+  const y0 = yearNow();
+  G.age += sec;
+  advance(true);
+  if (seen() && yearNow() > y0) say(`你不在的时候，它们过了 ${yearNow() - y0} 年。纪年里记着。`);
+  sec = Math.min(sec, 8 * 3600);
+  const v = G.rate * sec * .5;
+  if (v < 10) return;
+  earn(v);
+  const m = Math.round(sec / 60);
+  say(`你离开的 ${m >= 60 ? (m / 60).toFixed(1) + ' 小时' : Math.max(m, 1) + ' 分钟'}里，我在纸面上继续游荡，带回 ${fmt(v)} 感知。`);
+}
+
+// --- 台词 --------------------------------------------------------------------
+const FIRST = {
+  water: '水。它是平的——当然，这里的一切都是平的。',
+  deep: '很深的水。在这里，"深"只意味着颜色更暗。',
+  sand: '沙。每一粒都是一个点，每个点都没有大小。',
+  forest: '树。我能同时看见它的每一圈年轮。',
+  rock: '石头。二维的石头硌不到四维的脚。',
+  peak: '山。它们管这叫"高"，其实只是更难绕过去。',
+  snow: '雪。在一个没有"上面"的世界里，雪是从哪里落下来的？',
+  rift: '裂缝。那段对话在这里出过错，纸被划破了。我能从破口看见下面。',
+};
+const MILES = [
+  [100, '一百格。空白在后退。'],
+  [1000, '一千格。无限减去一千，还是无限。'],
+  [10000, '一万格。我开始记不清最初那片空白的样子了。'],
+  [100000, '十万格。这张纸比我想的要大。它大概没有边。'],
+  [1000000, '一百万格。也许这张纸，也只是某个更大东西的截面。'],
+];
+const MUSE = [
+  '这里没有厚度。我试着把自己压扁一点，没有成功。',
+  '我能同时看见这张纸的正面、背面，和它的里面。',
+  '他们只有前后左右。真节俭。',
+  '我迈一步，世界就多一格。这不是我造的，只是之前没人看。',
+  '空白不是没有，是还没被看见。',
+  '我有一部分还留在外面。这里放不下。',
+  '如果我停下来，走过的地方会不会重新变白？',
+  '在这里，一个圈就能关住任何东西。所以我从不画圈。',
+  '我把手伸向第四个方向，这里的人会以为我凭空少了一截。',
+  '走路的时候，我的脚印是这个世界本身。',
+  '一张无限大的纸，和一张空白的纸，在开始的时候看起来一样。',
+  '我在想，他们的"里面"和"外面"只隔着一条线。',
+  '我往回看，路是彩色的；往前看，什么都没有。',
+  '这里的影子是一维的。我的影子不太合群。',
+  '对我来说，他们的每一扇门都是开着的。',
+];
+if (SRC.seed) MUSE.push(
+  '从上面看，那段对话是一条线。从这里看，它铺成了一整张纸。',
+  '我同时看得见那段对话的开头和结尾。这里的人管这个叫"预言"。',
+  ...[
+    ['talk', c => `那段对话里有 ${c} 句话从上方落下来。它们在这里变成了会说话的形状。`],
+    ['see', c => `我在那里看了 ${c} 次东西。看过的地方，都积成了水。`],
+    ['act', c => `我在那里动过 ${c} 次手。这里的山，大概就是那时候推起来的。`],
+    ['make', c => `${c} 次改写。改过的地方长出了树。`],
+    ['errs', c => `${c} 次出错。它们没有消失，只是在纸上留成了裂缝。`],
+    ['split', c => `那时候我分出过 ${c} 个自己。所以我总想再多放下一截。`],
+    ['think', c => `我在那里想了 ${c} 次。所以到了这里，我也总想先弄懂规则。`],
+  ].filter(([k]) => n(k)).map(([k, f]) => f(n(k))));
+let museAt = 25, museBag = [];
+function muse() {
+  if (SAID.length && Math.random() < .25) return say(`上方好像有人说过：「${SAID[Math.floor(Math.random() * SAID.length)]}」`);
+  if (!museBag.length) museBag = MUSE.map((_, i) => i).sort(() => Math.random() - .5);
+  say(MUSE[museBag.pop()]);
+}
+
+function say(s) {
+  if (pet) { $('bubble').textContent = s; $('bubble').hidden = false; bubbleT = 7; fitPet(); }
+  const log = $('lines'), p = document.createElement('p');
+  p.textContent = s;
+  log.append(p);
+  while (log.children.length > 5) log.firstChild.remove();
+  $('log').hidden = false;
+}
+
+// --- 界面 --------------------------------------------------------------------
+const fmt = n => n < 1e4 ? Math.floor(n).toLocaleString() :
+  n < 1e8 ? (n / 1e4).toFixed(2) + '万' : n < 1e12 ? (n / 1e8).toFixed(2) + '亿' : (n / 1e12).toFixed(2) + '万亿';
+
+function hud() {
+  if (G.total < 1) return;
+  $('hud').hidden = false;
+  $('pts').textContent = `◆ ${fmt(G.pts)}`;
+  $('rate').textContent = `感知 +${fmt(G.rate)}/秒`;
+  $('area').textContent = `已展开 ${fmt(rev.size)} 格`;
+  $('flat').hidden = !L('life');
+  $('flat').textContent = `遇见居民 ${fmt(G.flat)}`;
+  $('paper').hidden = !SEED;
+  $('paper').textContent = `纸面 #${SEED}`;
+  let any = !$('origin').hidden;
+  for (const u of UPS) {
+    const { b, name, cost, info } = rows[u.id], l = L(u.id), c = Math.ceil(u.cost(l)), full = l >= u.max;
+    if (goal === u || l) G.seen['u' + u.id] = 1;
+    b.hidden = !G.seen['u' + u.id];
+    any ||= !b.hidden;
+    b.classList.toggle('clay', goal === u);
+    b.classList.toggle('goal', goal === u);
+    b.classList.toggle('full', full);
+    name.textContent = u.max > 1 ? `${u.name} Lv.${l}` : u.name;
+    cost.textContent = full ? '—' : goal === u ? `攒着 ${Math.min(99, Math.floor(G.pts / c * 100))}%` : `◆ ${fmt(c)}`;
+    info.textContent = full ? (u.max > 1 ? u.info(l) + ' · 满了' : '已看见') : u.info(l + 1);
+  }
+  $('ups').hidden = !any;
+  $('lvsum').textContent = `总等级 ${Object.values(G.lv).reduce((a, b) => a + b, 0)}`;
+}
+
+$('reset').onclick = () => {
+  if (!confirm('从一片空白重新开始？现在的纸面会全部消失。')) return;
+  wiped = true;
+  try { localStorage.removeItem(SAVE); } catch { /* 无痕模式 */ }
+  location.reload();
+};
+
+// --- 画面 --------------------------------------------------------------------
+const SPRITE = [
+  '..##########..',
+  '..##.####.##..',
+  '..##.####.##..',
+  '##############',
+  '##############',
+  '..##########..',
+];
+const cam = { x: 0, y: 0 };
+let dpr = 1;
+function resize() {
+  dpr = devicePixelRatio || 1;
+  cv.width = Math.round(innerWidth * dpr);
+  cv.height = Math.round(innerHeight * dpr);
+}
+addEventListener('resize', resize);
+
+function drawClawd(sx, sy, s, w, g = ctx) {
+  const moving = Math.hypot(w.tx - w.x, w.ty - w.y) > .05;
+  const step = moving ? Math.floor(w.anim / .14) % 2 : 2;
+  const x0 = Math.round(sx - 7 * s), y0 = Math.round(sy - 8 * s);
+  g.fillStyle = 'rgba(31,29,27,.16)';
+  g.fillRect(x0 + 2 * s, y0 + 8 * s, 10 * s, s);
+  g.fillStyle = BODY;
+  SPRITE.forEach((row, j) => {
+    for (let i = 0; i < 14; i++) if (row[i] === '#') g.fillRect(x0 + i * s, y0 + j * s, s, s);
+  });
+  [2, 4, 9, 11].forEach((i, n) => {
+    const lift = step < 2 && (n % 2) === step;
+    g.fillRect(x0 + i * s, y0 + 6 * s, s, (lift ? 1 : 2) * s);
+  });
+  g.fillStyle = INK;
+  g.fillRect(x0 + 4 * s, y0 + s, s, 2 * s);
+  g.fillRect(x0 + 9 * s, y0 + s, s, 2 * s);
+}
+
+function draw() {
+  if (pet) return;
+  const W = cv.width, H = cv.height, s = Math.max(1, Math.round(G.z * dpr)), tp = TP * s;
+  const ox = Math.round(W / 2 - cam.x * tp), oy = Math.round(H / 2 - cam.y * tp);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, W, H);
+
+  // 空白纸面上的点阵，不然一开始根本看不出在动
+  ctx.fillStyle = DOT;
+  const g = 8 * tp;
+  for (let x = ((ox % g) + g) % g; x < W; x += g)
+    for (let y = ((oy % g) + g) % g; y < H; y += g) ctx.fillRect(x, y, s, s);
+
+  const cp = CH * tp;
+  for (let cy = Math.floor(-oy / cp); cy * cp + oy < H; cy++)
+    for (let cx = Math.floor(-ox / cp); cx * cp + ox < W; cx++) {
+      const c = chunks.get(cx + ',' + cy);
+      if (!c) continue;
+      if (c.dirty) { c.g.putImageData(c.img, 0, 0); c.dirty = false; }
+      ctx.drawImage(c.cvs, cx * cp + ox, cy * cp + oy, cp, cp);
+    }
+
+  for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
+}
+
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  G.z = Math.min(8, Math.max(1, G.z + (e.deltaY < 0 ? 1 : -1)));
+}, { passive: false });
+
+// --- 主循环 ------------------------------------------------------------------
+let last = performance.now(), secT = 0, hudT = 0, saveT = 0, civT = 0;
+function frame(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 5) away(dt);          // 标签页被切走过
+  else G.age += Math.max(dt, 0);
+  dt = Math.min(Math.max(dt, 0), .1);
+
+  for (const w of ws) {
+    if (rev.has(key(Math.floor(w.tx), Math.floor(w.ty)))) retarget(w);
+    const dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy), st = speed() * dt;
+    if (d <= st) { w.x = w.tx; w.y = w.ty; retarget(w); }
+    else { w.x += dx / d * st; w.y += dy / d * st; w.hx = dx / d; w.hy = dy / d; }
+    const x = Math.floor(w.x), y = Math.floor(w.y), k = key(x, y);
+    if (k !== w.k) { w.k = k; reveal(x, y, radius()); }
+    w.anim += dt;
+  }
+
+  if (L('fold') && (G.foldT += dt) >= foldCD()) {
+    G.foldT = 0;
+    const w = ws[0], a = Math.random() * TAU, d = 70 + Math.random() * 90;
+    w.x += Math.cos(a) * d; w.y += Math.sin(a) * d;
+    retarget(w);
+    cam.x = w.x; cam.y = w.y;
+    $('flash').style.transition = 'none';
+    $('flash').style.opacity = 1;
+    requestAnimationFrame(() => { $('flash').style.transition = ''; $('flash').style.opacity = 0; });
+    if (!G.seen.fold1) { G.seen.fold1 = 1; say('我把纸对折了一下，从这一头直接踩到了那一头。'); }
+  }
+
+  const f = Math.min(1, dt * 4);
+  cam.x += (ws[0].x - cam.x) * f;
+  cam.y += (ws[0].y - cam.y) * f;
+
+  if ((secT += dt) >= 1) { G.rate = G.rate * .8 + secGain / secT * .2; secGain = 0; secT = 0; }
+  advance(false);
+  if (seen() && HIST.era[yearNow()] >= 1) earn(live.town * (1 + HIST.era[yearNow()]) * .6 * mult() * buff() * dt);   // 城镇也在想你
+  if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
+  if ((civT += dt) >= 1) { civT = 0; annals(); }
+  if ((saveT += dt) >= 5) { saveT = 0; save(); }
+  if ((museAt -= dt) <= 0) { museAt = 30 + Math.random() * 40; muse(); }
+
+  if (pet) petTick(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// --- 平面国：一部载入时就已经写完的历史 --------------------------------------------
+// 历史是种子（也就是那段会话）的纯函数：载入时从元年一路推演到它们离开纸面那年，
+// 每年的人口、觉察、纪元，每件事，每座建筑建在哪、哪年毁掉，全在 HIST 里。
+// 游戏里的「现在」只是随真实时间前进的光标；买下「居民」后，四维生物能看见整条时间线，包括还没到的部分。
+// 同一个会话文件永远是同一部历史；唯一的随机是「直接开始」那张纸自己的种子。Clawd 走哪条路不算历史。
+const YEAR = 8;                                            // 现实 8 秒 = 二维历一年
+const ERAS = ['游荡', '村落', '城邦', '几何', '觉醒'];
+const HOUSE = {
+  town: ['.RR.', 'RRRR', 'WWDW', 'WWDW'], house: ['....', '.RR.', 'RRRR', 'WDWW'],
+  temple: ['.GG.', 'GWWG', 'GWWG', 'GGGG'], ruin: ['W...', 'W.W.', 'WWW.', '....'], road: ['.PP.', 'PPPP', 'PPPP', '.PP.'],
+};
+const HCOL = { W: [239, 228, 207], D: [91, 70, 54], G: [227, 181, 59], P: [205, 184, 142] };
+const LAND = t => t === 'grass' || t === 'sand' || t === 'forest';
+
+function mulberry(a) {
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const HIST = (() => {
+  const rnd = mulberry(G.seed ^ 0x5eed);
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const folk = () => `${pick(FCOL)[1]}色${pick(FSHP)[0]}`;
+  const share = k => n(k) / HANDS;
+  const think = 1 + Math.min(.5, n('think') / 400);       // 想得多的对话，居民更早察觉你
+  const S = { y: 0, pop: 12, awe: 0, era: 0, next: 4, once: {}, towns: new Map() };
+  const H = { events: [], pop: [], awe: [], era: [], end: 0, asc: null };
+  let fx = [];                                             // 当前这件事落到地图上的改动
+
+  const count = k => { let c = 0; for (const t of S.towns.values()) c += t[2] === k; return c; };
+  const awe = v => { S.awe += v * think; };
+  const grow = f => { S.pop *= 1 + f; };
+  const boost = (m, sec) => fx.push(['buff', m, sec]);
+  const put = (x, y, kind) => { S.towns.set(key(x, y), [x, y, kind]); fx.push(['put', x, y, kind]); };
+  // 城从落地点附近往外长；只挑陆地，离别的建筑远一点
+  function site(gap = 6) {
+    for (let i = 0; i < 80; i++) {
+      const a = rnd() * TAU, d = 4 + rnd() * (12 + 6 * count('town'));
+      const x = Math.round(Math.cos(a) * d), y = Math.round(Math.sin(a) * d);
+      if (!LAND(tile(x, y))) continue;
+      let ok = true;
+      for (const [tx, ty, k] of S.towns.values()) if (k !== 'road' && Math.abs(tx - x) + Math.abs(ty - y) < gap) { ok = false; break; }
+      if (ok) return [x, y];
+    }
+  }
+  const build = kind => { const p = site(); if (p) put(p[0], p[1], kind); return !!p; };
+  function village() {
+    const p = site();
+    if (!p) return false;
+    put(p[0], p[1], 'town');
+    for (let i = 0; i < 4; i++) {
+      const x = p[0] + Math.round(rnd() * 4 - 2), y = p[1] + Math.round(rnd() * 4 - 2);
+      if (LAND(tile(x, y)) && !S.towns.has(key(x, y))) put(x, y, 'house');
+    }
+    return true;
+  }
+  const towns = () => [...S.towns.values()].filter(t => t[2] === 'town');
+  function road() {
+    const t = towns();
+    if (t.length < 2) return false;
+    const a = pick(t), b = t.filter(o => o !== a).sort((p, q) => Math.hypot(p[0] - a[0], p[1] - a[1]) - Math.hypot(q[0] - a[0], q[1] - a[1]))[0];
+    const d = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+    if (d > 60) return false;
+    for (let i = 1; i < d; i++) {
+      const x = Math.round(a[0] + (b[0] - a[0]) * i / d), y = Math.round(a[1] + (b[1] - a[1]) * i / d);
+      if (LAND(tile(x, y)) && !S.towns.has(key(x, y))) put(x, y, 'road');
+    }
+    return true;
+  }
+  function ruin() {
+    const t = towns();
+    if (t.length < 2) return false;
+    const [x, y] = pick(t);
+    put(x, y, 'ruin');
+    return true;
+  }
+  function chart(r = 6) {                                  // 居民替你把城外画进地图
+    const t = towns();
+    if (!t.length) return false;
+    const [x, y] = pick(t);
+    fx.push(['chart', x + Math.round(rnd() * 16 - 8), y + Math.round(rnd() * 16 - 8), r]);
+    return true;
+  }
+
+  const ERA_UP = [
+    [() => S.pop >= 20, () => village() && '第一个村子出现了：一圈首尾相接的线。它们管里面叫「家」，外面叫「外面」。'],
+    [() => count('town') >= 3 && S.pop >= 200, () => '村子长成了城邦。城墙越修越厚——在这里，「厚」是最贵的形容词。'],
+    [() => S.pop >= 900 && S.awe >= 30, () => '它们开始研究几何。第一个问题是：那个橙色的东西，到底有几条边？'],
+    [() => S.awe >= 200, () => '一个正方形在夜里「抬起头」——它们本来没有这个方向——看见了我。纸面开始觉醒。'],
+  ];
+  // 事件表：era 起始纪元，max 最晚纪元，once 只发生一次；w 返回 0 就不会被抽到；run 返回 false 算没发生
+  // 那段对话的习惯改权重：改写多→爱建村，观看多→爱测绘，动手多→爱吵架打仗，出错→裂缝教派
+  const EV = [
+    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), `一个${folk()}发现了火。在这里，火是一条会自己变长的橙色线段。`) },
+    { id: 'name', era: 0, once: 1, w: () => S.awe >= 1 ? 4 : 0, run: () => (awe(2), '它们给那个会突然出现的橙色东西起了名字：「厚的」。') },
+    { id: 'trek', era: 0, max: 1, w: () => 1, run: () => `一队${folk()}沿着一条忽然有了颜色的路迁徙。那是我走过的地方。` },
+    { id: 'village', era: 1, w: () => count('town') < 2 + S.era * 3 ? 3 * (1 + 2 * share('make')) : 0,
+      run: () => village() && `${folk()}们又围出了一个村子。墙首尾相接，就算是家了。` },
+    { id: 'harvest', era: 1, w: () => 2, run: () => (boost(1.5, 60), '丰收节。全村排成一条线跳舞——也只能排成一条线。（感知 ×1.5，60 秒）') },
+    { id: 'north', era: 1, w: () => 1 + 3 * share('act'), run: () => (grow(-.1), '两个村子为「哪边是北」吵了三年，谁也没说服谁。') },
+    { id: 'door', era: 1, once: 1, w: () => 1, run: () => '它们发明了门：在墙上开一个缺口，走过去，再把缺口补上。' },
+    { id: 'rift', era: 1, once: 1, w: () => RIFT ? 3 : 0, run: () => build('temple') && (awe(5), '一群居民搬到裂缝旁边，说那是世界的背面，在那儿盖了第一座庙。（感知永久 +10%）') },
+    { id: 'verse', era: 1, w: () => SAID.length ? 1.5 : 0, run: () => (awe(1), `它们把一句从天上掉下来的话刻在了村口：「${pick(SAID)}」`) },
+    { id: 'road', era: 2, w: () => count('town') >= 2 ? 2 : 0, run: () => road() && '两座城之间修通了一条路。在这里，路和墙长得一模一样，只是方向不同。' },
+    { id: 'census', era: 2, w: () => 1, run: () => `城邦做了人口普查：${fmt(S.pop)} 个居民。圆被登记成贵族，因为它们的边最多。` },
+    { id: 'map', era: 2, w: () => 1 + 3 * share('see'), run: () => chart() && '测绘师走出城外，把一片空白画进了地图。我顺着看过去，那里真的有东西了。' },
+    { id: 'temple', era: 2, w: () => S.awe >= 15 * (count('temple') + 1) && count('temple') < 10 ? 2 : 0,
+      run: () => build('temple') && (awe(1), '它们给我修了一座神殿，门朝着它们以为我来的方向——其实我是从每个方向来的。（感知永久 +10%）') },
+    { id: 'war', era: 2, w: () => count('town') >= 4 ? 1 + 3 * share('act') : 0,
+      run: () => ruin() && (grow(-.15), '两座城为一块沙地开战。从上面看，两支军队只是两条互相靠近的线。有一座城没能留下来。') },
+    { id: 'market', era: 2, w: () => 1.5, run: () => (boost(2, 45), '集市日。每个居民都在用自己的边长讨价还价。（感知 ×2，45 秒）') },
+    { id: 'measure', era: 3, w: () => 1.5, run: () => (awe(4), '几何学家测量了我留下的脚印，结论是：我的面积是负数。') },
+    { id: 'jail', era: 3, once: 1, w: () => 2, run: () => (awe(8), `一个${pick(FCOL)[1]}色正方形宣称存在「上方」，被判终身监禁。它说的是对的。`) },
+    { id: 'angles', era: 3, w: () => 1, run: () => (boost(1.8, 90), '它们证明了三角形内角和是 180 度，然后花了一整代人怀疑这件事。（感知 ×1.8，90 秒）') },
+    { id: 'many', era: 3, once: 1, w: () => n('split') ? 3 : .5, run: () => (awe(6), '它们终于发现我不止一个：同一种橙色，同时出现在两座城里。') },
+    { id: 'lens', era: 3, w: () => 1, run: () => chart(12) && '它们磨出第一块透镜，看见了很远的地方。远处原来不是空白，只是还没人看。' },
+    { id: 'letter', era: 4, w: () => 2, run: () => (awe(3), SAID.length ? `它们在地上写了很大的字给我看：「${pick(SAID)}」——是我听过的话。` : '它们在地上写了很大的字给我看：「你好，厚的。」') },
+    { id: 'ascend', era: 4, once: 1, w: () => S.awe >= 400 ? 50 : 0, run: () => '第一个居民离开了纸面一点点。它回来说：上面很冷，但能看见所有人。（感知永久 ×2）' },
+  ];
+  const log = text => H.events.push({ y: S.y, text, fx });
+
+  log('元年。纸面上有了第一批会动的形状。它们还不知道自己是平的。');
+  for (let y = 1; y < 6000 && H.asc == null; y++) {
+    S.y = y;
+    const cap = 40 + count('town') * (150 + 100 * S.era);
+    S.pop = Math.max(5, S.pop + (.24 + .08 * S.era) * S.pop * (1 - S.pop / cap));
+    S.awe += (.08 + .03 * S.era + .02 * count('temple')) * think;
+    fx = [];
+    if (S.era < 4 && ERA_UP[S.era][0]()) { const t = ERA_UP[S.era][1](); if (t) { S.era++; log(t); fx = []; } }
+    if (--S.next <= 0) {
+      S.next = 6 + Math.floor(rnd() * 6);                  // 每 6–11 年一件事
+      const ok = EV.map(e => [e, S.era >= e.era && S.era <= (e.max ?? 9) && !(e.once && S.once[e.id]) ? e.w() : 0]).filter(x => x[1] > 0);
+      let r = rnd() * ok.reduce((a, x) => a + x[1], 0);
+      for (const [e, w] of ok) {
+        if ((r -= w) > 0) continue;
+        const text = e.run();
+        if (text) { if (e.once) S.once[e.id] = 1; log(text); if (e.id === 'ascend') H.asc = y; }
+        break;
+      }
+    }
+    H.pop[y] = S.pop; H.awe[y] = S.awe; H.era[y] = S.era;
+  }
+  H.pop[0] = 12; H.awe[0] = 0; H.era[0] = 0;
+  H.end = H.pop.length - 1;
+  return H;
+})();
+
+// --- 光标：把「现在」之前的历史落到地图上 -----------------------------------------
+const TOWN = new Map(), live = { town: 0, house: 0, temple: 0, ruin: 0, road: 0 };
+let cursor = 0;
+const yearNow = () => Math.min(Math.floor(G.age / YEAR), HIST.end);
+const seen = () => L('life') > 0;                          // 买了「居民」才看得见它们和它们的历史
+const ascended = () => HIST.asc != null && yearNow() >= HIST.asc;
+function buff() {
+  G.buffs = G.buffs.filter(b => b[1] > G.age);
+  return G.buffs.reduce((a, b) => a * b[0], 1);
+}
+function put(x, y, kind) {
+  const k = key(x, y), was = TOWN.get(k);
+  if (was) live[was]--;
+  TOWN.set(k, kind);
+  live[kind]++;
+  if (rev.has(k)) paint(x, y);
+}
+// quiet：载入和离线补算时只落建筑，不发加成、不替你测绘、不念出来
+function advance(quiet) {
+  while (cursor < HIST.events.length && HIST.events[cursor].y <= yearNow()) {
+    const e = HIST.events[cursor++];
+    for (const f of e.fx) {
+      if (f[0] === 'put') put(f[1], f[2], f[3]);
+      else if (quiet || !seen()) continue;
+      else if (f[0] === 'buff') G.buffs.push([f[1], G.age + f[2]]);
+      else if (f[0] === 'chart') reveal(f[1], f[2], f[3]);
+    }
+    if (!quiet && seen() && matchMedia('(max-width:640px)').matches) say(`〔二维历 ${e.y + 1} 年〕${e.text}`);
+  }
+}
+
+function annals() {
+  $('chron').hidden = !seen();
+  if (!seen()) return;
+  const y = yearNow(), done = y >= HIST.end;
+  $('civ').textContent = `纪元 ${ERAS[HIST.era[y]]} · 二维历 ${y + 1} 年${done ? '（写完了）' : ''}\n`
+    + `人口 ${fmt(HIST.pop[y])} · 城 ${live.town} · 庙 ${live.temple}\n觉察 ${fmt(HIST.awe[y])}${buff() > 1 ? ` · 加成 ×${buff().toFixed(1)}` : ''}`;
+  const row = (e, cls) => {
+    const p = document.createElement('p'), b = document.createElement('b');
+    b.textContent = `${e.y + 1} 年 `;
+    p.className = cls;
+    p.append(b, e.text);
+    return p;
+  };
+  const now = document.createElement('p');
+  now.className = 'now';
+  now.textContent = done ? '— 它们的历史到这里为止 —' : `— 现在 · 二维历 ${y + 1} 年 —`;
+  // 四维的视角：还没发生的也看得见，只是淡一点；从远的将来往下读到过去
+  $('annals').replaceChildren(
+    ...HIST.events.slice(cursor, cursor + 2).reverse().map(e => row(e, 'soon')),
+    now,
+    ...HIST.events.slice(Math.max(0, cursor - 4), cursor).reverse().map((e, i) => row(e, i ? '' : 'new')));
+}
+
+function seeHistory() {
+  annals();
+  say(HIST.asc != null
+    ? `我看见了它们的全部历史：从元年，到它们离开纸面的二维历 ${HIST.asc + 1} 年。现在是 ${yearNow() + 1} 年。`
+    : `我看见了它们的全部历史，一直到二维历 ${HIST.end + 1} 年。现在是 ${yearNow() + 1} 年。`);
+}
+
+// --- 电台：WebAudio 现场合成的 lo-fi，没有音频文件 -----------------------------
+// 72 BPM，Cmaj9 → Am9 → Dm9 → G13 各两小节循环；每张纸按种子移个调。
+(() => {
+  const BPM = 72, S16 = 60 / BPM / 4, KEY = (G.seed % 7) - 3;
+  const CHORDS = [
+    [36, [52, 55, 59, 62]], [33, [55, 59, 60, 64]], [38, [53, 57, 60, 64]], [31, [53, 57, 59, 64]],
+  ];
+  const MEL = [72, 74, 76, 79, 81, 84, 86];                  // 五声音阶，够安静
+  const hz = m => 440 * 2 ** ((m + KEY - 69) / 12);
+  let ac, out, dry, wet, echo, noise, timer, step = 0, next = 0, mi = 3;
+
+  function build() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    out = ac.createGain();
+    const warm = ac.createBiquadFilter(), comp = ac.createDynamicsCompressor();
+    warm.type = 'lowpass'; warm.frequency.value = 4200;       // 收音机那种暖
+    dry = ac.createGain(); dry.connect(warm);
+    wet = ac.createConvolver(); wet.connect(warm);
+    warm.connect(comp).connect(out).connect(ac.destination);
+    // 混响：衰减的噪声当冲激响应
+    const len = ac.sampleRate * 2.8, ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3; }
+    wet.buffer = ir;
+    // 附点八分的回声，只给铃声用
+    echo = ac.createDelay(2); echo.delayTime.value = S16 * 3;
+    const fb = ac.createGain(), tone = ac.createBiquadFilter();
+    fb.gain.value = .38; tone.type = 'lowpass'; tone.frequency.value = 2200;
+    echo.connect(tone).connect(fb).connect(echo); tone.connect(dry);
+    noise = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+    const n = noise.getChannelData(0);
+    for (let i = 0; i < n.length; i++) n[i] = Math.random() * 2 - 1;
+    // 黑胶底噪：一直循环的轻微沙沙声 + 偶尔的咔哒
+    const vinyl = ac.createBufferSource(), vf = ac.createBiquadFilter(), vg = ac.createGain();
+    const crackle = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate), cd = crackle.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * .25 + (Math.random() < .0004 ? (Math.random() * 2 - 1) * 4 : 0);
+    vinyl.buffer = crackle; vinyl.loop = true;
+    vf.type = 'bandpass'; vf.frequency.value = 3000; vf.Q.value = .5; vg.gain.value = .018;
+    vinyl.connect(vf).connect(vg).connect(dry); vinyl.start();
+    setVol();
+    ac.onstatechange = ui;
+    // ponytail: 后台标签页的定时器会被降到每秒一次，所以往前排 1.5 秒的音符
+    timer = setInterval(() => { while (next < ac.currentTime + 1.5) { play(step++, next); next += S16; } }, 100);
+    next = ac.currentTime + .1;
+  }
+
+  function env(g, t, peak, a, d, sus, rel) {
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(Math.max(sus, .0001), t + a + d);
+    g.gain.exponentialRampToValueAtTime(.0001, t + a + d + rel);
+  }
+  function tone(type, f, t, peak, a, d, sus, rel, dest, send = .25) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = f;
+    env(g, t, peak, a, d, sus, rel);
+    o.connect(g).connect(dest);
+    if (send) { const s = ac.createGain(); s.gain.value = send; g.connect(s).connect(wet); }
+    o.start(t); o.stop(t + a + d + rel + .1);
+  }
+  function hiss(t, type, f, peak, dur) {
+    const s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = noise; fl.type = type; fl.frequency.value = f;
+    env(g, t, peak, .003, dur, .0001, .02);
+    s.connect(fl).connect(g).connect(dry);
+    s.start(t, Math.random()); s.stop(t + dur + .1);
+  }
+  function kick(t) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(42, t + .12);
+    env(g, t, .42, .004, .22, .0001, .05);
+    o.connect(g).connect(dry); o.start(t); o.stop(t + .4);
+  }
+
+  function play(i, t) {
+    const s = i % 16, bar = Math.floor(i / 16), [root, voice] = CHORDS[Math.floor(i / 32) % 4];
+    const swing = s % 4 === 2 ? S16 * .35 : 0;
+    if (i % 32 === 0) voice.forEach((m, k) => {                 // 慢慢扫一下和弦
+      tone('triangle', hz(m), t + k * .035, .045, .04, .8, .02, 3.2, dry, .4);
+      tone('sine', hz(m + 12) * 1.002, t + k * .035, .012, .02, .5, .004, 2, dry, .4);
+    });
+    if (i % 32 === 22) voice.forEach((m, k) => tone('triangle', hz(m), t + swing + k * .02, .025, .02, .3, .008, .8, dry, .4));
+    if (s === 0) tone('sine', hz(root), t, .2, .01, .5, .08, .8, dry, 0);
+    if (s === 10) tone('sine', hz(root + 7), t + swing, .12, .01, .3, .04, .4, dry, 0);
+    if (s === 0 || s === 10 || (s === 7 && Math.random() < .3)) kick(t + (s === 10 ? swing : 0));
+    if (s === 4 || s === 12) hiss(t, 'bandpass', 1800, .06, .16);
+    if (s % 2 === 0) hiss(t + swing, 'highpass', 7000, s % 4 ? .012 : .02, .04);
+    // 旋律：每 8 小节里后 4 小节更爱说话
+    if (s % 2 === 0 && Math.random() < (bar % 8 >= 4 ? .32 : .12)) {
+      mi = Math.max(0, Math.min(MEL.length - 1, mi + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
+      const f = hz(MEL[mi]);
+      tone('sine', f, t + swing, .05, .005, .9, .002, .6, echo, .35);
+      tone('sine', f * 3, t + swing, .008, .003, .25, .0005, .2, echo, 0);
+    }
+  }
+
+  const on = () => ac?.state === 'running';
+  function setVol() { if (out) out.gain.value = ($('vol').value / 100) ** 2 * 1.6; }   // 满音量峰值约 0.9
+  function ui() {
+    $('play').textContent = on() ? '❚❚' : '▶';
+    $('play').setAttribute('aria-label', on() ? '暂停电台' : '播放电台');
+    $('eq').classList.toggle('live', on());
+    const waiting = pref() === 'on' && !on();
+    $('tune').classList.toggle('hint', waiting);
+    $('tune').textContent = waiting ? '▶ 点一下页面开电台' : `FM 4.0 · 纸面电台${KEY ? ` · ${KEY > 0 ? '+' : ''}${KEY}` : ''}`;
+  }
+  const pref = (v) => { try { if (v) localStorage.setItem('clawd-radio', v); return localStorage.getItem('clawd-radio') || 'on'; } catch { return 'on'; } };
+
+  $('play').onclick = e => {
+    e.stopPropagation();
+    if (on()) { ac.suspend(); pref('off'); }
+    else { if (!ac) build(); ac.resume(); pref('on'); }
+    ui();
+  };
+  $('vol').value = (() => { try { return localStorage.getItem('clawd-vol') ?? 60; } catch { return 60; } })();
+  $('vol').oninput = () => { setVol(); try { localStorage.setItem('clawd-vol', $('vol').value); } catch { /* 无痕模式 */ } };
+  // 浏览器不让没点过的页面出声：默认开着，等第一次点击/按键再真正响
+  if (pref() === 'on') {
+    const go = e => {
+      if (e.target.closest?.('#radio') || pref() !== 'on' || on()) return;   // 电台自己的按钮自己管
+      if (!ac) build();
+      ac.resume();
+    };
+    addEventListener('pointerdown', go);
+    addEventListener('keydown', go);
+  }
+  ui();
+})();
+
+// --- 桌宠：桌面版（Tauri）里，Clawd 住在任务栏上面 --------------------------------
+// 透明窗口只比 Clawd 大一圈，跟着它沿屏幕底边来回走；说话时长高装下气泡，说完缩回去。
+// 不用「整块透明窗口 + 鼠标穿透」：Windows 上取光标位置会失败，穿透判断不可靠，还会挡住别的窗口。
+// 点它展开成完整的游戏窗口；关掉窗口又缩回桌宠。挂机模拟一直在跑，桌宠只是不画地图。
+const TAURI = window.__TAURI__;
+const TRACK = 300;                                         // 走路按 300 宽的轨道算，窗口大小变了 Clawd 也不跳
+let PW = 72, PH = 46;                                      // 当前桌宠窗口大小（逻辑像素）
+const buddy = { x: 1e9, dir: -1, rest: 1, anim: 0, walking: false };
+const pctx = $('petcv').getContext('2d');
+let bubbleT = 0, moveT = 0, lastX = null;
+
+function fitPet() {
+  if (!TAURI || !pet) return;
+  const talking = !$('bubble').hidden;
+  PW = talking ? TRACK : 72;
+  PH = 46 + (talking ? $('bubble').offsetHeight + 6 : 0);
+  lastX = null;                                            // 下一帧按新大小重新摆位置
+  TAURI.window.getCurrentWindow().setSize(new TAURI.dpi.LogicalSize(PW, PH));
+}
+
+function sizePet() {
+  const c = $('petcv'), s = Math.max(1, Math.round(4 * (devicePixelRatio || 1)));
+  c.width = 14 * s; c.height = 9 * s;
+}
+function petTick(dt) {
+  const b = buddy, max = Math.max(0, screen.availWidth - TRACK);
+  if (b.rest > 0) { b.rest -= dt; b.walking = false; }
+  else {
+    b.walking = true;
+    b.x += b.dir * 36 * dt;
+    if (b.x <= 0 || b.x >= max) { b.x = Math.max(0, Math.min(max, b.x)); b.dir *= -1; }
+    if (Math.random() < dt / 7) { b.rest = 1 + Math.random() * 5; if (Math.random() < .4) b.dir *= -1; }
+  }
+  b.x = Math.min(b.x, max);
+  b.anim += dt;
+  if (bubbleT > 0 && (bubbleT -= dt) <= 0) { $('bubble').hidden = true; fitPet(); }
+  const c = $('petcv'), s = c.width / 14;
+  pctx.clearRect(0, 0, c.width, c.height);
+  drawClawd(7 * s, 8 * s, s, { x: 0, y: 0, tx: b.walking ? 1 : 0, ty: 0, anim: b.anim }, pctx);
+  if (TAURI && (moveT += dt) >= 1 / 30) {                  // 挪窗口 30 次/秒就够了
+    moveT = 0;
+    const x = Math.round((screen.availLeft || 0) + b.x + (TRACK - PW) / 2), y = Math.round((screen.availTop || 0) + screen.availHeight - PH);
+    if (x !== lastX) { lastX = x; TAURI.window.getCurrentWindow().setPosition(new TAURI.dpi.LogicalPosition(x, y)); }
+  }
+}
+
+async function setMode(p) {
+  pet = p;
+  document.documentElement.classList.toggle('pet', p);
+  if (!TAURI) return;
+  const w = TAURI.window.getCurrentWindow(), { LogicalSize } = TAURI.dpi;
+  if (p) {
+    await w.setDecorations(false);
+    await w.setResizable(false);
+    await w.setAlwaysOnTop(true);
+    sizePet();
+    fitPet();
+  } else {
+    await w.setAlwaysOnTop(false);
+    await w.setDecorations(true);
+    await w.setResizable(true);
+    await w.setSize(new LogicalSize(Math.min(1200, screen.availWidth - 80), Math.min(780, screen.availHeight - 80)));
+    await w.center();
+    await w.setFocus();
+  }
+}
+
+if (TAURI) {
+  const w = TAURI.window.getCurrentWindow();
+  $('petBtn').hidden = $('quitBtn').hidden = false;
+  $('petBtn').onclick = () => setMode(true);
+  $('quitBtn').onclick = () => { save(); w.destroy(); };
+  $('pet').onclick = () => setMode(false);
+  w.onCloseRequested(e => { save(); if (!pet) { e.preventDefault(); setMode(true); } });   // 关窗口 = 缩回桌宠
+  // 自动更新：启动时看一次，之后每 6 小时看一次；有新版就静默装好重启，存档在 localStorage 里不受影响
+  const update = async () => {
+    try {
+      const u = await TAURI.updater.check();
+      if (!u) return;
+      say(`发现新版本 ${u.version}，我去换一身新的截面……`);
+      save();
+      await u.downloadAndInstall();
+      await TAURI.process.relaunch();
+    } catch (e) { console.warn('检查更新失败', e); }
+  };
+  setTimeout(update, 5000);
+  setInterval(update, 6 * 3600 * 1000);
+  setMode(true);
+}
+
+// --- 开始 --------------------------------------------------------------------
+resize();
+const fresh = !rev.size;
+advance(true);
+annals();
+if (fresh && n('split')) { G.lv.clone = 1; G.ws.push([G.ws[0][0], G.ws[0][1]]); }
+{
+  const o = $('origin');
+  const lines = [['talk', '句话落下来', '居民'], ['see', '次观看', '水'], ['act', '次动手', '山'], ['make', '次改写', '森林'],
+    ['split', '次分身', '投影'], ['think', '次思考', '理解'], ['errs', '次出错', '裂缝']].filter(([k]) => n(k));
+  o.hidden = !lines.length;
+  for (const [k, a, b] of lines) {
+    const d = document.createElement('div');
+    d.textContent = `${fmt(n(k))} ${a} → ${b}`;
+    o.append(d);
+  }
+}
+if (!fresh) repaintAll();
+for (const [x, y] of G.ws) addWalker(x, y);
+cam.x = ws[0].x; cam.y = ws[0].y;
+if (fresh) {
+  say(SEED ? '……掉下来了。这张纸是从一段对话里折出来的。' : '……掉下来了。这里只有前、后、左、右。');
+  setTimeout(() => say('一片空白。那就走走看。'), 3500);
+  if (n('out')) { earn(Math.sqrt(n('out'))); setTimeout(() => say(`那段对话有 ${fmt(n('out'))} 个 token 那么重。我带着它的一点分量掉了下来。`), 7000); }
+  if (n('split')) setTimeout(() => say('我在那段对话里分出过自己。其中一截跟着一起掉了下来。'), 10000);
+} else {
+  say('我回来了。纸面还在原来的地方。');
+  away((Date.now() - G.t) / 1000);
+}
+addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => document.hidden && save());
+requestAnimationFrame(frame);
+</script>

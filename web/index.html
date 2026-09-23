@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四维来客</title>
+<meta name="description" content="一只四维生物掉进了无限展开的二维世界。它走到哪，世界就展开到哪。像素挂机游戏。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23d97757' d='M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z'/%3E%3Cpath fill='%231f1d1b' d='M4 1h1v2H4zM9 1h1v2H9z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="pixel.css">
+<style>
+  html,body{margin:0;height:100%}
+  body{display:grid;place-items:center;background:var(--paper) radial-gradient(#e3ded4 2px,transparent 2px) 0 0/48px 48px}
+  main.win{width:min(300px,calc(100vw - 40px))}
+  .stage{display:flex;flex-direction:column;align-items:center;gap:22px;padding:28px 0 18px}
+  .clawd{width:168px;height:96px;animation:bob 1.2s steps(1) infinite}
+  @keyframes bob{50%{transform:translateY(-6px)}}
+  #start{padding:0 26px;letter-spacing:.3em;font-size:24px;line-height:30px}
+  .status{display:flex;gap:2px}
+  .status .field{flex:1;text-align:center;white-space:nowrap}
+  dialog.win{max-width:min(420px,calc(100vw - 40px));margin:auto}
+  dialog::backdrop{background:#fbfaf7aa}
+  dialog p{margin:0 0 8px}
+  .dim{color:var(--dim)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+  #list{max-height:40vh;overflow:auto;display:flex;flex-direction:column}
+  .item{all:unset;padding:0 6px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item:hover,.item:focus-visible{background:var(--clay);color:#fff}
+  body>footer{position:fixed;right:16px;bottom:14px}
+</style>
+
+<main class="win mint">
+  <header class="bar"><i class="ico" aria-hidden="true"></i><b>四维来客.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <div class="field stage">
+    <svg class="clawd" viewBox="0 0 14 8" shape-rendering="crispEdges" role="img" aria-label="Clawd">
+      <path fill="#d97757" d="M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z"/>
+      <path fill="#1f1d1b" d="M4 1h1v2H4zM9 1h1v2H9z"/>
+    </svg>
+    <button class="btn" id="start">START</button>
+  </div>
+  <footer class="status"><span class="field">四维 → 二维</span><span class="field">挂机中</span></footer>
+</main>
+<footer><a class="btn" href="viewer.html">会话查看器</a></footer>
+
+<dialog id="dlg" class="win beige">
+  <header class="bar"><b>导入.dlg</b><i class="knob" aria-hidden="true"></i></header>
+  <p>要用一段会话当种子吗？</p>
+  <p class="dim">对话会变成这张纸的地形、居民和它长大的方式。同一段会话永远折出同一张纸，各存各的档。文件只在本地读取，不会上传。</p>
+  <p class="dim">认得 Claude Code、Codex、Kimi Code、Antigravity 的会话记录，claude.ai / ChatGPT 的数据导出，以及 OpenAI 格式的 messages。</p>
+  <div class="row">
+    <button class="btn" id="pick">导入会话…</button>
+    <button class="btn" id="skip">不用，直接掉下去</button>
+  </div>
+  <p class="dim" id="msg"></p>
+  <div class="field" id="list" hidden></div>
+  <input type="file" id="file" accept=".jsonl,.json" hidden>
+</dialog>
+
+<script type="module">
+import { loadFile, worldOf } from './parse.js';
+
+const $ = id => document.getElementById(id);
+const go = s => {
+  if (!s) { location.href = 'game.html'; return; }
+  const w = worldOf(s);
+  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); } catch { /* 没存上就只用种子 */ }
+  location.href = `game.html?seed=${w.seed}`;
+};
+
+$('start').onclick = () => $('dlg').showModal();
+$('skip').onclick = () => go(0);
+$('pick').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  $('list').replaceChildren();
+  const ss = loadFile(await f.text(), f.name);
+  if (!ss.length) { $('msg').textContent = '这个文件里没读到会话，换一个试试？'; return; }
+  if (ss.length === 1) return go(ss[0]);
+  // claude.ai 导出是一整包对话，让人挑一段
+  $('msg').textContent = `里面有 ${ss.length} 段对话，挑一段：`;
+  $('list').hidden = false;
+  $('list').replaceChildren(...ss.map(s => {
+    const b = document.createElement('button');
+    b.className = 'item';
+    b.textContent = s.name;
+    b.onclick = () => go(s);
+    return b;
+  }));
+};
+</script>

@@ -1,0 +1,19 @@
+[package]
+name = "siwei"
+version = "0.1.0"
+description = "四维来客：住在任务栏上的 Clawd"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+serde_json = "1"   # tauri::generate_context! 展开后要用到
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "s"
