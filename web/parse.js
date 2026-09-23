@@ -406,6 +406,49 @@ export function pathOf(s, shape = shapeOf(s)) {
   return out;
 }
 
+// --- 会话奇观的原料：从对话里抽出几件具体的事 ------------------------------------------
+// 每件事带着它在对话里的时间位置 t（0 = 开头，1 = 结尾），游戏里就立在对话之路的那一段旁边。
+//   first 第一句话 · file 改得最多的文件 · err 出过的错（ok = 后来同一个工具又成功了）· cmd 一类命令
+// 只存短文字，和居民念的话一样只留在本机。
+const clip = (t, n = 24) => { t = String(t).replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
+function filesOf(b) {
+  const i = b.input || {}, p = i.file_path || i.notebook_path || i.path || i.AbsolutePath || i.TargetFile;
+  const found = typeof p === 'string' && toolKind(b.name) === 'make' ? [p] : [];
+  // Codex 的 apply_patch；补丁常被包在 JSON 字符串里：换行是字面的 \n，路径里的反斜杠也是转义过的
+  for (const m of String(i.patch || i.input || '').matchAll(/\*\*\* (?:Update|Add) File: (.+?)(?=\\n|[\r\n"]|$)/g)) found.push(m[1]);
+  return found.map(f => f.trim().split(/[\\/]/).pop()).filter(Boolean);
+}
+const errLabel = t => clip(String(t || '').split('\n').map(l => l.replace(/^(<system>)?\s*(ERROR|Error)[:：]?\s*/, '').trim()).find(Boolean) || '', 20);
+const CMD_CATS = [
+  ['deploy', /\b(deploy|wrangler|vercel|netlify|gh-pages)\b|git\s+push/i],
+  ['install', /\b(npm|pnpm|yarn|pip3?|cargo)\s+(install|add|i)\b/i],
+  ['test', /\b(test|pytest|jest|vitest|mocha)\b|test\.m?js/i],
+  ['build', /\b(build|cargo|tauri|make|tsc|webpack|vite|gradle|mvn)\b/i],
+  ['git', /^\s*git\b/i],
+];
+export function marksOf(s) {
+  const main = s.turns.filter(t => !t.sidechain), N = Math.max(1, main.length - 1), T = i => +(i / N).toFixed(3);
+  const marks = [], files = new Map(), errs = new Map(), cmds = new Map();
+  const bump = (m, key, t, extra) => { const e = m.get(key) || { n: 0, t, ...extra }; e.n++; m.set(key, e); return e; };
+  main.forEach((turn, i) => {
+    for (const b of turn.blocks) {
+      if (turn.role === 'user' && b.kind === 'text' && !marks.length && !/^[<[{]/.test(b.text.trim())) marks.push({ k: 'first', t: 0, label: clip(b.text, 28) });
+      if (b.kind !== 'tool') continue;
+      for (const f of filesOf(b)) bump(files, f, T(i));
+      if (b.result?.isError) bump(errs, errLabel(b.result.text) || b.name, T(i), { tool: b.name, ok: false });
+      else for (const e of errs.values()) if (e.tool === b.name) e.ok = true;   // 同一个工具后来又成功了：修好了
+      const i2 = b.input || {}, cmd = i2.command || i2.cmd || /\bcmd\s*:\s*["'`]([^"'`]{1,300})/.exec(i2.input || '')?.[1] || '';
+      const cat = cmd && CMD_CATS.find(([, re]) => re.test(cmd));
+      if (cat) bump(cmds, cat[0], T(i));
+    }
+  });
+  const top = (m, n) => [...m].sort((a, b) => b[1].n - a[1].n).slice(0, n);
+  for (const [label, e] of top(files, 4)) marks.push({ k: 'file', t: e.t, label, n: e.n });
+  for (const [label, e] of top(errs, 3)) marks.push({ k: 'err', t: e.t, label, n: e.n, ok: e.ok });
+  for (const [label, e] of top(cmds, 3)) marks.push({ k: 'cmd', t: e.t, label, n: e.n });
+  return marks.sort((a, b) => a.t - b.t);
+}
+
 export function worldOf(s) {
   const w = { seed: seedOf(s), see: 0, act: 0, make: 0, split: 0, think: 0, errs: 0, talk: 0, out: s.usage?.output || 0 };
   const said = [];
@@ -428,6 +471,7 @@ export function worldOf(s) {
   w.said = Array.from({ length: Math.min(60, said.length) }, (_, i) => said[Math.floor(i * step)]);
   w.shape = shapeOf(s);                                    // 四维的样子，全图里投影着看
   w.path = pathOf(s, w.shape);
+  w.marks = marksOf(s);
   return w;
 }
 

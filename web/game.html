@@ -523,6 +523,7 @@ function reveal(cx, cy, r) {
     if (!G.seen[t]) { G.seen[t] = 1; if (FIRST[t]) say(FIRST[t]); }
     if (L('life') && isFlat(x, y, t)) { gain += FLATV; meet(x, y); }
     if (ROUTE.has(k)) routeStep();
+    if (WKEY.has(k)) discover(WKEY.get(k));
   }
   if (gain) earn(gain * mult() * buff());
   for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }
@@ -656,7 +657,7 @@ function hud() {
   $('flat').hidden = !L('life');
   $('flat').textContent = `遇见居民 ${fmt(G.flat)}`;
   $('paper').hidden = false;
-  $('paper').textContent = `${SEED ? `纸面 #${SEED} · ` : '地貌 '}${TH.name}${ROUTE.size ? ` · 读到 ${readPct()}%` : ''}`;
+  $('paper').textContent = `${SEED ? `纸面 #${SEED} · ` : '地貌 '}${TH.name}${ROUTE.size ? ` · 读到 ${readPct()}%` : ''}${WONDERS.length ? ` · 奇观 ${foundCount()}/${WONDERS.length}` : ''}`;
   let any = !$('origin').hidden;
   for (const u of UPS) {
     const { b, name, cost, info } = rows[u.id], l = L(u.id), c = Math.ceil(u.cost(l)), full = l >= u.max;
@@ -735,10 +736,12 @@ function shade(W, H, dl, ox, oy, tp, s) {
   ctx.fillStyle = `rgb(${c})`;
   ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
-  if (dl > .6 || !seen()) return;
-  ctx.globalAlpha = Math.min(1, (.6 - dl) * 2.5);          // 城里亮起灯
+  if (dl > .6) return;
+  ctx.globalAlpha = Math.min(1, (.6 - dl) * 2.5);          // 城里亮起灯，锻炉和发射台也亮
+  ctx.fillStyle = '#ffb24a';
+  for (const w of WONDERS) if (G.found[w.id]) for (const [gx, gy, gz] of w.glow || []) ctx.fillRect(w.x * tp + ox + gx * s, w.y * tp + oy + (gy - gz) * s, 2 * s, 2 * s);
   ctx.fillStyle = '#ffd779';
-  for (const [k, kind] of TOWN) {
+  if (seen()) for (const [k, kind] of TOWN) {
     if (kind === 'road' || kind === 'ruin' || !rev.has(k)) continue;
     const x = kx(k) * tp + ox + s * (kind === 'temple' ? 1.5 : 2), y = ky(k) * tp + oy + s * 2;
     if (x < -tp || y < -tp || x > W || y > H) continue;
@@ -770,6 +773,7 @@ function draw() {
       ctx.drawImage(c.cvs, cx * cp + ox, cy * cp + oy, cp, cp);
     }
 
+  drawWonders(ox, oy, tp, s, ctx, W, H, sunVec(), s >= 3);
   shade(W, H, daylight(), ox, oy, tp, s);
   for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
 }
@@ -1013,6 +1017,202 @@ function nextRoute(w) {
   return p && Math.hypot(p[0] - w.x, p[1] - w.y) < 200 ? p : null;
 }
 
+// --- 会话奇观：从对话里长出来的三维物体，立在对话之路旁边 ------------------------------------
+// 它们是立体的（像素方块，俯视斜着看：顶面亮、正面暗），二维居民看不见它们，只看得见投在纸上的影子。
+// 影子跟着你那边的太阳走：早上朝西拉得很长，中午朝北最短，傍晚朝东；夜里没有影子，锻炉和发射台亮灯。
+// 原料是 parse.js 的 marksOf：第一句话、改得最多的文件、出过的错、几类命令，各带它在对话里的时间位置。
+const C3 = { stone: [196, 190, 180], dark: [120, 114, 110], clay: [214, 128, 92], gold: [226, 186, 92], white: [236, 232, 222],
+  wood: [150, 108, 70], green: [96, 150, 84], brick: [176, 96, 72], js: [232, 204, 92], ts: [104, 146, 210], html: [226, 120, 80],
+  py: [86, 150, 128], ink: [60, 56, 64] };
+// 一个模型：方块 [x, y, z, 宽, 深, 高, 颜色]（美术像素，一格 = 4），可选的坑 [x, y, 宽, 深, 深度] 和夜灯 [x, y, z]
+function model(m) {
+  const ext = (m.label.match(/\.(\w+)$/) || [])[1]?.toLowerCase() || '';
+  if (m.k === 'first') return { name: '开篇碑', boxes: [[0, 8, 0, 14, 6, 3, 'stone'], [4, 9, 3, 6, 3, 20, 'stone'], [4, 8, 23, 6, 4, 2, 'dark']],
+    line: `一块碑，立在我落下来的地方。上面刻着：「${m.label}」` };
+  if (m.k === 'file') {
+    let shape, boxes;
+    if (/^(m?js|jsx|ts|tsx|cjs)$/.test(ext)) {
+      shape = '方塔'; boxes = [];
+      for (let k = 0; k < 2 + Math.min(2, Math.floor(m.n / 5)); k++) boxes.push([2 * k, 2 * k, 6 * k, 14 - 4 * k, 14 - 4 * k, 6, /^t/.test(ext) ? 'ts' : 'js']);
+    } else if (/^html?$/.test(ext)) { shape = '城门'; boxes = [[0, 6, 0, 4, 4, 16, 'html'], [12, 6, 0, 4, 4, 16, 'html'], [0, 6, 16, 16, 4, 4, 'clay']]; }
+    else if (/^(s?css|less)$/.test(ext)) {
+      shape = '彩砖台'; boxes = [[0, 0, 0, 16, 12, 2, 'stone']];
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) boxes.push([i * 4, j * 4, 2, 4, 4, .5, ['clay', 'ts', 'gold'][(i + j) % 3]]);
+    } else if (/^(md|txt|rst)$/.test(ext)) { shape = '摊开的书'; boxes = [[0, 3, 0, 7, 10, 3, 'white'], [9, 3, 0, 7, 10, 3, 'white'], [7, 3, 0, 2, 10, 2, 'ink']]; }
+    else if (ext === 'py') { shape = '蛇形墙'; boxes = Array.from({ length: 7 }, (_, i) => [i * 2.5, 5 + Math.round(3 * Math.sin(i * 1.1)), 0, 3, 3, 4 + i % 2, 'py']); }
+    else { shape = '方尖碑'; boxes = [[2, 2, 0, 10, 10, 2, 'stone'], [4, 4, 2, 6, 6, 22, 'dark'], [5, 5, 24, 4, 4, 3, 'gold']]; }
+    return { name: `${m.label} ${shape}`, boxes, line: `${m.label}。那段对话在这里改了 ${m.n} 次，改成了一座${shape}。` };
+  }
+  if (m.k === 'err') return { name: `「${m.label}」峡谷`, pits: [[0, 0, 20, 8, 6, true]], boxes: m.ok ? [[8, -3, 0, 4, 14, 1, 'wood']] : [],
+    line: m.ok ? `「${m.label}」——一道裂谷。上面架着一座桥：那个错后来修好了。` : `「${m.label}」——一道裂谷，没有桥。那个错一直没修好。` };
+  const cmd = {
+    deploy: ['发射台', [[0, 0, 0, 16, 16, 2, 'stone'], [12, 2, 2, 3, 3, 24, 'dark'], [5, 6, 2, 5, 5, 14, 'white'], [5, 6, 16, 5, 5, 3, 'clay'], [6, 7, 19, 3, 3, 3, 'clay']], [[13, 2, 26]], `发射台。那段对话从这里往外发射过 ${m.n} 次。`],
+    build: ['锻炉', [[0, 4, 0, 14, 10, 10, 'brick'], [10, 5, 10, 3, 3, 10, 'brick']], [[6, 13, 3]], `锻炉。东西在这里被烧成了形状，一共 ${m.n} 炉。`],
+    test: ['试炼场', Array.from({ length: 6 }, (_, i) => [8 + 7 * Math.cos(i * Math.PI / 3) - 1, 8 + 7 * Math.sin(i * Math.PI / 3) - 1, 0, 2, 2, 9, 'stone']), [], `试炼场。${m.n} 次，它们在这里证明自己没坏。`],
+    git: ['分叉树', [[7, 7, 0, 3, 3, 16, 'wood'], [2, 8, 9, 5, 2, 2, 'wood'], [10, 8, 11, 5, 2, 2, 'wood'], [1, 7, 11, 2, 2, 6, 'green'], [14, 7, 13, 2, 2, 6, 'green'], [7, 6, 16, 3, 3, 4, 'green']], [], `一棵分叉的树，${m.n} 根枝。每一根都是一次决定。`],
+    install: ['依赖森林', [[2, 3], [9, 1], [13, 7], [4, 10], [10, 12]].flatMap(([x, y]) => [[x, y, 0, 1, 1, 3, 'wood'], [x - 1, y - 1, 3, 3, 3, 5, 'green']]), [], `依赖森林。${m.n} 次，它把别人的东西种了进来。`],
+  }[m.label];
+  return cmd && { name: cmd[0], boxes: cmd[1], glow: cmd[2], line: cmd[3] };
+}
+
+// 用会话的四维曲线「雕」奇观：取它在对话里那个时刻前后的一段曲线，
+//   x-y 决定占地哪几格，z 决定每格多高，w 高的地方用点缀色（窗、装饰）。
+// 光有曲线会像一团噪声，所以按类型加规矩：建筑左右对称、塔四向对称、试炼场只留外圈、
+// 蛇形墙和分叉树顺着曲线长、森林挑几个点种树、裂谷就是曲线划出的口子。高度按 2 取整，看着像砌出来的。
+// 同一段会话永远雕出同一批奇观；换一段会话，形状全都不一样。
+const SCULPT = {                                          // 对称方式、最高多高、主色、点缀色
+  first: ['stele', 18, 'stone', 'dark'], js: ['radial', 24, 'js', 'gold'], ts: ['radial', 24, 'ts', 'white'],
+  html: ['bilateral', 16, 'html', 'clay'], css: ['bilateral', 6, 'stone', 'mosaic'], md: ['bilateral', 8, 'white', 'ink'],
+  py: ['serpent', 7, 'py', 'green'], other: ['bilateral', 20, 'dark', 'gold'],
+  deploy: ['radial', 26, 'white', 'clay'], build: ['bilateral', 14, 'brick', 'dark'], test: ['ring', 10, 'stone', 'gold'],
+  git: ['grow', 18, 'wood', 'green'], install: ['scatter', 8, 'green', 'wood'], err: ['pit', 6],
+};
+function sculpt(style, m) {
+  const S4 = SRC.shape, N = 6, CELL = 3;                  // 6×6 格，每格 3 个美术像素：占地约 18×18
+  // 同一时刻的几件事（比如连着出的几个错）会取到同一段曲线，按名字再错开几步，免得长得一样
+  const nudge = (m.i % 4) * 5 + Math.abs([...m.label].reduce((v, ch) => (v * 31 + ch.charCodeAt(0)) | 0, 7)) % 5;   // 挨着的四个一定错开
+  const c = Math.max(0, Math.min(S4.length - 1, Math.round(m.t * (S4.length - 1)) + nudge)), seg = S4.slice(Math.max(0, c - 12), c + 13);
+  const mid = [0, 1, 2, 3].map(i => seg.reduce((v, q) => v + q[i], 0) / seg.length);
+  const span = i => Math.max(...seg.map(q => Math.abs(q[i] - mid[i]))) || 1;
+  const sx = Math.max(span(0), span(1)), sz = span(2), sw = span(3);
+  const H = Array.from({ length: N }, () => Array(N).fill(0)), Wt = Array.from({ length: N }, () => Array(N).fill(-1));
+  const cells = [];
+  for (let i = 1; i < seg.length; i++) for (let k = 0; k < 8; k++) {   // 沿曲线加密取点
+    const q = [0, 1, 2, 3].map(j => seg[i - 1][j] + (seg[i][j] - seg[i - 1][j]) * k / 8);
+    const gx = Math.min(N - 1, Math.floor(((q[0] - mid[0]) / sx * .5 + .5) * N)), gy = Math.min(N - 1, Math.floor(((q[1] - mid[1]) / sx * .5 + .5) * N));
+    const hz = ((q[2] - mid[2]) / sz * .5 + .5), wv = (q[3] - mid[3]) / sw;
+    if (!H[gx][gy]) cells.push([gx, gy, i / seg.length]);
+    H[gx][gy] = Math.max(H[gx][gy], .25 + hz * .75); Wt[gx][gy] = Math.max(Wt[gx][gy], wv);
+  }
+  const each = f => { for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) f(x, y); };
+  const dilate = () => { const h2 = H.map(r => [...r]); each((x, y) => { if (H[x][y]) return; let m2 = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) m2 = Math.max(m2, H[x + dx]?.[y + dy] || 0); if (m2) h2[x][y] = m2 * .6; }); each((x, y) => { H[x][y] = h2[x][y]; }); };
+  if (style === 'bilateral') { dilate(); each((x, y) => { H[x][y] = H[N - 1 - x][y] = Math.max(H[x][y], H[N - 1 - x][y]); Wt[x][y] = Wt[N - 1 - x][y] = Math.max(Wt[x][y], Wt[N - 1 - x][y]); }); }
+  if (style === 'radial') {
+    dilate();
+    each((x, y) => { const v = Math.max(H[x][y], H[N - 1 - y][x], H[N - 1 - x][N - 1 - y], H[y][N - 1 - x]); H[x][y] = v; });
+    each((x, y) => { const d = Math.max(Math.abs(x - 2.5), Math.abs(y - 2.5)); H[x][y] *= 1.25 - d * .22; });   // 越往外越矮，像塔
+  }
+  if (style === 'ring') { dilate(); each((x, y) => { const d = Math.hypot(x - 2.5, y - 2.5); if (d < 1.6 || d > 3.3) H[x][y] = 0; else H[x][y] = Math.max(H[x][y], .5); }); }
+  if (style === 'stele') {                               // 碑：一面墙，顶上的轮廓是曲线的起伏，至少四列宽，前面一级台阶
+    each((x, y) => { H[x][y] = 0; });
+    for (const [gx, , t] of cells) H[gx][2] = Math.max(H[gx][2], .45 + t * .55);
+    for (let x = 1; x < N - 1; x++) H[x][2] = Math.max(H[x][2], .4);
+    for (let x = 0; x < N; x++) { H[x][2] = H[N - 1 - x][2] = Math.max(H[x][2], H[N - 1 - x][2]); if (H[x][2]) H[x][3] = .12; }
+  }
+  if (style === 'grow') each((x, y) => { if (H[x][y]) H[x][y] = .3 + .7 * (cells.find(c2 => c2[0] === x && c2[1] === y)?.[2] || 0); });
+  if (style === 'serpent') each((x, y) => { if (H[x][y]) H[x][y] = .5 + H[x][y] * .5; });
+  const [, top, main, acc] = SCULPT[m.kindKey];
+  if (style === 'pit') {                                  // 裂谷：曲线在地上划出的口子
+    dilate();
+    const pits = [], boxes = [];
+    each((x, y) => { if (H[x][y]) pits.push([x * CELL, y * CELL, CELL, CELL, top, !H[x][y - 1]]); });
+    if (m.ok) { const col = Math.round(N / 2) - 1, ys = pits.filter(p => p[0] === col * CELL).map(p => p[1]); if (ys.length) boxes.push([col * CELL, Math.min(...ys) - 3, 0, 4, Math.max(...ys) - Math.min(...ys) + CELL + 6, 1, 'wood']); }
+    return { pits, boxes };
+  }
+  const boxes = [[-1, -1, 0, N * CELL + 2, N * CELL + 2, 1, 'stone']];   // 一层底座，看着是「立」在纸上的
+  const MOS = ['clay', 'ts', 'gold'];
+  if (style === 'scatter') {                              // 森林：挑曲线上几个点，各种一棵树
+    cells.filter((_, i) => i % Math.max(1, Math.floor(cells.length / 5)) === 0).slice(0, 6).forEach(([x, y], i) => {
+      boxes.push([x * CELL + 1, y * CELL + 1, 0, 1, 1, 3, acc], [x * CELL, y * CELL, 3, 3, 3, 3 + (i % 3) * 2, main]);
+    });
+    return { boxes };
+  }
+  // 点缀色按竖列决定再左右镜像：出来是对称的竖条，像立面上的窗，不是一格一格的噪点
+  const colW = Array.from({ length: N }, (_, x) => { const v = Wt[x].filter(w => w > -1); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : -1; });
+  const stripe = x => Math.max(colW[x], colW[N - 1 - x]) > .25;
+  each((x, y) => {
+    if (!H[x][y]) return;
+    const h = Math.max(2, Math.round(H[x][y] * top / 2) * 2);
+    const color = acc === 'mosaic' ? MOS[(x + y + (Wt[x][y] > 0 ? 1 : 0)) % 3] : stripe(x) ? acc : main;
+    boxes.push([x * CELL, y * CELL, 1, CELL, CELL, h, color]);
+  });
+  return { boxes };
+}
+
+const WONDERS = [], WKEY = new Map();
+{
+  const P = Array.isArray(SRC.path) ? SRC.path : [];
+  (Array.isArray(SRC.marks) && P.length > 2 ? SRC.marks : []).forEach((m, i) => {
+    const md = model(m);
+    if (!md) return;
+    m.i = i;
+    const ext = (m.label.match(/\.(\w+)$/) || [])[1]?.toLowerCase() || '';
+    m.kindKey = m.k === 'first' ? 'first' : m.k === 'err' ? 'err' : m.k === 'cmd' ? m.label
+      : /^(m?js|jsx|cjs)$/.test(ext) ? 'js' : /^tsx?$/.test(ext) ? 'ts' : /^html?$/.test(ext) ? 'html' : /^(s?css|less)$/.test(ext) ? 'css'
+      : /^(md|txt|rst)$/.test(ext) ? 'md' : ext === 'py' ? 'py' : 'other';
+    if (Array.isArray(SRC.shape) && SRC.shape.length > 4 && SCULPT[m.kindKey]) {
+      const sc = sculpt(SCULPT[m.kindKey][0], m);
+      md.boxes = sc.boxes; md.pits = sc.pits;
+      if (md.glow) { const t = md.boxes.reduce((a, b) => b[2] + b[5] > a[2] + a[5] ? b : a); md.glow = [[t[0] + 1, t[1] + 1, t[2] + t[5]]]; }   // 灯挂在最高处
+    }
+    // 立在对话之路旁边：沿路的法线往一侧挪 5 格，左右交替；离已经摆好的奇观太近就往后挪
+    let idx = Math.max(1, Math.min(P.length - 2, Math.round(m.t * (P.length - 1)))), ax, ay;
+    for (let tries = 0; tries < 12; tries++, idx = Math.min(P.length - 2, idx + 3)) {
+      const dx = P[idx + 1][0] - P[idx - 1][0], dy = P[idx + 1][1] - P[idx - 1][1], L = Math.hypot(dx, dy) || 1, side = i % 2 ? 1 : -1;
+      ax = Math.round(P[idx][0] - dy / L * 5 * side); ay = Math.round(P[idx][1] + dx / L * 5 * side);
+      if (!WONDERS.some(w => Math.abs(w.x - ax) < 8 && Math.abs(w.y - ay) < 8)) break;
+    }
+    const w = { ...md, id: `${m.k}:${m.label}`, m, x: ax, y: ay };
+    WONDERS.push(w);
+    for (let tx = 0; tx < 5; tx++) for (let ty = -1; ty < 4; ty++) WKEY.set(key(ax + tx, ay + ty), w);   // 占地约 5×5 格，展开到任何一格都算发现
+  });
+}
+G.found ??= {};
+function discover(w) {
+  if (G.found[w.id]) return;
+  G.found[w.id] = 1;
+  bubbleAt = -1e9;
+  say(w.line, { bubble: true });
+  earn(150 * mult() * (1 + 3 * w.m.t));
+  if (!G.seen.shadowNote) { G.seen.shadowNote = 1; say('它立在纸上，但居民看不见它——它们只看得见它投下来的影子。在它们眼里，那是一块会跟着天色转动的暗斑。'); }
+}
+const foundCount = () => WONDERS.filter(w => G.found[w.id]).length;
+
+// 太阳：你那边的钟点决定影子朝哪、多长。返回每升高一个美术像素，影子在纸上挪多少；夜里没有太阳
+function sunVec() {
+  const d = new Date(), hr = FORCE_HOUR != null ? +FORCE_HOUR : d.getHours() + d.getMinutes() / 60;
+  if (hr < 6 || hr > 18) return null;
+  const th = Math.PI * (hr - 6) / 12, elev = Math.max(.18, Math.sin(th)) * 65 * Math.PI / 180, L = Math.min(3, 1 / Math.tan(elev));
+  return { x: -Math.cos(th) * L, y: -Math.sin(th) * L };
+}
+let shadowCv = null;
+function drawWonders(ox, oy, tp, s, g, W, H, sun, labels) {
+  const vis = WONDERS.filter(w => G.found[w.id] || rev.has(key(w.x, w.y)))
+    .filter(w => { const x = w.x * tp + ox, y = w.y * tp + oy; return x > -tp * 8 && y > -tp * 12 && x < W + tp * 4 && y < H + tp * 8; });
+  if (!vis.length) return;
+  const at = w => [w.x * tp + ox, w.y * tp + oy];
+  const face = (c, f) => `rgb(${c.map(v => Math.round(v * f))})`;
+  for (const w of vis) for (const [px, py, pw, pd, depth, north] of w.pits || []) {   // 裂谷：往纸里凹下去，靠北的边看得见内壁
+    const [x0, y0] = at(w);
+    g.fillStyle = '#2a2430'; g.fillRect(Math.round(x0 + px * s), Math.round(y0 + py * s), Math.ceil(pw * s), Math.ceil(pd * s));
+    if (north) { g.fillStyle = '#5c5262'; g.fillRect(Math.round(x0 + px * s), Math.round(y0 + py * s), Math.ceil(pw * s), Math.ceil(Math.min(depth, pd) * s * .6)); }
+  }
+  if (sun) {                                                  // 影子：先画到离屏画布上，再整块半透明盖上去，重叠处不会更黑
+    shadowCv ??= document.createElement('canvas');
+    if (shadowCv.width !== W || shadowCv.height !== H) { shadowCv.width = W; shadowCv.height = H; }
+    const sg = shadowCv.getContext('2d');
+    sg.clearRect(0, 0, W, H); sg.fillStyle = '#1b1422';
+    for (const w of vis) {
+      const [x0, y0] = at(w);
+      for (const [x, y, z, bw, bd, h] of w.boxes) for (let k = z; k <= z + h; k += .5)
+        sg.fillRect(Math.round(x0 + (x + sun.x * k) * s), Math.round(y0 + (y + sun.y * k) * s), Math.ceil(bw * s), Math.ceil(bd * s));
+    }
+    g.globalAlpha = .28; g.drawImage(shadowCv, 0, 0); g.globalAlpha = 1;
+  }
+  // 画的先后：奇观之间按南北排，同一个奇观里先画低的（叠在上面的后画），同高度再按南北
+  const boxes = vis.sort((a, b) => a.y - b.y).flatMap(w => [...w.boxes].sort((a, b) => a[2] - b[2] || (a[1] + a[4]) - (b[1] + b[4])).map(b => [at(w), b]));
+  for (const [[x0, y0], [x, y, z, bw, bd, h, c]] of boxes) {   // 由后往前：先正面（暗），再顶面（亮）
+    const sx = Math.round(x0 + x * s), top = Math.round(y0 + (y - z - h) * s), W1 = Math.ceil(bw * s);
+    g.fillStyle = face(C3[c], .72); g.fillRect(sx, Math.round(y0 + (y + bd - z - h) * s), W1, Math.max(1, Math.ceil(h * s)));
+    g.fillStyle = face(C3[c], 1); g.fillRect(sx, top, W1, Math.ceil(bd * s));
+  }
+  if (labels) {
+    g.font = `${Math.round(12 * dpr)}px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`;
+    g.fillStyle = 'rgba(61,58,63,.85)';
+    for (const w of vis) if (G.found[w.id]) { const [x0, y0] = at(w), top = Math.max(...w.boxes.map(b => b[2] + b[5]), 0); g.fillText(w.name, x0, y0 - (top + 4) * s); }
+  }
+}
+
 // --- 全图：把展开过的整张纸画成一张海报，可以下载 --------------------------------------
 const mapReady = () => $('mapBtn').classList.add('ready');
 function renderPoster() {
@@ -1044,6 +1244,7 @@ function renderPoster() {
   g.setLineDash([]);
   g.fillStyle = BODY; g.fillRect(ox + .5 * px - 3, oy + .5 * px - 3, 6, 6);   // 落点
   g.imageSmoothingEnabled = false;
+  drawWonders(ox, oy, px, px / TP, g, W, H, { x: 0, y: -.5 }, false);
   drawClawd(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
   g.fillStyle = INK; g.font = `24px ${font}`;
   g.fillText(`四维来客 · ${TH.name}`, M, 44);

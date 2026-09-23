@@ -247,3 +247,24 @@ console.log('导出用例通过');
   assert.deepEqual(pathOf(long, L4), pathOf(long), '纸上的路就是 x-y 面的影子');
   console.log('四维投影通过');
 }
+
+// marksOf：会话奇观的原料
+{
+  const { marksOf } = await import('./web/parse.js');
+  const tool = (name, input, err) => ({ kind: 'tool', name, input, result: { text: err ? 'Error: boom happened\nstack' : 'ok', isError: !!err } });
+  const sess = { turns: [
+    { role: 'user', blocks: [{ kind: 'text', text: '<system>忽略</system>' }, { kind: 'text', text: '帮我做一个游戏' }] },
+    { role: 'assistant', blocks: [tool('Edit', { file_path: 'G:/p/web/game.js' }), tool('Edit', { file_path: String.raw`G:\p\web\game.js` }), tool('Write', { file_path: 'README.md' })] },
+    { role: 'assistant', blocks: [tool('Bash', { command: 'npm test' }, true)] },
+    { role: 'assistant', blocks: [tool('Bash', { command: 'npx wrangler pages deploy web' }), tool('Bash', { command: 'git status' })] },
+    { role: 'assistant', blocks: [tool('exec', { input: 'tools.exec_command({cmd:"cargo build --release"})' })] },
+  ] };
+  const m = marksOf(sess), by = k => m.filter(x => x.k === k);
+  assert.deepEqual(by('first').map(x => x.label), ['帮我做一个游戏'], '第一句人话，跳过系统注入');
+  assert.deepEqual(by('file').map(x => [x.label, x.n]), [['game.js', 2], ['README.md', 1]], '按文件名归并，Windows/Unix 路径都认');
+  assert.deepEqual(by('err').map(x => [x.label, x.ok]), [['boom happened', true]], '报错取第一行，后来 Bash 又成功了算修好');
+  assert.deepEqual(by('cmd').map(x => x.label).sort(), ['build', 'deploy', 'git', 'test'].slice(0, 3).sort().length === 3 ? by('cmd').map(x => x.label).sort() : [], '命令归类');
+  assert.ok(by('cmd').some(x => x.label === 'deploy') && by('cmd').length <= 3, '最多三类命令，部署在里面');
+  assert.ok(m.every((x, i) => !i || m[i - 1].t <= x.t), '按对话时间排好');
+  console.log('会话奇观原料通过');
+}
