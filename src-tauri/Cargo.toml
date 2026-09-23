@@ -1,6 +1,6 @@
 [package]
 name = "siwei"
-version = "0.1.5"
+version = "0.1.6"
 description = "四维来客：住在任务栏上的 Clawd"
 edition = "2021"
 
