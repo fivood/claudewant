@@ -32,7 +32,7 @@
   #origin::before{content:"这张纸的来历";display:block;color:var(--tx)}
   .status{display:flex;gap:2px;margin-top:6px}
   .status .field{flex:1;white-space:nowrap}
-  #log{left:12px;bottom:12px;width:min(480px,calc(100vw - 290px))}
+  #log{position:fixed;left:12px;bottom:12px;width:min(480px,calc(100vw - 290px))}
   .logbody{display:flex;gap:4px}
   #lines{flex:1;min-width:0;min-height:54px}
   #lines p{margin:0}
@@ -59,20 +59,35 @@
   #tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:.35}}
   #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
+  .tb{all:unset;box-sizing:border-box;flex:none;height:16px;min-width:16px;padding:0 2px;border:2px solid var(--lo);
+    box-shadow:inset 2px 2px 0 var(--hi);background:rgba(255,255,255,.35);line-height:12px;text-align:center;cursor:pointer;color:var(--tx)}
+  .tb.wide{padding:0 4px}
+  .tb:hover{color:var(--clay)}
+  .tb:focus-visible{outline:2px dashed var(--clay);outline-offset:1px}
+  .bar .knob{display:none}
+  .win.folded>:not(.bar){display:none!important}
+  .win.folded>.bar{margin-bottom:0;border-bottom:0;box-shadow:none}
+  html.compact #area,html.compact #flat,html.compact #paper,html.compact #hud .btn,
+  html.compact #origin,html.compact #ups .up:not(.goal),html.compact .up small,html.compact .status,
+  html.compact #lines p:not(:last-child),html.compact .scroll,
+  html.compact #eq,html.compact #vol,html.compact #tune,
+  html.compact #civ,html.compact #annals p:not(.new):not(.now){display:none!important}
   #pet{display:none}
   html.pet,html.pet body{background:transparent}
   html.pet #cv,html.pet body>.win,html.pet .col,html.pet #flash{display:none!important}
   html.pet #pet{display:flex;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
-  #bubble{width:max-content;max-width:280px;margin-bottom:6px}
+  #bubble{width:280px;height:76px;overflow:hidden;margin-bottom:6px}
   #petcv{width:56px;height:36px}
   html.pet #pet{cursor:pointer}
   @media (max-width:640px){
     #hud{width:180px}
+    .bar .gems{display:none}
     #chron{display:none!important}
     #radio{top:12px;bottom:auto;width:auto;left:204px}
     #radio #tune,#radio #vol{display:none}
     #ups{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:34vh}
-    #log{bottom:auto;top:222px;right:12px;width:auto}
+    .col{right:12px;max-height:calc(66vh - 40px);overflow:hidden}
+    #log{position:static;align-self:stretch;width:auto}
     #lines p:nth-last-child(n+4){display:none}
     .scroll{display:none}
   }
@@ -98,13 +113,7 @@
   <div class="field" id="civ"></div>
   <div id="annals" aria-live="polite"></div>
 </section>
-</div>
-<section class="win beige" id="ups" hidden>
-  <header class="bar"><b>身体.sys</b><i class="knob" aria-hidden="true"></i></header>
-  <div class="field" id="origin" hidden></div>
-  <div id="rows"></div>
-  <footer class="status"><span class="field">◐ 自己长</span><span class="field" id="lvsum"></span></footer>
-</section>
+<!-- log 在左列里：桌面上用 fixed 钉到左下角，手机上跟在感知窗口下面 -->
 <section class="win light" id="log" hidden>
   <header class="bar"><b>独白.txt</b><i class="knob" aria-hidden="true"></i></header>
   <div class="logbody">
@@ -112,6 +121,14 @@
     <div class="scroll" aria-hidden="true"><i>▲</i><span></span><i>▼</i></div>
   </div>
 </section>
+</div>
+<section class="win beige" id="ups" hidden>
+  <header class="bar"><b>身体.sys</b><i class="knob" aria-hidden="true"></i></header>
+  <div class="field" id="origin" hidden></div>
+  <div id="rows"></div>
+  <footer class="status"><span class="field">◐ 自己长</span><span class="field" id="lvsum"></span></footer>
+</section>
+
 <section class="win mint" id="radio">
   <header class="bar"><b>电台.fm</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
   <div class="deck">
@@ -414,9 +431,9 @@ function earn(v) { G.pts += v; G.total += v; secGain += v; }
 function meet(x, y) {
   G.flat++;
   const [[, cn], [sn]] = flatOf(x, y);
-  if (SAID.length) return say(`遇见一个${cn}色的${sn}。它反复念着一句从上方掉下来的话：「${SAID[G.heard++ % SAID.length]}」`);
+  if (SAID.length) return say(`遇见一个${cn}色的${sn}。它反复念着一句从上方掉下来的话：「${SAID[G.heard++ % SAID.length]}」`, { chat: true });
   const sees = ['一段会变长变短的橙色线段', '一团忽大忽小的颜色', '一个不讲道理的影子', '天气'];
-  say(`遇见一个${cn}色的${sn}。它把我看成了${sees[Math.floor(Math.random() * sees.length)]}。`);
+  say(`遇见一个${cn}色的${sn}。它把我看成了${sees[Math.floor(Math.random() * sees.length)]}。`, { chat: true });
 }
 
 // 不在的时候按离开前的速度折半算，不模拟地图。
@@ -483,13 +500,20 @@ if (SRC.seed) MUSE.push(
   ].filter(([k]) => n(k)).map(([k, f]) => f(n(k))));
 let museAt = 25, museBag = [];
 function muse() {
-  if (SAID.length && Math.random() < .25) return say(`上方好像有人说过：「${SAID[Math.floor(Math.random() * SAID.length)]}」`);
+  if (SAID.length && Math.random() < .25) return say(`上方好像有人说过：「${SAID[Math.floor(Math.random() * SAID.length)]}」`, { bubble: true });
   if (!museBag.length) museBag = MUSE.map((_, i) => i).sort(() => Math.random() - .5);
-  say(MUSE[museBag.pop()]);
+  say(MUSE[museBag.pop()], { bubble: true });
 }
 
-function say(s) {
-  if (pet) { $('bubble').textContent = s; $('bubble').hidden = false; bubbleT = 7; fitPet(); }
+// chat：遇见居民这类闲聊，40 秒最多一句；bubble：桌宠只把独白、纪年大事冒成气泡，45 秒最多一个
+let chatAt = -1e9, bubbleAt = -1e9;
+function say(s, { chat = false, bubble = false } = {}) {
+  const now = performance.now();
+  if (chat) { if (now - chatAt < 40000) return; chatAt = now; }
+  if (pet && bubble && now - bubbleAt >= 45000) {
+    bubbleAt = now;
+    $('bubble').textContent = s; $('bubble').hidden = false; bubbleT = 8; fitPet();
+  }
   const log = $('lines'), p = document.createElement('p');
   p.textContent = s;
   log.append(p);
@@ -644,7 +668,7 @@ function frame(now) {
   if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
   if ((civT += dt) >= 1) { civT = 0; annals(); }
   if ((saveT += dt) >= 5) { saveT = 0; save(); }
-  if ((museAt -= dt) <= 0) { museAt = 30 + Math.random() * 40; muse(); }
+  if ((museAt -= dt) <= 0) { museAt = 60 + Math.random() * 60; muse(); }   // 独白 1–2 分钟一句
 
   if (pet) petTick(dt);
   draw();
@@ -829,7 +853,7 @@ function advance(quiet) {
       else if (f[0] === 'buff') G.buffs.push([f[1], G.age + f[2]]);
       else if (f[0] === 'chart') reveal(f[1], f[2], f[3]);
     }
-    if (!quiet && seen() && matchMedia('(max-width:640px)').matches) say(`〔二维历 ${e.y + 1} 年〕${e.text}`);
+    if (!quiet && seen() && matchMedia('(max-width:640px)').matches) say(`〔二维历 ${e.y + 1} 年〕${e.text}`, { bubble: true });
   }
 }
 
@@ -1070,7 +1094,8 @@ if (TAURI) {
     try {
       const u = await TAURI.updater.check();
       if (!u) return;
-      say(`发现新版本 ${u.version}，我去换一身新的截面……`);
+      bubbleAt = -1e9;
+      say(`发现新版本 ${u.version}，我去换一身新的截面……`, { bubble: true });
       save();
       await u.downloadAndInstall();
       await TAURI.process.relaunch();
@@ -1079,6 +1104,40 @@ if (TAURI) {
   setTimeout(update, 5000);
   setInterval(update, 6 * 3600 * 1000);
   setMode(true);
+}
+
+// --- 收起 / 精简：每个窗口标题栏上的 – 收成一条；「精简」只留最要紧的一行 --------------
+// 手机屏幕小，窗口会挡住纸面，所以要能收；状态记在本机，下次打开还是那样。
+const UIP = (() => { try { return JSON.parse(localStorage.getItem('clawd-ui')) || {}; } catch { return {}; } })();
+UIP.fold ??= {};
+const saveUI = () => { try { localStorage.setItem('clawd-ui', JSON.stringify(UIP)); } catch { /* 无痕模式 */ } };
+function barButton(bar, cls, onclick) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = cls; b.onclick = onclick;
+  bar.append(b);
+  return b;
+}
+{
+  const cb = barButton($('hud').querySelector('.bar'), 'tb wide', () => { UIP.compact = !UIP.compact; paint(); saveUI(); });
+  const paint = () => {
+    document.documentElement.classList.toggle('compact', !!UIP.compact);
+    cb.textContent = UIP.compact ? '完整' : '精简';
+    cb.setAttribute('aria-pressed', String(!!UIP.compact));
+  };
+  paint();
+}
+for (const win of document.querySelectorAll('.win[id]:not(#bubble)')) {
+  const bar = win.querySelector(':scope > .bar');
+  if (!bar) continue;
+  const b = barButton(bar, 'tb', () => { UIP.fold[win.id] = !UIP.fold[win.id]; paint(); saveUI(); });
+  const paint = () => {
+    const f = !!UIP.fold[win.id];
+    win.classList.toggle('folded', f);
+    b.textContent = f ? '+' : '–';
+    b.setAttribute('aria-label', f ? '展开窗口' : '收起窗口');
+    b.setAttribute('aria-expanded', String(!f));
+  };
+  paint();
 }
 
 // --- 开始 --------------------------------------------------------------------
