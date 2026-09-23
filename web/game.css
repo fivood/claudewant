@@ -77,8 +77,8 @@ html.compact #civ,html.compact #annals p:not(.new):not(.now){display:none!import
 html.pet,html.pet body{background:transparent}
 html.pet #cv,html.pet body>.win,html.pet .col,html.pet #flash{display:none!important}
 html.pet #pet{display:flex;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
-#bubble{width:280px;height:76px;overflow:hidden;margin-bottom:6px}
-#petcv{width:300px;height:50px}
+#bubble{width:280px;height:76px;overflow:hidden;margin-bottom:6px;flex:none}   /* flex:none：窗口还矮的时候别把气泡压扁，不然量出来的高度也是扁的 */
+#petcv{width:300px;height:50px;flex:none}
 html.pet #pet{cursor:pointer}
 @media (max-width:640px){
   #hud{width:180px}
