@@ -48,10 +48,19 @@ function daylight() {
   return hr < 7 ? (hr - 5) / 2 : 1 - (hr - 17) / 2;
 }
 // 夜里偏蓝变暗，黄昏清晨偏暖；Clawd 的光从第四个方向来，不受影响，所以画在这层之上
+function tint(dl) {
+  const night = [58, 70, 122], dusk = [255, 186, 132], w = (1 - Math.abs(dl - .5) * 2) * .55;
+  return night.map((v, i) => Math.round((v + (255 - v) * dl) * (1 - w) + dusk[i] * w));
+}
+// 夜里还没展开的纸是黑的，跟湖水、地形分开。先除掉 shade 要乘上的颜色，乘完正好是要的颜色
+function blank(day, night, dl, c) {
+  if (dl >= 1) return day;
+  const d = [1, 3, 5].map(i => parseInt(day.slice(i, i + 2), 16));
+  return `rgb(${d.map((v, i) => Math.min(255, Math.round((v * dl + night[i] * (1 - dl)) * 255 / c[i])))})`;
+}
 function shade(W, H, dl, ox, oy, tp, s) {
   if (dl >= 1) return;
-  const night = [58, 70, 122], dusk = [255, 186, 132], w = (1 - Math.abs(dl - .5) * 2) * .55;
-  const c = night.map((v, i) => Math.round((v + (255 - v) * dl) * (1 - w) + dusk[i] * w));
+  const c = tint(dl);
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = `rgb(${c})`;
   ctx.fillRect(0, 0, W, H);
@@ -75,11 +84,12 @@ function draw() {
   const W = cv.width, H = cv.height, s = Math.max(1, Math.round(G.z * dpr)), tp = TP * s;
   const ox = Math.round(W / 2 - cam.x * tp), oy = Math.round(H / 2 - cam.y * tp);
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = PAPER;
+  const dl = daylight(), c = tint(dl);
+  ctx.fillStyle = blank(PAPER, [10, 10, 12], dl, c);
   ctx.fillRect(0, 0, W, H);
 
   // 空白纸面上的点阵，不然一开始根本看不出在动
-  ctx.fillStyle = DOT;
+  ctx.fillStyle = blank(DOT, [46, 46, 54], dl, c);
   const g = 8 * tp;
   for (let x = ((ox % g) + g) % g; x < W; x += g)
     for (let y = ((oy % g) + g) % g; y < H; y += g) ctx.fillRect(x, y, s, s);
@@ -97,7 +107,7 @@ function draw() {
   trimChunks(visible);
 
   drawWonders(ox, oy, tp, s, ctx, W, H, sunVec(), s >= 3);
-  shade(W, H, daylight(), ox, oy, tp, s);
+  shade(W, H, dl, ox, oy, tp, s);
   for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
 }
 
