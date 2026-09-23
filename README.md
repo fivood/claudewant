@@ -17,6 +17,9 @@
 
 ```
 web/          网页本体（纯静态，无构建）：index 开始页、game 游戏、viewer 会话查看器、parse.js 各家记录解析
+  js/         游戏脚本，按顺序加载的普通脚本（共享全局作用域）：
+              world 存档/地形/分块画布 · life 升级与行走 · talk 台词 · ui 界面 · render 画面与主循环
+              history 平面国历史 · wonders 对话之路/会话奇观/全图 · radio 电台 · pet 桌宠 · start 开始
 src-tauri/    桌面版外壳（Tauri 2），前端直接用 web/
 test.mjs      解析器测试
 ```

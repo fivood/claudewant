@@ -1,0 +1,94 @@
+/* 游戏页的布局和桌宠样式；窗口、按钮、字体这些通用像素样式在 pixel.css */
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper)}
+canvas{display:block;width:100vw;height:100vh}
+body>.win{position:fixed}
+.col{position:fixed;left:12px;top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-height:calc(100vh - 200px)}
+#hud{width:196px}
+#chron{width:300px;min-height:0;overflow:hidden}
+#civ{white-space:pre-line;color:var(--dim);margin-bottom:4px}
+#annals{max-height:min(40vh,320px);overflow-y:auto;padding-right:4px}
+#annals p{margin:0 0 4px}
+#annals p{color:var(--dim)}
+#annals p.new{color:var(--tx)}
+#annals p.soon{opacity:.45}
+#annals p.now{color:var(--clay);text-align:center;margin:2px 0 6px}
+#annals b{font-weight:400;color:var(--clay)}
+#pts{font-size:24px;line-height:30px;color:var(--clay);padding:0 2px}
+#hud .field{margin:2px 0 6px}
+#ups{top:12px;right:12px;width:252px;max-height:calc(100vh - 150px);overflow:auto}
+#rows{display:flex;flex-direction:column;gap:2px}
+.up b{display:flex;justify-content:space-between;gap:8px;font-weight:400}
+.up small{display:block;font-size:12px;color:var(--dim)}
+.up.goal b span:last-child{color:var(--clay)}
+.up.full{opacity:.5}
+#origin{color:var(--dim);margin-bottom:4px}
+#origin::before{content:"这张纸的来历";display:block;color:var(--tx)}
+.status{display:flex;gap:2px;margin-top:6px}
+.status .field{flex:1;white-space:nowrap}
+#log{position:fixed;left:12px;bottom:12px;width:min(480px,calc(100vw - 290px))}
+.logbody{display:flex;gap:4px}
+#lines{flex:1;min-width:0;min-height:54px}
+#lines p{margin:0}
+#lines p:not(:last-child){color:var(--dim)}
+.scroll{width:14px;display:flex;flex-direction:column;flex:none}
+.scroll i{height:14px;font-style:normal;font-size:12px;line-height:14px;text-align:center;border:2px solid var(--lo);box-sizing:border-box;background:#fff;color:var(--dim)}
+.scroll span{flex:1;background:repeating-conic-gradient(#cfcac6 0 25%,#f1efed 0 50%) 0 0/4px 4px}
+#radio{right:12px;bottom:12px;width:252px}
+.deck{display:flex;align-items:center;gap:4px}
+.deck .btn{width:40px;padding:0}
+.eq{flex:none;width:56px;height:30px;display:flex;align-items:flex-end;gap:2px;padding:0 2px 2px}
+.eq i{flex:1;height:2px;background:#2c5a40}
+.eq.live i{animation:eq .9s steps(4) infinite alternate}
+.eq.live i:nth-child(2){animation-duration:.7s}.eq.live i:nth-child(3){animation-duration:1.1s}
+.eq.live i:nth-child(4){animation-duration:.6s}.eq.live i:nth-child(5){animation-duration:1.3s}
+@keyframes eq{to{height:18px}}
+#vol{flex:1;min-width:0;appearance:none;background:none;height:18px;cursor:pointer}
+#vol::-webkit-slider-runnable-track{height:6px;background:#6db087;box-shadow:inset 2px 2px 0 #4e8f69}
+#vol::-moz-range-track{height:6px;background:#6db087}
+#vol::-webkit-slider-thumb{appearance:none;width:10px;height:16px;margin-top:-5px;background:#f1efed;border:2px solid #4e8f69;border-radius:0}
+#vol::-moz-range-thumb{width:8px;height:14px;background:#f1efed;border:2px solid #4e8f69;border-radius:0}
+#vol:focus-visible{outline:2px dashed var(--clay)}
+#tune{margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
+#poster{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(40,34,44,.45)}
+#poster .win{max-width:94vw;max-height:94vh;display:flex;flex-direction:column}
+#poster .pv{overflow:auto;min-height:0}
+#pcv{display:block;max-width:88vw;max-height:76vh}
+.prow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.prow .sp{flex:1}
+.prow .on{color:var(--clay)}
+#mapBtn.ready{color:var(--clay);animation:blink 1.2s steps(2) infinite}
+.tb{all:unset;box-sizing:border-box;flex:none;height:16px;min-width:16px;padding:0 2px;border:2px solid var(--lo);
+  box-shadow:inset 2px 2px 0 var(--hi);background:rgba(255,255,255,.35);line-height:12px;text-align:center;cursor:pointer;color:var(--tx)}
+.tb.wide{padding:0 4px}
+.tb:hover{color:var(--clay)}
+.tb:focus-visible{outline:2px dashed var(--clay);outline-offset:1px}
+.bar .knob{display:none}
+.win.folded>:not(.bar){display:none!important}
+.win.folded>.bar{margin-bottom:0;border-bottom:0;box-shadow:none}
+html.compact #area,html.compact #flat,html.compact #paper,html.compact #hud .btn,
+html.compact #origin,html.compact #ups .up:not(.goal),html.compact .up small,html.compact .status,
+html.compact #lines p:not(:last-child),html.compact .scroll,
+html.compact #eq,html.compact #vol,html.compact #tune,html.compact #next,
+html.compact #civ,html.compact #annals p:not(.new):not(.now){display:none!important}
+#pet{display:none}
+html.pet,html.pet body{background:transparent}
+html.pet #cv,html.pet body>.win,html.pet .col,html.pet #flash{display:none!important}
+html.pet #pet{display:flex;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
+#bubble{width:280px;height:76px;overflow:hidden;margin-bottom:6px}
+#petcv{width:300px;height:50px}
+html.pet #pet{cursor:pointer}
+@media (max-width:640px){
+  #hud{width:180px}
+  .bar .gems{display:none}
+  #chron{display:none!important}
+  #radio{top:12px;bottom:auto;width:auto;left:204px}
+  #radio #tune,#radio #vol{display:none}
+  #ups{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:34vh}
+  .col{right:12px;max-height:calc(66vh - 40px);overflow:hidden}
+  #log{position:static;align-self:stretch;width:auto}
+  #lines p:nth-last-child(n+4){display:none}
+  .scroll{display:none}
+}
