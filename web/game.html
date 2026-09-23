@@ -127,7 +127,6 @@
   <header class="bar"><b>身体.sys</b><i class="knob" aria-hidden="true"></i></header>
   <div class="field" id="origin" hidden></div>
   <div id="rows"></div>
-  <footer class="status"><span class="field">◐ 自己长</span><span class="field" id="lvsum"></span></footer>
 </section>
 
 <section class="win mint" id="radio">
@@ -204,10 +203,11 @@ function unpackRev(u) {
 function load() {
   try { return JSON.parse(localStorage.getItem(SAVE)); } catch { return null; }
 }
+const SAVED = load();
 const G = Object.assign({
   seed: SEED || (Math.random() * 2 ** 31) | 0, pts: 0, total: 0, lv: {}, ws: [[0.5, 0.5]],
   rate: 0, flat: 0, heard: 0, seen: {}, t: Date.now(), z: innerWidth < 640 ? 2 : 3, foldT: 0,
-}, load() || {});
+}, SAVED || {});
 G.age ??= G.civ?.t || 0;                                  // 这张纸存在了多少秒（离线也算）
 G.buffs ??= [];
 delete G.civ;                                              // 旧版随机的历史不要了
@@ -237,16 +237,102 @@ function vn(x, y, s) {
 }
 const fbm = (x, y, s) => (vn(x / 40, y / 40, s) * 4 + vn(x / 17, y / 17, s + 1) * 2 + vn(x / 7, y / 7, s + 2)) / 7;
 
-const T = {
-  deep:   { c: [52, 96, 146],  v: 1 },
-  water:  { c: [82, 140, 190], v: 1 },
-  sand:   { c: [226, 208, 156], v: 1 },
-  grass:  { c: [128, 174, 92], v: 1 },
-  forest: { c: [96, 148, 76],  v: 2 },
-  rock:   { c: [156, 148, 134], v: 2 },
-  peak:   { c: [116, 110, 102], v: 3 },
-  snow:   { c: [214, 226, 240], v: 5 },
-  rift:   { c: [44, 34, 58],    v: 4 },
+// 地貌主题：同一套噪声高度，换一套名字、颜色、像素花纹和台词，就是另一种世界。
+// 每种地形：[名字, 底色, 花纹, 花纹色, 第二花纹色]。花纹见 PAT。
+// 主题由种子定：同一段会话永远是同一种地貌；老存档一律留在地球，免得地图突然换色。
+const THEMES = {
+  earth: { name: '地球', intro: '这张纸上画的像是一颗有水有山的星球。', t: {
+    deep: ['深水', [52, 96, 146], 'wave', [92, 136, 176]], water: ['水', [82, 140, 190], 'wave', [122, 180, 220]],
+    sand: ['沙', [226, 208, 156], 'none'], grass: ['草地', [128, 174, 92], 'none'],
+    forest: ['森林', [96, 148, 76], 'tree', [58, 104, 56], [112, 82, 52]], rock: ['岩石', [156, 148, 134], 'none'],
+    peak: ['山', [116, 110, 102], 'dot', [196, 200, 210]], snow: ['雪', [214, 226, 240], 'dot', [246, 248, 252]],
+    rift: ['裂缝', [44, 34, 58], 'diag', [150, 110, 220]] }, first: {
+    water: '水。它是平的——当然，这里的一切都是平的。',
+    deep: '很深的水。在这里，"深"只意味着颜色更暗。',
+    sand: '沙。每一粒都是一个点，每个点都没有大小。',
+    forest: '树。我能同时看见它的每一圈年轮。',
+    rock: '石头。二维的石头硌不到四维的脚。',
+    peak: '山。它们管这叫"高"，其实只是更难绕过去。',
+    snow: '雪。在一个没有"上面"的世界里，雪是从哪里落下来的？',
+    rift: '裂缝。那段对话在这里出过错，纸被划破了。我能从破口看见下面。' } },
+  foil: { name: '二向箔', intro: '这张纸……不是画出来的。是一整个星系被压平以后铺成的。', t: {
+    deep: ['摊开的海', [40, 62, 120], 'stripe', [70, 98, 160]], water: ['平面的浪', [88, 120, 196], 'stripe', [140, 170, 230]],
+    sand: ['压平的海岸', [220, 196, 170], 'none'], grass: ['展开的城市', [176, 170, 190], 'grid', [128, 120, 148]],
+    forest: ['叶子全摊开的森林', [70, 150, 110], 'speck', [150, 220, 160]], rock: ['展开的地壳', [168, 120, 96], 'ring', [196, 150, 120]],
+    peak: ['压成等高线的山', [132, 96, 84], 'ring', [210, 170, 140]], snow: ['太阳的边缘', [250, 214, 120], 'dot', [255, 246, 210]],
+    rift: ['二向箔的边缘', [20, 20, 28], 'diag', [200, 200, 255]] }, first: {
+    deep: '这片海曾经有深度。现在它的每一层都摊在我面前，像一本被拆开的书。',
+    water: '浪还在，只是不会再落下来了。',
+    sand: '海岸被压得很平，平到连「边」都快没有了。',
+    grass: '一座城被完整地展开了。我能同时看见每一个房间，和房间里没来得及收起的东西。',
+    forest: '每一片叶子都摊开了，一片也没重叠。原来一棵树有这么多叶子。',
+    rock: '地壳被一圈一圈剥开铺平，像年轮，只是更老。',
+    peak: '山被压成了等高线。它们以前是站着的。',
+    snow: '太阳的边缘。连它也没逃过。',
+    rift: '二向箔的边缘还在往外铺。我退了半步——对我来说，只是往第四个方向挪一下。' } },
+  dune: { name: '沙丘', intro: '这张纸是一整片沙漠。水在这里比什么都贵。', t: {
+    deep: ['盐渊', [120, 96, 84], 'none'], water: ['盐壳', [222, 214, 196], 'dot', [248, 244, 236]],
+    sand: ['流沙', [222, 176, 110], 'wave', [240, 200, 140]], grass: ['沙丘', [206, 150, 82], 'wave', [226, 176, 110]],
+    forest: ['香料田', [214, 120, 48], 'speck', [246, 170, 80]], rock: ['岩脊', [150, 112, 86], 'none'],
+    peak: ['屏障山', [110, 80, 66], 'dot', [170, 130, 100]], snow: ['极冠', [236, 226, 210], 'dot', [252, 248, 240]],
+    rift: ['沙虫的通道', [70, 46, 36], 'diag', [200, 140, 80]] }, first: {
+    deep: '盐渊。这里曾经有过水，水走的时候把盐留下了。',
+    water: '盐壳。踩上去会响，可惜我没有重量。',
+    sand: '流沙。在二维里，陷下去就是……往旁边挪？',
+    grass: '沙丘。每一道都在很慢很慢地走。',
+    forest: '香料。整片地都是橙色的，闻起来像时间。',
+    rock: '岩脊。沙漠里唯一不动的东西。',
+    peak: '屏障山。风在这里拐了个弯。',
+    snow: '极冠。整张纸上唯一的一点水，冻在最远的地方。',
+    rift: '沙虫的通道。它从下面经过——这里也有「下面」吗？' } },
+  solaris: { name: '索拉里斯', intro: '这张纸的大部分是海，而且那片海好像在看我。', t: {
+    deep: ['活的海', [30, 90, 100], 'wave', [60, 150, 150]], water: ['海的表面', [60, 140, 140], 'wave', [120, 200, 190]],
+    sand: ['泡沫滩', [200, 220, 210], 'dot', [240, 250, 246]], grass: ['胶质平原', [196, 140, 170], 'none'],
+    forest: ['对称体', [150, 90, 160], 'spike', [210, 160, 220]], rock: ['雾岩', [150, 160, 170], 'none'],
+    peak: ['被双日照着的山', [190, 110, 90], 'dot', [120, 160, 230]], snow: ['拟态体', [230, 220, 236], 'ring', [200, 180, 220]],
+    rift: ['海里的一道裂口', [16, 30, 36], 'diag', [120, 230, 210]] }, first: {
+    deep: '这片海是活的。我看它的时候，它也在看我。',
+    water: '海的表面在慢慢起伏，像在想事情。',
+    sand: '泡沫滩。海想到一半的念头，被冲上了岸。',
+    grass: '胶质平原，软的，微微发光。',
+    forest: '对称体。海每隔一阵就造出一座，又把它拆掉。',
+    rock: '雾岩。雾是从海里升起来的，但这里没有「升」。',
+    peak: '这座山被两个太阳照着，一边红，一边蓝。',
+    snow: '拟态体。它学着我的样子长，长得一点也不像。',
+    rift: '海里的一道裂口。海把它合上之前，我往里看了一眼。' } },
+  crystal: { name: '晶化', intro: '这张纸上的东西都在慢慢变成晶体。', t: {
+    deep: ['冻住的河', [70, 110, 150], 'spike', [140, 190, 230]], water: ['结晶的水', [130, 180, 210], 'spike', [200, 230, 250]],
+    sand: ['石英砂', [226, 222, 214], 'dot', [250, 250, 255]], grass: ['晶草', [150, 200, 190], 'spike', [210, 240, 235]],
+    forest: ['晶林', [90, 160, 170], 'spike', [190, 240, 245]], rock: ['玄武岩', [80, 80, 92], 'none'],
+    peak: ['晶簇', [140, 120, 180], 'spike', [220, 200, 250]], snow: ['白霜', [236, 242, 248], 'dot', [255, 255, 255]],
+    rift: ['断口', [30, 26, 40], 'diag', [240, 240, 255]] }, first: {
+    deep: '河被冻住了，冻成了一整块晶体。水流的样子还留在里面。',
+    water: '结晶的水。每一滴都停在它最后的形状上。',
+    sand: '石英砂。每一粒都在反光。',
+    grass: '晶草。风吹过的时候会叮叮地响——如果这里有风。',
+    forest: '晶林。树还在长，只是改成了用晶体长。',
+    rock: '玄武岩。整张纸上唯一还是暗的东西。',
+    peak: '晶簇。光在里面来回走，找不到出口。',
+    snow: '白霜。它们管这叫冷，我管这叫慢。',
+    rift: '一道断口。晶体从这里裂开，裂得很整齐。' } },
+};
+const THEME_KEYS = Object.keys(THEMES);
+G.theme = THEMES[G.theme] ? G.theme : SAVED ? 'earth' : THEME_KEYS[Math.floor(h(G.seed, 7, 0x7e11) * THEME_KEYS.length)];
+const TH = THEMES[G.theme];
+const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3, snow: 5, rift: 4 };
+const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
+// 4×4 格子里哪些像素用花纹色：1 = 花纹色，2 = 第二花纹色。r 是这一格的随机数，让花纹不是每格都有
+const PAT = {
+  none: () => 0,
+  tree: (i, j, r) => r < .55 ? ((j === 0 && (i === 1 || i === 2)) || j === 1 ? 1 : j === 2 && i === 1 ? 2 : 0) : 0,
+  wave: (i, j, r) => r < .2 && j === 1 && i > 0 && i < 3 ? 1 : 0,
+  dot: (i, j, r) => r < .3 && j === 1 && i === 1 ? 1 : 0,
+  diag: (i, j, r) => r < .3 && i === j ? 1 : 0,
+  spike: (i, j, r) => r < .5 && i === 1 + (r < .25) && j < 3 ? 1 : 0,
+  grid: (i, j) => i === 0 || j === 0 ? 1 : 0,
+  ring: (i, j, r) => r < .45 && (i === 0 || i === 3 || j === 0 || j === 3) ? 1 : 0,
+  stripe: (i, j) => j === 1 || j === 3 ? 1 : 0,
+  speck: (i, j, r) => r < .5 && i === Math.floor(r * 8) % 4 && j === Math.floor(r * 32) % 4 ? 1 : 0,
 };
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
@@ -291,12 +377,8 @@ function paint(x, y) {
   const colour = L('color') > 0, r0 = h(x, y, G.seed + 11);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y);
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
-    let [r, g, b] = T[t].c;
-    if (t === 'forest' && r0 < .55 && (j === 0 && (i === 1 || i === 2) || j === 1)) [r, g, b] = [58, 104, 56];
-    if (t === 'forest' && r0 < .55 && j === 2 && i === 1) [r, g, b] = [112, 82, 52];
-    if ((t === 'water' || t === 'deep') && r0 < .2 && j === 1 && i > 0 && i < 3) [r, g, b] = [r + 40, g + 40, b + 30];
-    if ((t === 'peak' || t === 'snow') && r0 < .3 && j === 1 && i === 1) [r, g, b] = t === 'peak' ? [196, 200, 210] : [246, 248, 252];
-    if (t === 'rift' && r0 < .3 && i === j) [r, g, b] = [150, 110, 220];
+    const q = T[t], pv = PAT[q.p](i, j, r0);
+    let [r, g, b] = pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
     if (fl && fl[1][1][j][i] === '#') [r, g, b] = fl[0][0];
     const hk = seen() && TOWN.get(key(x, y)), hc = hk && HOUSE[hk][j][i];
     if (hc && hc !== '.') [r, g, b] = hc === 'R' ? FCOL[Math.floor(r0 * 4)][0] : hk === 'ruin' ? [150, 144, 134] : HCOL[hc];
@@ -455,16 +537,7 @@ function away(sec) {
 }
 
 // --- 台词 --------------------------------------------------------------------
-const FIRST = {
-  water: '水。它是平的——当然，这里的一切都是平的。',
-  deep: '很深的水。在这里，"深"只意味着颜色更暗。',
-  sand: '沙。每一粒都是一个点，每个点都没有大小。',
-  forest: '树。我能同时看见它的每一圈年轮。',
-  rock: '石头。二维的石头硌不到四维的脚。',
-  peak: '山。它们管这叫"高"，其实只是更难绕过去。',
-  snow: '雪。在一个没有"上面"的世界里，雪是从哪里落下来的？',
-  rift: '裂缝。那段对话在这里出过错，纸被划破了。我能从破口看见下面。',
-};
+const FIRST = TH.first;
 const MILES = [
   [100, '一百格。空白在后退。'],
   [1000, '一千格。无限减去一千，还是无限。'],
@@ -510,12 +583,20 @@ const LINE_MUSE = [
   '我在屏幕的底边上走。对它们来说，这就是整个宇宙的宽度。',
   '上面那张纸还在。我在它的一条缝里。',
 ];
+const NIGHT_MUSE = [
+  '它们睡着的时候，梦也是平的。',
+  '夜里纸面很安静，只有城在想事情。',
+  '你那边也是夜里吧。这张纸跟着你那边的光明暗。',
+  '光是从上面来的。它们没有上面，所以它们管这个叫「天」。',
+  '天黑以后，只有我还亮着。我的光从另一个方向来。',
+];
 let museAt = 25, museBag = [], lineBag = [];
 function muse() {
   if (pet) {
     if (!lineBag.length) lineBag = LINE_MUSE.map((_, i) => i).sort(() => Math.random() - .5);
     return say(LINE_MUSE[lineBag.pop()], { bubble: true });
   }
+  if (daylight() < .3 && Math.random() < .35) return say(NIGHT_MUSE[Math.floor(Math.random() * NIGHT_MUSE.length)], { bubble: true });
   if (SAID.length && Math.random() < .25) return say(`上方好像有人说过：「${SAID[Math.floor(Math.random() * SAID.length)]}」`, { bubble: true });
   if (!museBag.length) museBag = MUSE.map((_, i) => i).sort(() => Math.random() - .5);
   say(MUSE[museBag.pop()], { bubble: true });
@@ -541,6 +622,12 @@ function say(s, { chat = false, bubble = false } = {}) {
 const fmt = n => n < 1e4 ? Math.floor(n).toLocaleString() :
   n < 1e8 ? (n / 1e4).toFixed(2) + '万' : n < 1e12 ? (n / 1e8).toFixed(2) + '亿' : (n / 1e12).toFixed(2) + '万亿';
 
+// 按现在的速度还要攒多久；速度还没稳下来就不说
+const eta = need => {
+  if (need <= 0 || G.rate < 1) return '';
+  const t = need / G.rate;
+  return ' · ' + (t < 60 ? `${Math.ceil(t)} 秒` : t < 3600 ? `${Math.ceil(t / 60)} 分` : `${(t / 3600).toFixed(1)} 小时`);
+};
 function hud() {
   if (G.total < 1) return;
   $('hud').hidden = false;
@@ -549,8 +636,8 @@ function hud() {
   $('area').textContent = `已展开 ${fmt(rev.size)} 格`;
   $('flat').hidden = !L('life');
   $('flat').textContent = `遇见居民 ${fmt(G.flat)}`;
-  $('paper').hidden = !SEED;
-  $('paper').textContent = `纸面 #${SEED}`;
+  $('paper').hidden = false;
+  $('paper').textContent = `${SEED ? `纸面 #${SEED} · ` : '地貌 '}${TH.name}`;
   let any = !$('origin').hidden;
   for (const u of UPS) {
     const { b, name, cost, info } = rows[u.id], l = L(u.id), c = Math.ceil(u.cost(l)), full = l >= u.max;
@@ -561,11 +648,10 @@ function hud() {
     b.classList.toggle('goal', goal === u);
     b.classList.toggle('full', full);
     name.textContent = u.max > 1 ? `${u.name} Lv.${l}` : u.name;
-    cost.textContent = full ? '—' : goal === u ? `攒着 ${Math.min(99, Math.floor(G.pts / c * 100))}%` : `◆ ${fmt(c)}`;
+    cost.textContent = full ? '—' : goal === u ? `攒着 ${Math.min(99, Math.floor(G.pts / c * 100))}%${eta(c - G.pts)}` : `◆ ${fmt(c)}`;
     info.textContent = full ? (u.max > 1 ? u.info(l) + ' · 满了' : '已看见') : u.info(l + 1);
   }
   $('ups').hidden = !any;
-  $('lvsum').textContent = `总等级 ${Object.values(G.lv).reduce((a, b) => a + b, 0)}`;
 }
 
 $('reset').onclick = () => {
@@ -612,6 +698,36 @@ function drawClawd(sx, sy, s, w, g = ctx) {
   g.fillRect(x0 + 9 * s, y0 + s, s, 2 * s);
 }
 
+// 昼夜：纸是被你房间里的光照亮的——光从一个二维居民不存在的方向来，所以跟着你那边的真实时间走。
+// 5–7 点天亮，17–19 点天黑。?hour=22 可以强行指定钟点，调画面用。
+const FORCE_HOUR = new URLSearchParams(location.search).get('hour');
+function daylight() {
+  const d = new Date(), hr = FORCE_HOUR != null ? +FORCE_HOUR : d.getHours() + d.getMinutes() / 60;
+  if (hr < 5 || hr >= 19) return 0;
+  if (hr >= 7 && hr < 17) return 1;
+  return hr < 7 ? (hr - 5) / 2 : 1 - (hr - 17) / 2;
+}
+// 夜里偏蓝变暗，黄昏清晨偏暖；Clawd 的光从第四个方向来，不受影响，所以画在这层之上
+function shade(W, H, dl, ox, oy, tp, s) {
+  if (dl >= 1) return;
+  const night = [58, 70, 122], dusk = [255, 186, 132], w = (1 - Math.abs(dl - .5) * 2) * .55;
+  const c = night.map((v, i) => Math.round((v + (255 - v) * dl) * (1 - w) + dusk[i] * w));
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = `rgb(${c})`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+  if (dl > .6 || !seen()) return;
+  ctx.globalAlpha = Math.min(1, (.6 - dl) * 2.5);          // 城里亮起灯
+  ctx.fillStyle = '#ffd779';
+  for (const [k, kind] of TOWN) {
+    if (kind === 'road' || kind === 'ruin' || !rev.has(k)) continue;
+    const x = kx(k) * tp + ox + s * (kind === 'temple' ? 1.5 : 2), y = ky(k) * tp + oy + s * 2;
+    if (x < -tp || y < -tp || x > W || y > H) continue;
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function draw() {
   if (pet) return;
   const W = cv.width, H = cv.height, s = Math.max(1, Math.round(G.z * dpr)), tp = TP * s;
@@ -635,6 +751,7 @@ function draw() {
       ctx.drawImage(c.cvs, cx * cp + ox, cy * cp + oy, cp, cp);
     }
 
+  shade(W, H, daylight(), ox, oy, tp, s);
   for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
 }
 
@@ -680,7 +797,11 @@ function frame(now) {
 
   if ((secT += dt) >= 1) { G.rate = G.rate * .8 + secGain / secT * .2; secGain = 0; secT = 0; }
   advance(false);
-  if (seen() && HIST.era[yearNow()] >= 1) earn(live.town * (1 + HIST.era[yearNow()]) * .6 * mult() * buff() * dt);   // 城镇也在想你
+  const dl = daylight();
+  if (seen() && HIST.era[yearNow()] >= 1) earn(live.town * (1 + HIST.era[yearNow()]) * .6 * mult() * buff() * (1.5 - .5 * dl) * dt);   // 城镇也在想你，夜里想得更多
+  const phase = dl < .5 ? 'night' : 'day';
+  if (G.phase && G.phase !== phase) { bubbleAt = -1e9; say(phase === 'night' ? '天黑了。纸面上的城一个个亮起灯。它们不知道光从哪来，也不知道它为什么会走。' : '天亮了。光又从那个它们不存在的方向照了下来。', { bubble: true }); }
+  G.phase = phase;
   if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
   if ((civT += dt) >= 1) { civT = 0; annals(); }
   if ((saveT += dt) >= 5) { saveT = 0; save(); }
@@ -1325,7 +1446,8 @@ for (const [x, y] of G.ws) addWalker(x, y);
 cam.x = ws[0].x; cam.y = ws[0].y;
 if (fresh) {
   say(SEED ? '……掉下来了。这张纸是从一段对话里折出来的。' : '……掉下来了。这里只有前、后、左、右。');
-  setTimeout(() => say('一片空白。那就走走看。'), 3500);
+  setTimeout(() => say(TH.intro), 3500);
+  setTimeout(() => say('一片空白。那就走走看。'), 7000);
   if (n('out')) { earn(Math.sqrt(n('out'))); setTimeout(() => say(`那段对话有 ${fmt(n('out'))} 个 token 那么重。我带着它的一点分量掉了下来。`), 7000); }
   if (n('split')) setTimeout(() => say('我在那段对话里分出过自己。其中一截跟着一起掉了下来。'), 10000);
 } else {
