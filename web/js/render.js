@@ -25,7 +25,7 @@ function drawClawd(sx, sy, s, w, g = ctx) {
   const x0 = Math.round(sx - 7 * s), y0 = Math.round(sy - 8 * s);
   g.fillStyle = 'rgba(31,29,27,.16)';
   g.fillRect(x0 + 2 * s, y0 + 8 * s, 10 * s, s);
-  g.fillStyle = BODY;
+  g.fillStyle = w.body || BODY;                            // 桌宠穿过锻炉后身上会带一点炉火色
   SPRITE.forEach((row, j) => {
     for (let i = 0; i < 14; i++) if (row[i] === '#') g.fillRect(x0 + i * s, y0 + j * s, s, s);
   });
