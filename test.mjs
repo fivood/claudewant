@@ -216,3 +216,34 @@ console.log('导出用例通过');
   assert.deepEqual(gpt[0].models, ['gpt-5']);
   console.log('其他家格式通过');
 }
+
+// pathOf：会话画成的曲线
+{
+  const { pathOf, worldOf, PATH_LEN } = await import('./web/parse.js');
+  const p = pathOf(s);
+  assert.deepEqual(p[0], [0, 0, 'u'], '从落点出发');
+  assert.deepEqual(pathOf(s), p, '同一段会话永远同一条线');
+  const long = { turns: Array.from({ length: 3000 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', blocks: [{ kind: 'text', text: 'x'.repeat(i % 50) }] })) };
+  const lp = pathOf(long);
+  assert.ok(lp.length <= 401, '最多 400 段');
+  const length = lp.slice(1).reduce((v, q, i) => v + Math.hypot(q[0] - lp[i][0], q[1] - lp[i][1]), 0);
+  assert.ok(Math.abs(length - PATH_LEN) < PATH_LEN * .05, `整条约 ${PATH_LEN} 格，实际 ${Math.round(length)}`);
+  const err = { turns: [{ role: 'assistant', blocks: [{ kind: 'tool', name: 'Bash', input: { command: 'x' }, result: { isError: true } }] }] };
+  assert.deepEqual(pathOf(err).slice(1).map(q => q[2]), ['e', 'e', 'e'], '出错走锯齿');
+  assert.ok(Array.isArray(worldOf(s).path));
+  console.log('足迹曲线通过');
+}
+
+// shapeOf / project：四维曲线往不同平面投影成不同图案
+{
+  const { shapeOf, project, pathOf } = await import('./web/parse.js');
+  const sh = shapeOf(s);
+  assert.ok(sh.every(q => q.length === 5), '四维顶点 [x,y,z,w,类型]');
+  assert.deepEqual(sh[0], [0, 0, 0, 0, 'u']);
+  const long = { turns: Array.from({ length: 800 }, (_, i) => ({ role: i % 3 ? 'assistant' : 'user', blocks: i % 3 === 1 ? [{ kind: 'tool', name: ['Read', 'Bash', 'Edit'][(i / 3 | 0) % 3], input: {}, result: {} }] : [{ kind: 'text', text: 'y'.repeat(i % 40) }] })) };
+  const L4 = shapeOf(long), xy = project(L4), zw = project(L4, [0, 0, 1, 0], [0, 0, 0, 1]);
+  assert.ok(L4.some(q => Math.abs(q[2]) > 1) && L4.some(q => Math.abs(q[3]) > 1), '真的走进了 z、w 方向');
+  assert.notDeepEqual(xy.map(q => q.slice(0, 2)), zw.map(q => q.slice(0, 2)), '不同平面的影子不一样');
+  assert.deepEqual(pathOf(long, L4), pathOf(long), '纸上的路就是 x-y 面的影子');
+  console.log('四维投影通过');
+}

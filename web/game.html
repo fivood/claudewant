@@ -60,6 +60,14 @@
   #tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:.35}}
   #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
+  #poster{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(40,34,44,.45)}
+  #poster .win{max-width:94vw;max-height:94vh;display:flex;flex-direction:column}
+  #poster .pv{overflow:auto;min-height:0}
+  #pcv{display:block;max-width:88vw;max-height:76vh}
+  .prow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .prow .sp{flex:1}
+  .prow .on{color:var(--clay)}
+  #mapBtn.ready{color:var(--clay);animation:blink 1.2s steps(2) infinite}
   .tb{all:unset;box-sizing:border-box;flex:none;height:16px;min-width:16px;padding:0 2px;border:2px solid var(--lo);
     box-shadow:inset 2px 2px 0 var(--hi);background:rgba(255,255,255,.35);line-height:12px;text-align:center;cursor:pointer;color:var(--tx)}
   .tb.wide{padding:0 4px}
@@ -105,6 +113,7 @@
     <div id="flat" hidden></div>
     <div id="paper" hidden></div>
   </div>
+  <button class="btn" id="mapBtn">全图</button>
   <button class="btn" id="reset">重新掉落</button>
   <button class="btn" id="petBtn" hidden>缩成桌宠</button>
   <button class="btn" id="quitBtn" hidden>退出</button>
@@ -140,6 +149,13 @@
   <div id="tune">FM 4.0 · 纸面电台</div>
 </section>
 <div id="flash"></div>
+<div id="poster" hidden>
+  <section class="win light">
+    <header class="bar"><b>全图.png</b></header>
+    <div class="pv"><canvas id="pcv" aria-label="整张纸的全图"></canvas></div>
+    <div class="prow"><button class="btn" id="pmap">纸面</button><button class="btn" id="p4d" hidden>四维</button><span class="sp"></span><button class="btn" id="pdl">下载 PNG</button><button class="btn" id="pclose">关闭</button></div>
+  </section>
+</div>
 <div id="pet">
   <div class="win light" id="bubble" hidden aria-live="polite"></div>
   <canvas id="petcv" aria-label="Clawd，点一下展开"></canvas>
@@ -375,11 +391,12 @@ function paint(x, y) {
   const cx = Math.floor(x / CH), cy = Math.floor(y / CH), c = chunk(cx, cy), d = c.img.data;
   const t = tile(x, y), lx = (x - cx * CH) * TP, ly = (y - cy * CH) * TP;
   const colour = L('color') > 0, r0 = h(x, y, G.seed + 11);
-  const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y);
+  const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(key(x, y));
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const q = T[t], pv = PAT[q.p](i, j, r0);
     let [r, g, b] = pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
     if (fl && fl[1][1][j][i] === '#') [r, g, b] = fl[0][0];
+    if (rk && i > 0 && i < 3 && j > 0 && j < 3) [r, g, b] = RC[rk];
     const hk = seen() && TOWN.get(key(x, y)), hc = hk && HOUSE[hk][j][i];
     if (hc && hc !== '.') [r, g, b] = hc === 'R' ? FCOL[Math.floor(r0 * 4)][0] : hk === 'ruin' ? [150, 144, 134] : HCOL[hc];
     const n = (h(x * TP + i, y * TP + j, G.seed + 3) - .5) * 12;
@@ -477,6 +494,7 @@ function addWalker(x, y) {
 
 // 往前方大致没展开的地方走：随机抽样，偏向当前朝向。找不到就把圈放大。
 function retarget(w) {
+  if (w === ws[0] && ROUTE.size && Math.random() < .25) { const p = nextRoute(w); if (p) { w.tx = p[0] + .5; w.ty = p[1] + .5; return; } }   // 顺着对话往后读
   for (let ring = radius() + 3; ring <= 512; ring *= 2) {
     let best = null, bs = -9;
     for (let n = 0; n < 20; n++) {
@@ -504,6 +522,7 @@ function reveal(cx, cy, r) {
     gain += T[t].v;
     if (!G.seen[t]) { G.seen[t] = 1; if (FIRST[t]) say(FIRST[t]); }
     if (L('life') && isFlat(x, y, t)) { gain += FLATV; meet(x, y); }
+    if (ROUTE.has(k)) routeStep();
   }
   if (gain) earn(gain * mult() * buff());
   for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }
@@ -637,7 +656,7 @@ function hud() {
   $('flat').hidden = !L('life');
   $('flat').textContent = `遇见居民 ${fmt(G.flat)}`;
   $('paper').hidden = false;
-  $('paper').textContent = `${SEED ? `纸面 #${SEED} · ` : '地貌 '}${TH.name}`;
+  $('paper').textContent = `${SEED ? `纸面 #${SEED} · ` : '地貌 '}${TH.name}${ROUTE.size ? ` · 读到 ${readPct()}%` : ''}`;
   let any = !$('origin').hidden;
   for (const u of UPS) {
     const { b, name, cost, info } = rows[u.id], l = L(u.id), c = Math.ceil(u.cost(l)), full = l >= u.max;
@@ -963,6 +982,77 @@ const HIST = (() => {
   return H;
 })();
 
+// --- 对话之路：会话用海龟画图画成的曲线（parse.js 的 pathOf），铺在纸上 --------------------
+// 离落点越远，就是对话里越晚的事。Clawd 顺着它走，就是在往后读那段对话；整条走完，这段对话就读完了。
+const RC = { u: [217, 119, 87], a: [96, 110, 150], s: [70, 130, 200], c: [140, 100, 80], m: [70, 150, 80], t: [160, 140, 200], e: [220, 50, 50] };
+const ROUTE = new Map(), ROUTE_LIST = [];                 // 格子 → 类型；按对话顺序排好的格子
+{
+  const P = Array.isArray(SRC.path) ? SRC.path : [];
+  for (let i = 1; i < P.length; i++) {
+    const [ax, ay] = P[i - 1], [bx, by, k] = P[i], n = Math.max(Math.abs(bx - ax), Math.abs(by - ay), 1);
+    for (let j = i === 1 ? 0 : 1; j <= n; j++) {
+      const x = Math.round(ax + (bx - ax) * j / n), y = Math.round(ay + (by - ay) * j / n), kk = key(x, y);
+      if (!ROUTE.has(kk)) { ROUTE.set(kk, k); ROUTE_LIST.push([x, y]); }
+    }
+  }
+}
+let routeSeen = 0, routeI = 0;
+for (const k of ROUTE.keys()) if (rev.has(k)) routeSeen++;
+const readPct = () => ROUTE.size ? Math.floor(routeSeen / ROUTE.size * 100) : 0;
+function routeStep() {                                     // 又读到一格
+  routeSeen++;
+  const pct = readPct();
+  for (const [q, line] of [[25, '那段对话我读到四分之一了。前面的路是它后来说的话。'], [50, '读到一半了。回头看，路上的颜色就是那段对话的样子。'], [75, '还剩四分之一。我大概猜得到结尾，但还是想走过去。']])
+    if (pct >= q && !G.seen['read' + q]) { G.seen['read' + q] = 1; say(line, { bubble: true }); }
+  if (routeSeen >= ROUTE.size && !G.seen.readAll) { G.seen.readAll = 1; bubbleAt = -1e9; say('这段对话我从头到尾走完了。可以把整张纸收起来看看了。', { bubble: true }); mapReady(); }
+}
+// 顺着对话往后读：挑下一格还没展开的路，太远就算了
+function nextRoute(w) {
+  while (routeI < ROUTE_LIST.length && rev.has(key(...ROUTE_LIST[routeI]))) routeI++;
+  const p = ROUTE_LIST[routeI];
+  return p && Math.hypot(p[0] - w.x, p[1] - w.y) < 200 ? p : null;
+}
+
+// --- 全图：把展开过的整张纸画成一张海报，可以下载 --------------------------------------
+const mapReady = () => $('mapBtn').classList.add('ready');
+function renderPoster() {
+  let x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+  const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+  for (const k of rev) grow(kx(k), ky(k));
+  for (const [x, y] of ROUTE_LIST) grow(x, y);
+  x0 -= 6; y0 -= 6; x1 += 7; y1 += 7;
+  const w = x1 - x0, h = y1 - y0, px = Math.min(4, 1600 / Math.max(w, h));   // 每格几个像素，大图会小于 1
+  const M = 32, HEAD = 78, FOOT = 46, W = Math.ceil(w * px) + M * 2, H = Math.ceil(h * px) + M * 2 + HEAD + FOOT;
+  const c = $('pcv'), g = c.getContext('2d'), font = getComputedStyle(document.documentElement).getPropertyValue('--px');
+  c.width = W; c.height = H;
+  g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
+  g.imageSmoothingEnabled = px < 1;
+  const ox = M - x0 * px, oy = M + HEAD - y0 * px;
+  for (const [ck, ch] of chunks) {
+    const [cx, cy] = ck.split(',').map(Number);
+    if (ch.dirty) { ch.g.putImageData(ch.img, 0, 0); ch.dirty = false; }
+    g.drawImage(ch.cvs, ox + cx * CH * px, oy + cy * CH * px, CH * px, CH * px);
+  }
+  const P = SRC.path || [];                                 // 对话之路：读过的实线，没读到的淡淡的虚线
+  g.lineWidth = Math.max(1.5, px * .7); g.lineCap = 'round';
+  for (let i = 1; i < P.length; i++) {
+    const read = rev.has(key(P[i][0], P[i][1]));
+    g.setLineDash(read ? [] : [3, 4]);
+    g.strokeStyle = read ? `rgb(${RC[P[i][2]]})` : 'rgba(125,119,128,.45)';
+    g.beginPath(); g.moveTo(ox + (P[i - 1][0] + .5) * px, oy + (P[i - 1][1] + .5) * px); g.lineTo(ox + (P[i][0] + .5) * px, oy + (P[i][1] + .5) * px); g.stroke();
+  }
+  g.setLineDash([]);
+  g.fillStyle = BODY; g.fillRect(ox + .5 * px - 3, oy + .5 * px - 3, 6, 6);   // 落点
+  g.imageSmoothingEnabled = false;
+  drawClawd(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
+  g.fillStyle = INK; g.font = `24px ${font}`;
+  g.fillText(`四维来客 · ${TH.name}`, M, 44);
+  g.fillStyle = '#7d7780'; g.font = `12px ${font}`;
+  g.fillText(`${SEED ? `纸面 #${SEED} · 从一段对话里折出来` : `纸面 #${G.seed} · 直接开始的一张`} · ${new Date().toLocaleDateString()}`, M, 66);
+  const y = yearNow();
+  g.fillText([`已展开 ${fmt(rev.size)} 格`, `遇见居民 ${fmt(G.flat)}`, seen() ? `二维历 ${y + 1} 年 · ${ERAS[HIST.era[y]]}` : '', ROUTE.size ? `对话读到 ${readPct()}%` : ''].filter(Boolean).join(' · '), M, H - 20);
+}
+
 // --- 光标：把「现在」之前的历史落到地图上 -----------------------------------------
 const TOWN = new Map(), live = { town: 0, house: 0, temple: 0, ruin: 0, road: 0 };
 let cursor = 0;
@@ -995,6 +1085,7 @@ function advance(quiet) {
 }
 
 function annals() {
+  if (seen() && yearNow() >= HIST.end && !G.seen.histDone) { G.seen.histDone = 1; say('它们的历史写完了。可以把整张纸收起来看看了。', { bubble: true }); mapReady(); }
   $('chron').hidden = !seen();
   if (!seen()) return;
   const y = yearNow(), done = y >= HIST.end;
@@ -1423,6 +1514,63 @@ for (const win of document.querySelectorAll('.win[id]:not(#bubble)')) {
   };
   paint();
 }
+
+// 全图有两个视图：「纸面」是展开过的地图；「四维」是这段对话本来的样子——
+// 左边一直在 x-w、y-z 两个平面里双旋转着投影，右边是它在六个坐标平面上的影子，纸上那条路只是其中 x-y 那一个。
+let posterMode = 'map', spin = 0;
+function shapeView(now) {
+  const S4 = SRC.shape, c = $('pcv'), g = c.getContext('2d'), font = getComputedStyle(document.documentElement).getPropertyValue('--px');
+  const W = 1320, H = 800;
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
+  const mean = [0, 1, 2, 3].map(i => S4.reduce((v, q) => v + q[i], 0) / S4.length);
+  const P = S4.map(q => [q[0] - mean[0], q[1] - mean[1], q[2] - mean[2], q[3] - mean[3], q[4]]);
+  const R = Math.max(...P.map(q => Math.hypot(q[0], q[1], q[2], q[3]))) || 1;
+  // 同一种颜色的线段并成一条 path，画得快；fit=true 时按这个影子自己的范围放满，不然按四维半径（旋转时不会忽大忽小）
+  const trace = (pts, cx, cy, size, lw, fit) => {
+    const ext = fit ? Math.max(...pts.map(q => Math.max(Math.abs(q[0]), Math.abs(q[1])))) || 1 : R;
+    const sc = size / 2 / ext, paths = {};
+    for (let i = 1; i < pts.length; i++) (paths[pts[i][2]] ??= []).push(pts[i - 1], pts[i]);
+    g.lineWidth = lw; g.lineCap = 'round';
+    for (const [k, seg] of Object.entries(paths)) {
+      g.strokeStyle = `rgb(${RC[k]})`; g.beginPath();
+      for (let i = 0; i < seg.length; i += 2) { g.moveTo(cx + seg[i][0] * sc, cy + seg[i][1] * sc); g.lineTo(cx + seg[i + 1][0] * sc, cy + seg[i + 1][1] * sc); }
+      g.stroke();
+    }
+  };
+  const a = now / 1000 * .35, b = a * .61, ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
+  trace(P.map(([x, y, z, w, k]) => [x * ca - w * sa, y * cb - z * sb, k]), 360, 440, 700, 2);   // 半径 350，转到哪都不出界
+  [['x-y · 纸面', 0, 1], ['x-z', 0, 2], ['x-w', 0, 3], ['y-z', 1, 2], ['y-w', 1, 3], ['z-w', 2, 3]].forEach(([name, i, j], n) => {
+    const cx = 800 + (n % 3) * 200, cy = 290 + Math.floor(n / 3) * 290;
+    g.strokeStyle = '#e3ded4'; g.lineWidth = 2; g.strokeRect(cx - 92, cy - 106, 184, 196);
+    trace(P.map(q => [q[i], q[j], q[4]]), cx, cy, 170, 1.2, true);
+    g.fillStyle = '#7d7780'; g.font = `12px ${font}`; g.fillText(name, cx - 84, cy - 90);
+  });
+  g.fillStyle = INK; g.font = `24px ${font}`; g.fillText('这段对话的四维样子', 32, 44);
+  g.fillStyle = '#7d7780'; g.font = `12px ${font}`;
+  g.fillText('纸上那条路，只是它在 x-y 平面上的影子。换一个方向投下去，就是另一个图案。', 32, 68);
+  g.fillText('橙 你说的话 · 蓝 观看 · 褐 动手 · 绿 改写 · 紫 思考 · 灰蓝 回话 · 红 出错', 32, H - 24);
+}
+function posterView(mode) {
+  posterMode = mode;
+  cancelAnimationFrame(spin);
+  $('pmap').classList.toggle('on', mode === 'map'); $('p4d').classList.toggle('on', mode === '4d');
+  if (mode === 'map') return renderPoster();
+  const loop = now => { shapeView(now); spin = requestAnimationFrame(loop); };
+  spin = requestAnimationFrame(loop);
+}
+$('p4d').hidden = !Array.isArray(SRC.shape);
+$('mapBtn').onclick = () => { $('poster').hidden = false; $('mapBtn').classList.remove('ready'); posterView('map'); };
+$('pmap').onclick = () => posterView('map');
+$('p4d').onclick = () => posterView('4d');
+$('pclose').onclick = () => { cancelAnimationFrame(spin); $('poster').hidden = true; };
+$('pdl').onclick = () => $('pcv').toBlob(b => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = `四维来客-${posterMode === '4d' ? '四维投影' : TH.name}-${SEED || G.seed}.png`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
 
 // --- 开始 --------------------------------------------------------------------
 resize();

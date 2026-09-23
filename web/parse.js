@@ -340,6 +340,72 @@ function shellKind(input) {
   return WRITE_CMD.test(cmd) ? 'make' : READ_CMD.test(cmd) ? 'see' : 'act';
 }
 
+// --- 对话的足迹：把一段会话画成一条四维曲线，纸上铺的是它在 x-y 平面上的影子 ------------
+// 四维海龟：朝向是一个 4×4 正交标架，第 0 轴是前进方向。一块一块往前走：
+//   你说话 → 在 x-y 面里左转 60°，步子随字数变大；回话直走；
+//   观看 → x-z 面转 15°；动手 → x-w 面转 -20°；改写 → x-y 面转 35° 再把 z-w 拧 30°；
+//   思考 → y-w 面打个小卷；出错 → x-z 面走锯齿；开子代理 → x-w 面猛拐 90°。
+// 同一条曲线往不同平面投影，就是不同的图案（project）。
+// 顶点类型：u 你 / a 回话 / s 观看 / c 动手 / m 改写 / t 思考 / e 出错。
+export const PATH_LEN = 2400;                            // 大约半小时读完
+const RANK = 'eumcsta';                                     // 合并时留下最显眼的那种
+const TURNS = {
+  u: [[0, 1, -60]], a: [], s: [[0, 2, 15]], c: [[0, 3, -20]], m: [[0, 1, 35], [2, 3, 30]], t: [[1, 3, 12], [0, 2, 6]],
+  split: [[0, 3, -90]],
+};
+function rot(R, i, j, deg) {                               // 在机体标架的 i-j 平面里转：R ← R·G
+  const c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180);
+  for (let r = 0; r < 4; r++) { const a = R[r][i], b = R[r][j]; R[r][i] = a * c + b * s; R[r][j] = -a * s + b * c; }
+}
+function movesOf(s) {
+  const moves = [], len = t => Math.min(6, Math.log2(2 + (t || '').length));
+  for (const t of s.turns) {
+    if (t.sidechain) continue;
+    for (const b of t.blocks) {
+      if (b.kind === 'text') moves.push(t.role === 'user' ? [len(b.text) * 1.4, TURNS.u, 'u'] : [len(b.text), TURNS.a, 'a']);
+      else if (b.kind === 'thinking') moves.push([1, TURNS.t, 't']);
+      else if (b.kind === 'tool') {
+        if (b.result?.isError) { moves.push([1.5, [[0, 2, 70]], 'e'], [1.5, [[0, 2, -140]], 'e'], [1.5, [[0, 2, 70]], 'e']); continue; }
+        const k = toolKind(b.name), kk = k === 'act' ? shellKind(b.input) : k;
+        moves.push({ see: [1.2, TURNS.s, 's'], act: [1.2, TURNS.c, 'c'], make: [1.6, TURNS.m, 'm'], split: [2, TURNS.split, 'c'], think: [1, TURNS.t, 't'] }[kk]);
+      }
+    }
+  }
+  return moves;
+}
+// 四维顶点 [x, y, z, w, 类型]，整条四维长度缩放到 PATH_LEN，最多 400 段
+export function shapeOf(s) {
+  const moves = movesOf(s), g = Math.max(1, Math.ceil(moves.length / 400));
+  const R = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], p = [0, 0, 0, 0], pts = [[0, 0, 0, 0, 'u']];
+  let total = 0;
+  for (let i = 0; i < moves.length; i += g) {
+    const grp = moves.slice(i, i + g);
+    for (const [, turns] of grp) for (const [a, b, d] of turns) rot(R, a, b, d);
+    const step = grp.reduce((v, m) => v + m[0], 0);
+    for (let r = 0; r < 4; r++) p[r] += R[r][0] * step;
+    total += step;
+    pts.push([...p, grp.map(m => m[2]).sort((x, y) => RANK.indexOf(x) - RANK.indexOf(y))[0]]);
+  }
+  const f = PATH_LEN / Math.max(total, 1);
+  return pts.map(([x, y, z, w, k]) => [+(x * f).toFixed(1), +(y * f).toFixed(1), +(z * f).toFixed(1), +(w * f).toFixed(1), k]);
+}
+// 投影到由 a、b 两个四维向量张成的平面上
+export const project = (shape, a = [1, 0, 0, 0], b = [0, 1, 0, 0]) =>
+  shape.map(q => [q[0] * a[0] + q[1] * a[1] + q[2] * a[2] + q[3] * a[3], q[0] * b[0] + q[1] * b[1] + q[2] * b[2] + q[3] * b[3], q[4]]);
+
+// 纸上的路：x-y 面上的影子，按影子的长度再缩放到 PATH_LEN 格，取整、去掉重复的格子
+export function pathOf(s, shape = shapeOf(s)) {
+  const pts = project(shape);
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const f = PATH_LEN / Math.max(total, 1), out = [];
+  for (const [px, py, k] of pts) {
+    const q = [Math.round(px * f), Math.round(py * f), k], last = out[out.length - 1];
+    if (!last || last[0] !== q[0] || last[1] !== q[1]) out.push(q);
+  }
+  return out;
+}
+
 export function worldOf(s) {
   const w = { seed: seedOf(s), see: 0, act: 0, make: 0, split: 0, think: 0, errs: 0, talk: 0, out: s.usage?.output || 0 };
   const said = [];
@@ -360,6 +426,8 @@ export function worldOf(s) {
   w.min = s.start && s.end ? Math.round((new Date(s.end) - new Date(s.start)) / 6e4) : 0;
   const step = Math.max(1, said.length / 60);                // 最多留 60 句，均匀抽
   w.said = Array.from({ length: Math.min(60, said.length) }, (_, i) => said[Math.floor(i * step)]);
+  w.shape = shapeOf(s);                                    // 四维的样子，全图里投影着看
+  w.path = pathOf(s, w.shape);
   return w;
 }
 
