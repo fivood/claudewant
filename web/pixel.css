@@ -54,3 +54,11 @@ button,input,select{font:inherit;color:inherit}
 .btn:focus-visible{outline:2px dashed var(--clay);outline-offset:2px}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* 滚动条也要像素风：格子轨道 + 凸起的方块滑块 */
+@supports not selector(::-webkit-scrollbar){*{scrollbar-color:#a19b98 #f1efed}}   /* Firefox；Chromium 设了这个会忽略下面的 ::-webkit-scrollbar */
+::-webkit-scrollbar{width:14px;height:14px}
+::-webkit-scrollbar-track{background:repeating-conic-gradient(#d3cecb 0 25%,#f1efed 0 50%) 0 0/4px 4px;border:2px solid #a19b98}
+::-webkit-scrollbar-thumb{background:#f1efed;border:2px solid #a19b98;box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #d3cecb}
+::-webkit-scrollbar-thumb:hover{background:#fbeee6}
+::-webkit-scrollbar-button{display:none}

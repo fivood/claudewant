@@ -14,6 +14,7 @@
   #hud{width:196px}
   #chron{width:300px;min-height:0;overflow:hidden}
   #civ{white-space:pre-line;color:var(--dim);margin-bottom:4px}
+  #annals{max-height:min(40vh,320px);overflow-y:auto;padding-right:4px}
   #annals p{margin:0 0 4px}
   #annals p{color:var(--dim)}
   #annals p.new{color:var(--tx)}
@@ -889,9 +890,9 @@ function annals() {
   now.textContent = done ? '— 它们的历史到这里为止 —' : `— 现在 · 二维历 ${y + 1} 年 —`;
   // 四维的视角：还没发生的也看得见，只是淡一点；从远的将来往下读到过去
   $('annals').replaceChildren(
-    ...HIST.events.slice(cursor, cursor + 2).reverse().map(e => row(e, 'soon')),
+    ...HIST.events.slice(cursor, cursor + 3).reverse().map(e => row(e, 'soon')),
     now,
-    ...HIST.events.slice(Math.max(0, cursor - 4), cursor).reverse().map((e, i) => row(e, i ? '' : 'new')));
+    ...HIST.events.slice(0, cursor).reverse().map((e, i) => row(e, i ? '' : 'new')));   // 过去的全在，往下滚
 }
 
 function seeHistory() {
@@ -902,11 +903,12 @@ function seeHistory() {
 }
 
 // --- 电台：WebAudio 现场合成的 lo-fi，没有音频文件 -----------------------------
-// 72 BPM，Cmaj9 → Am9 → Dm9 → G13 各两小节循环；每张纸按种子移个调。
+// 72 BPM，Cmaj9 → Am9 → Dm9 → G11 各两小节循环；每张纸按种子移个调。
+// 和弦都用开放排列，不叠小二度和三全音——叠了听着像「危险区域」。
 (() => {
   const BPM = 72, S16 = 60 / BPM / 4, KEY = (G.seed % 7) - 3;
   const CHORDS = [
-    [36, [52, 55, 59, 62]], [33, [55, 59, 60, 64]], [38, [53, 57, 60, 64]], [31, [53, 57, 59, 64]],
+    [36, [52, 55, 59, 62]], [33, [55, 60, 64, 71]], [38, [53, 57, 60, 64]], [31, [50, 57, 60, 65]],
   ];
   const MEL = [72, 74, 76, 79, 81, 84, 86];                  // 五声音阶，够安静
   const hz = m => 440 * 2 ** ((m + KEY - 69) / 12);
@@ -935,9 +937,10 @@ function seeHistory() {
     // 黑胶底噪：一直循环的轻微沙沙声 + 偶尔的咔哒
     const vinyl = ac.createBufferSource(), vf = ac.createBiquadFilter(), vg = ac.createGain();
     const crackle = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate), cd = crackle.getChannelData(0);
-    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * .25 + (Math.random() < .0004 ? (Math.random() * 2 - 1) * 4 : 0);
+    // 偶尔一声轻轻的「啵」：太密会变成盖革计数器
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * .25 + (Math.random() < .00003 ? (Math.random() * 2 - 1) * 1.2 : 0);
     vinyl.buffer = crackle; vinyl.loop = true;
-    vf.type = 'bandpass'; vf.frequency.value = 3000; vf.Q.value = .5; vg.gain.value = .018;
+    vf.type = 'lowpass'; vf.frequency.value = 2500; vg.gain.value = .014;
     vinyl.connect(vf).connect(vg).connect(dry); vinyl.start();
     setVol();
     ac.onstatechange = ui;
