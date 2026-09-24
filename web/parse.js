@@ -449,6 +449,47 @@ export function marksOf(s) {
   return marks.sort((a, b) => a.t - b.t);
 }
 
+// --- Clawd 自己的声音：AI 的回复是它掉下来之前说过的话，思考是它当时的念头 ------------------
+// 每段回复 / 思考只挑一句最像自言自语的：短、带「我」、是问句的优先；代码、路径、链接、表格都不要。
+// 按对话里的时间排，游戏里按这个顺序一句句想起来。加密或被遮住的思考只数个数。
+const SELF = /我|咱|\bI\b|\bI'm\b|\bI'll\b|\bLet me\b|\bmy\b|也许|大概|可能|好像|\bmaybe\b|\bperhaps\b/i;
+export function linesOf(text) {
+  const plain = String(text)
+    .replace(/```[\s\S]*?```/g, '\n').replace(/`[^`\n]*`/g, '…')
+    .replace(/https?:\/\/\S+/g, '').replace(/^\s*(#+|[-*>|]|\d+\.)\s*/gm, '').replace(/[*_~]{1,3}/g, '');
+  return plain.split(/(?<=[。！？!?；;\n])|(?<=\.)\s+/)
+    .map(l => l.replace(/\s+/g, ' ').trim().replace(/[；;，,]$/, ''))
+    .filter(l => l.length >= 6 && l.length <= (/[一-鿿]/.test(l) ? 40 : 90)
+      && !/…/.test(l) && (l.match(/[{}()<>=\/\\_$|]/g) || []).length <= 1 && !/[:：]$/.test(l));   // 冒号结尾的是在引出列表
+}
+const best = ls => {
+  let top = null, sc = -1;
+  for (const l of ls) {
+    const s = (SELF.test(l) ? 2 : 0) + (/[?？]$/.test(l) ? 1 : 0) - l.length / 60;
+    if (s > sc) { sc = s; top = l; }
+  }
+  return top;
+};
+const spread = (a, n = 60) => { const k = Math.max(1, a.length / n); return Array.from({ length: Math.min(n, a.length) }, (_, i) => a[Math.floor(i * k)]); };
+export function voicesOf(s) {
+  const main = s.turns.filter(t => !t.sidechain), N = Math.max(1, main.length - 1), T = i => +(i / N).toFixed(3);
+  const told = [], thought = [];
+  let sealed = 0;
+  main.forEach((turn, i) => {
+    if (turn.role !== 'assistant') return;
+    for (const b of turn.blocks) {
+      if (b.kind === 'thinking') {
+        const l = /^\[(redacted|加密的推理)\]$/.test(b.text?.trim() || '') ? null : best(linesOf(b.text || ''));
+        if (l) thought.push([T(i), l]); else sealed++;
+      } else if (b.kind === 'text') {
+        const l = best(linesOf(b.text));
+        if (l) told.push([T(i), l]);
+      }
+    }
+  });
+  return { told: spread(told), thought: spread(thought), sealed };
+}
+
 export function worldOf(s) {
   const w = { seed: seedOf(s), see: 0, act: 0, make: 0, split: 0, think: 0, errs: 0, talk: 0, out: s.usage?.output || 0 };
   const said = [];
@@ -472,6 +513,7 @@ export function worldOf(s) {
   w.shape = shapeOf(s);                                    // 四维的样子，全图里投影着看
   w.path = pathOf(s, w.shape);
   w.marks = marksOf(s);
+  Object.assign(w, voicesOf(s));
   return w;
 }
 

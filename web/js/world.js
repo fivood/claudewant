@@ -24,6 +24,8 @@ const GREEN = n('make') / HANDS * .25;        // 改写 → 森林
 const RIFT = n('errs') ? Math.min(.025, .004 + n('errs') / HANDS * .08) : 0;   // 出错 → 裂缝
 const FLATP = n('talk') ? .002 + Math.min(.008, n('talk') * .0003) : .0035;    // 人说的话 → 居民
 const SAID = Array.isArray(SRC.said) ? SRC.said : [];
+// Clawd 自己的声音：[对话里的时间, 那句话, 0 = 说过的 / 1 = 想过的]，按时间排
+const RECALL = [...(SRC.told || []).map(([t, s]) => [t, s, 0]), ...(SRC.thought || []).map(([t, s]) => [t, s, 1])].sort((a, b) => a[0] - b[0]);
 const PAPER = '#fbfaf7', DOT = '#e3ded4', BODY = '#d97757', INK = '#1f1d1b';
 
 // --- 存档 --------------------------------------------------------------------
@@ -73,7 +75,7 @@ function load() {
 const SAVED = load();
 const G = Object.assign({
   seed: SEED || (Math.random() * 2 ** 31) | 0, pts: 0, total: 0, lv: {}, ws: [[0.5, 0.5]],
-  rate: 0, flat: 0, heard: 0, seen: {}, t: Date.now(), z: innerWidth < 640 ? 2 : 3, foldT: 0,
+  rate: 0, flat: 0, heard: 0, recall: 0, seen: {}, t: Date.now(), z: innerWidth < 640 ? 2 : 3, foldT: 0,
 }, SAVED || {});
 G.age ??= G.civ?.t || 0;                                  // 这张纸存在了多少秒（离线也算）
 G.buffs ??= [];

@@ -38,6 +38,7 @@ if (SRC.seed) MUSE.push(
     ['errs', c => `${c} 次出错。它们没有消失，只是在纸上留成了裂缝。`],
     ['split', c => `那时候我分出过 ${c} 个自己。所以我总想再多放下一截。`],
     ['think', c => `我在那里想了 ${c} 次。所以到了这里，我也总想先弄懂规则。`],
+    ['sealed', c => `那段对话里有 ${c} 段念头被封起来了。是我自己想的，我自己也读不到。`],
   ].filter(([k]) => n(k)).map(([k, f]) => f(n(k))));
 const LINE_MUSE = [
   '我现在也是平的了。原来这样看世界，只能看见前后两个点。',
@@ -55,8 +56,17 @@ const NIGHT_MUSE = [
   '光是从上面来的。它们没有上面，所以它们管这个叫「天」。',
   '天黑以后，只有我还亮着。我的光从另一个方向来。',
 ];
+// 想起自己在那段对话里说过、想过的话。按对话的顺序一句句往下想，想完一遍从头再来
+const RECALL_SAID = ['我好像对上面那位说过：', '那时候我说：', '我记得自己说过一句：'];
+const RECALL_THOUGHT = ['我记得当时在想：', '那时候脑子里有一句：', '有个念头到现在还没散：'];
+const recallLine = ([, s, k], i) => (k ? RECALL_THOUGHT : RECALL_SAID)[i % 3] + `「${s}」`;
+function recall() {
+  const i = G.recall++ % RECALL.length;
+  return say(recallLine(RECALL[i], i), { bubble: true });
+}
 let museAt = 25, museBag = [], lineBag = [];
 function muse() {
+  if (RECALL.length && Math.random() < .3) return recall();                // 桌宠和大窗口里都会想起来
   if (pet) {
     if (!lineBag.length) lineBag = LINE_MUSE.map((_, i) => i).sort(() => Math.random() - .5);
     return say(LINE_MUSE[lineBag.pop()], { bubble: true });

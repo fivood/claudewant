@@ -268,3 +268,20 @@ console.log('导出用例通过');
   assert.ok(m.every((x, i) => !i || m[i - 1].t <= x.t), '按对话时间排好');
   console.log('会话奇观原料通过');
 }
+
+// voicesOf：Clawd 说过、想过的话
+{
+  const { linesOf, voicesOf } = await import('./web/parse.js');
+  assert.deepEqual(linesOf('先看看代码。\n```js\nconst a = 1;\n```\n我觉得问题在缓存里？见 https://x.y/z'), ['先看看代码。', '我觉得问题在缓存里？'], '去掉代码块和链接，按句切');
+  assert.deepEqual(linesOf('改动如下：\n- `a.js` 里改了'), [], '引出列表的、带行内代码的不要');
+  const v = voicesOf({ turns: [
+    { role: 'user', blocks: [{ kind: 'text', text: '修一下' }] },
+    { role: 'assistant', blocks: [{ kind: 'thinking', text: 'The cache key is wrong. Maybe I should check the loader first?' }, { kind: 'thinking', text: '[redacted]' }] },
+    { role: 'assistant', blocks: [{ kind: 'text', text: '修好了。测试 12 项全过。' }] },
+  ] });
+  assert.deepEqual(v.thought, [[0.5, 'Maybe I should check the loader first?']], '一段思考挑一句最像自言自语的');
+  assert.equal(v.sealed, 1, '遮住的思考只数个数');
+  assert.equal(v.told.length, 1);
+  assert.equal(v.told[0][0], 1, '带着在对话里的时间');
+  console.log('自己的声音通过');
+}

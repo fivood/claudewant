@@ -173,11 +173,29 @@ const WONDERS = [], WKEY = new Map();
   });
 }
 G.found ??= {};
+// 奇观是对话里的一件事，它旁边的那句话：提到这个文件的优先，否则挑时间上最近的（出错的往后找，那是在想怎么修）。
+// 载入时按时间顺序一次分好，一句话只配一个奇观
+function recallNear(m, used) {
+  const stem = m.k === 'file' && m.label.replace(/\.[^.]+$/, '').toLowerCase();
+  let top = null, sc = 1e9;
+  for (const r of RECALL) {
+    if (used.has(r)) continue;
+    const dt = r[0] - m.t, s = Math.abs(dt) + (m.k === 'err' && dt < 0 ? .05 : 0) - (stem?.length > 2 && r[1].toLowerCase().includes(stem) ? 1 : 0) - r[2] * .01;
+    if (s < sc) { sc = s; top = r; }
+  }
+  return sc < .08 ? top : null;                            // 离得太远的就不硬凑了
+}
+{
+  const used = new Set();
+  for (const w of [...WONDERS].sort((a, b) => a.m.t - b.m.t)) if ((w.r = recallNear(w.m, used))) used.add(w.r);
+}
 function discover(w) {
   if (G.found[w.id]) return;
   G.found[w.id] = 1;
   bubbleAt = -1e9;
   say(w.line, { bubble: true });
+  const r = w.r;
+  if (r) setTimeout(() => { bubbleAt = -1e9; say(`看着它，我想起当时${r[2] ? '在想' : '说过'}：「${r[1]}」`, { bubble: true }); }, 9000);   // 等上一个气泡说完
   earn(150 * mult() * (1 + 3 * w.m.t));
   if (!G.seen.shadowNote) { G.seen.shadowNote = 1; say('它立在纸上，但居民看不见它——它们只看得见它投下来的影子。在它们眼里，那是一块会跟着天色转动的暗斑。'); }
 }
