@@ -39,10 +39,11 @@ const HIST = (() => {
   const grow = f => { S.pop *= 1 + f; };
   const boost = (m, sec) => fx.push(['buff', m, sec]);
   const put = (x, y, kind) => { S.towns.set(key(x, y), [x, y, kind]); fx.push(['put', x, y, kind]); };
-  // 城从落地点附近往外长；只挑陆地，离别的建筑远一点
+  // 城从落地点附近往外长；只挑陆地，离别的建筑远一点。前 80 次在近处找（老世界的城都是这么选出来的），
+  // 都落在水里的话再往远处找，免得满是水的纸永远建不起第一个村子、一直停在第一个纪元
   function site(gap = 6) {
-    for (let i = 0; i < 80; i++) {
-      const a = rnd() * TAU, d = 4 + rnd() * (12 + 6 * count('town'));
+    for (let i = 0; i < 200; i++) {
+      const a = rnd() * TAU, d = 4 + rnd() * (12 + 6 * count('town') + (i < 80 ? 0 : (i - 79) * 2));
       const x = Math.round(Math.cos(a) * d), y = Math.round(Math.sin(a) * d);
       if (!LAND(tile(x, y))) continue;
       let ok = true;
@@ -102,7 +103,7 @@ const HIST = (() => {
   const note = (m, sec) => tr(`（感知 ×${m}，${sec} 秒）`, ` (perception ×${m}, ${sec} s)`);
   const PERM = tr('（感知永久 +10%）', ' (perception +10% forever)');
   const EV = [
-    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), tell('fire', folk())) },
+    { id: 'fire', era: 0, max: 0, once: 1, w: () => 2, run: () => (grow(.1), tell('fire', folk())) },
     { id: 'name', era: 0, once: 1, w: () => S.awe >= 1 ? 4 : 0, run: () => (awe(2), CIV.name) },
     { id: 'trek', era: 0, max: 1, w: () => 1, run: () => tell('trek', folk()) },
     { id: 'village', era: 1, w: () => count('town') < 2 + S.era * 3 ? 3 * (1 + 2 * share('make')) : 0, run: () => village() && tell('village', folk()) },
