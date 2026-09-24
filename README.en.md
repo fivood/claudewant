@@ -18,7 +18,7 @@ A four-dimensional creature (Clawd) falls into an endlessly unfolding two-dimens
 - **Day and night** follow your real clock, or drag the time slider in the sense.exe window.
 - **Full map** lays out the whole sheet as a downloadable PNG, and shows the conversation's 4D projection.
 - **Pet = Lineland**: as a desktop pet, Clawd is flat too and the world collapses into a line. Wonders in the way get climbed, launched over, walked through (the forge), or stepped around through the fourth dimension.
-- The radio in the corner is synthesized live with WebAudio: a lo-fi station and a Chinese pentatonic one.
+- The radio in the corner is synthesized live with WebAudio: nine stations, one per terrain, each in its own style and made to loop for hours. It starts on the current sheet's station; » switches, and RND shuffles every few minutes.
 - Switch between English and Chinese any time (the button next to the time slider).
 
 ## Layout
@@ -27,7 +27,7 @@ A four-dimensional creature (Clawd) falls into an endlessly unfolding two-dimens
 web/          the site itself (static, no build): index start page, game, viewer, parse.js log parsers, i18n.js language switch
   js/         game scripts, plain scripts loaded in order (shared global scope):
               world save/terrain/chunk canvas · life upgrades & walking · talk lines · ui panels · render drawing & main loop
-              history Flatland history · wonders road/wonders/full map · radio · pet desktop pet · start
+              civ residents of each terrain · history the flat history · wonders road/wonders/full map · radio · pet desktop pet · start
 src-tauri/    desktop shell (Tauri 2), serves web/ directly
 test.mjs      parser tests
 ```
