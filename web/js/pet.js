@@ -168,7 +168,9 @@ function petTick(dt) {
 // 画 Clawd 身边那一段线：展开过的格子是地形的颜色，没展开的是空白纸上的虚线，两头渐隐——一维里只看得见近处。
 // 线上的奇观画成侧面剖面，坑画在线下面。
 function drawLine() {
-  const c = $('petcv'), g = pctx, k = devicePixelRatio || 1, W = c.width, H = c.height, L1 = G.line;
+  const k = devicePixelRatio || 1, c = $('petcv');
+  if (c.width !== Math.round(TRACK * k) || c.height !== Math.round(canvasH * k)) sizePet();        // 画布还是默认的 300×150（没来得及定尺寸），或者窗口换到了缩放不同的屏幕：先定尺寸，不然整只被压扁
+  const g = pctx, W = c.width, H = c.height, L1 = G.line;
   const T = TILE * k, cx = W / 2, ly = H - Math.round(UNDER * k), lh = Math.round(4 * k), u = Math.round(4 * k), a1 = ART * k;
   const fade = sx => { const d = Math.abs(sx - cx) / (W / 2); return Math.max(0, 1 - d * d); };
   g.clearRect(0, 0, W, H);
@@ -223,6 +225,7 @@ async function setMode(p) {
     lineCell = null;
     bubbleAt = -1e9;
     say(tr('我缩成了二维。世界跟着缩成了一条线。', 'I shrank down to two dimensions. The world shrank with me, into a line.'), { bubble: true });
+    sizePet();                                             // 先把画布定好尺寸，别等下面那几个窗口调用
   } else {                                                 // 回到纸面：从线国走到的地方接着逛
     ws[0].x = G.line.x; ws[0].y = G.line.y + .5; ws[0].k = -1;
     retarget(ws[0]);
@@ -231,19 +234,16 @@ async function setMode(p) {
   }
   if (!TAURI) return;
   const w = TAURI.window.getCurrentWindow(), { LogicalSize } = TAURI.dpi;
+  // 每个窗口调用各管各的：刚启动时偶尔有一个失败或迟迟不返回，别让它拦住后面的
+  const tryAll = (...calls) => Promise.all(calls.map(f => f().catch(e => console.warn('窗口调用失败', e))));
   if (p) {
-    await w.setDecorations(false);
-    await w.setResizable(false);
-    await w.setAlwaysOnTop(true);
-    sizePet();
+    fitPet();
+    await tryAll(() => w.setDecorations(false), () => w.setResizable(false), () => w.setAlwaysOnTop(true));
     fitPet();
   } else {
-    await w.setAlwaysOnTop(false);
-    await w.setDecorations(true);
-    await w.setResizable(true);
-    await w.setSize(new LogicalSize(Math.min(1200, screen.availWidth - 80), Math.min(780, screen.availHeight - 80)));
-    await w.center();
-    await w.setFocus();
+    await tryAll(() => w.setAlwaysOnTop(false), () => w.setDecorations(true), () => w.setResizable(true));
+    await tryAll(() => w.setSize(new LogicalSize(Math.min(1200, screen.availWidth - 80), Math.min(780, screen.availHeight - 80))));
+    await tryAll(() => w.center(), () => w.setFocus());
   }
 }
 
