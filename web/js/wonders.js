@@ -203,16 +203,16 @@ const foundCount = () => WONDERS.filter(w => G.found[w.id]).length;
 
 // 太阳：你那边的钟点决定影子朝哪、多长。返回每升高一个美术像素，影子在纸上挪多少；夜里没有太阳
 function sunVec() {
-  const d = new Date(), hr = FORCE_HOUR != null ? +FORCE_HOUR : d.getHours() + d.getMinutes() / 60;
+  const hr = hourNow();
   if (hr < 6 || hr > 18) return null;
   const th = Math.PI * (hr - 6) / 12, elev = Math.max(.18, Math.sin(th)) * 65 * Math.PI / 180, L = Math.min(3, 1 / Math.tan(elev));
   return { x: -Math.cos(th) * L, y: -Math.sin(th) * L };
 }
 let shadowCv = null;
-function drawWonders(ox, oy, tp, s, g, W, H, sun, labels) {
+function drawWonders(ox, oy, tp, s, g, W, H, sun) {
   const vis = WONDERS.filter(w => G.found[w.id] || rev.has(key(w.x, w.y)))
     .filter(w => { const x = w.x * tp + ox, y = w.y * tp + oy; return x > -tp * 8 && y > -tp * 12 && x < W + tp * 4 && y < H + tp * 8; });
-  if (!vis.length) return;
+  if (!vis.length) return vis;
   const at = w => [w.x * tp + ox, w.y * tp + oy];
   const face = (c, f) => `rgb(${c.map(v => Math.round(v * f))})`;
   for (const w of vis) for (const [px, py, pw, pd, depth, north] of w.pits || []) {   // 裂谷：往纸里凹下去，靠北的边看得见内壁
@@ -239,10 +239,17 @@ function drawWonders(ox, oy, tp, s, g, W, H, sun, labels) {
     g.fillStyle = face(C3[c], .72); g.fillRect(sx, Math.round(y0 + (y + bd - z - h) * s), W1, Math.max(1, Math.ceil(h * s)));
     g.fillStyle = face(C3[c], 1); g.fillRect(sx, top, W1, Math.ceil(bd * s));
   }
-  if (labels) {
-    g.font = `${Math.round(12 * dpr)}px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`;
-    g.fillStyle = 'rgba(61,58,63,.85)';
-    for (const w of vis) if (G.found[w.id]) { const [x0, y0] = at(w), top = Math.max(...w.boxes.map(b => b[2] + b[5]), 0); g.fillText(w.name, x0, y0 - (top + 4) * s); }
+  return vis;
+}
+// 奇观的名字：画在昼夜遮罩上面，带一圈纸色的像素描边，压在什么地形上、白天黑夜都看得清
+function drawLabels(ox, oy, tp, s, g, vis) {
+  g.font = `${Math.round(12 * dpr)}px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`;
+  const o = Math.max(1, Math.round(dpr));
+  for (const w of vis) if (G.found[w.id]) {
+    const x = Math.round(w.x * tp + ox), y = Math.round(w.y * tp + oy - (Math.max(...w.boxes.map(b => b[2] + b[5]), 0) + 4) * s);
+    g.fillStyle = PAPER;
+    for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, -o], [-o, o], [o, o]]) g.fillText(w.name, x + dx, y + dy);
+    g.fillStyle = INK; g.fillText(w.name, x, y);
   }
 }
 
@@ -279,7 +286,7 @@ function renderPoster() {
   g.setLineDash([]);
   g.fillStyle = BODY; g.fillRect(ox + .5 * px - 3, oy + .5 * px - 3, 6, 6);   // 落点
   g.imageSmoothingEnabled = false;
-  drawWonders(ox, oy, px, px / TP, g, W, H, { x: 0, y: -.5 }, false);
+  drawWonders(ox, oy, px, px / TP, g, W, H, { x: 0, y: -.5 });
   drawClawd(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
   g.fillStyle = INK; g.font = `24px ${font}`;
   g.fillText(`四维来客 · ${TH.name}`, M, 44);

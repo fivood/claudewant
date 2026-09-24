@@ -39,10 +39,16 @@ function drawClawd(sx, sy, s, w, g = ctx) {
 }
 
 // 昼夜：纸是被你房间里的光照亮的——光从一个二维居民不存在的方向来，所以跟着你那边的真实时间走。
-// 5–7 点天亮，17–19 点天黑。?hour=22 可以强行指定钟点，调画面用。
+// 5–7 点天亮，17–19 点天黑。感知窗口里的时间条可以手动拨到某个钟点（记在本机）；?hour=22 也行，调画面用。
 const FORCE_HOUR = new URLSearchParams(location.search).get('hour');
+function hourNow() {
+  if (FORCE_HOUR != null) return +FORCE_HOUR;
+  if (UIP.hour != null) return UIP.hour;
+  const d = new Date();
+  return d.getHours() + d.getMinutes() / 60;
+}
 function daylight() {
-  const d = new Date(), hr = FORCE_HOUR != null ? +FORCE_HOUR : d.getHours() + d.getMinutes() / 60;
+  const hr = hourNow();
   if (hr < 5 || hr >= 19) return 0;
   if (hr >= 7 && hr < 17) return 1;
   return hr < 7 ? (hr - 5) / 2 : 1 - (hr - 17) / 2;
@@ -106,8 +112,9 @@ function draw() {
     }
   trimChunks(visible);
 
-  drawWonders(ox, oy, tp, s, ctx, W, H, sunVec(), s >= 3);
+  const vis = drawWonders(ox, oy, tp, s, ctx, W, H, sunVec());
   shade(W, H, dl, ox, oy, tp, s);
+  if (s >= 3) drawLabels(ox, oy, tp, s, ctx, vis);
   for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
 }
 

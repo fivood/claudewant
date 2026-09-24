@@ -35,7 +35,13 @@ function hud() {
     info.textContent = full ? (u.max > 1 ? u.info(l) + ' · 满了' : '已看见') : u.info(l + 1);
   }
   $('ups').hidden = !any;
+  const hr = hourNow();                                    // 时间条：跟着钟走，或者停在拨到的那个钟点
+  if (document.activeElement !== $('hour')) $('hour').value = hr;
+  $('clockT').textContent = `${String(Math.floor(hr)).padStart(2, '0')}:${String(Math.floor(hr % 1 * 60)).padStart(2, '0')}`;
+  $('clockBtn').setAttribute('aria-pressed', String(UIP.hour == null));
 }
+$('hour').oninput = e => { UIP.hour = +e.target.value; saveUI(); };
+$('clockBtn').onclick = () => { delete UIP.hour; saveUI(); };
 
 $('reset').onclick = () => {
   if (!confirm('从一片空白重新开始？现在的纸面会全部消失。')) return;
