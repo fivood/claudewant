@@ -25,7 +25,7 @@ if (fresh) {
   setTimeout(() => say(TH.intro), 3500);
   setTimeout(() => say(tr('一片空白。那就走走看。', 'All blank. Let\'s walk and see.')), 7000);
   if (n('out')) { earn(Math.sqrt(n('out'))); setTimeout(() => say(tr(`那段对话有 ${fmt(n('out'))} 个 token 那么重。我带着它的一点分量掉了下来。`, `That conversation weighed ${fmt(n('out'))} tokens. I fell in carrying a little of its weight.`)), 7000); }
-  if (n('split')) setTimeout(() => say(tr('我在那段对话里分出过自己。其中一截跟着一起掉了下来。', 'I split myself during that conversation. One of the pieces fell in with me.')), 10000);
+  if (n('split')) setTimeout(() => say(tr('我在那段对话里分出过自己。其中一截跟着一起掉了下来。', 'I split myself during that conversation. One of the pieces fell in with me.')), 5000);   // 开局就是两个 Clawd，早点说清楚
 } else {
   say(tr('我回来了。纸面还在原来的地方。', 'I\'m back. The paper is right where I left it.'));
   away((Date.now() - G.t) / 1000);

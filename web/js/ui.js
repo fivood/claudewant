@@ -71,6 +71,73 @@ function barButton(bar, cls, onclick) {
   };
   paint();
 }
+// 拖标题栏摆窗口：靠近屏幕边或别的窗口的边就吸过去，吸上时留 12px 间距；位置记在本机，双击标题栏恢复默认排列。
+// 第一次拖的时候把看得见的窗口都钉在当前位置（原来有的排在左边一列里），免得一个挪走别的跟着跳。手机上不拖。
+const GAP = 12, SNAP = 10, WINS = ['hud', 'chron', 'log', 'ups', 'radio'].map($);
+const narrow = () => matchMedia('(max-width:640px)').matches;
+let zTop = 5;
+UIP.pos ??= {};
+function place(win, x, y) {
+  x = Math.max(0, Math.min(innerWidth - win.offsetWidth, x)); y = Math.max(0, Math.min(innerHeight - 24, y));
+  Object.assign(win.style, { position: 'fixed', left: x + 'px', top: y + 'px', right: 'auto', bottom: 'auto' });
+}
+const pinAll = () => {                                     // 先把位置都量好再钉：钉住一个，左列里剩下的会往上跳
+  const at = WINS.filter(w => !w.hidden && !w.style.left).map(w => [w, w.getBoundingClientRect()]);
+  for (const [w, r] of at) place(w, r.left, r.top);
+};
+const savePos = () => { for (const w of WINS) if (w.style.left) UIP.pos[w.id] = [parseFloat(w.style.left), parseFloat(w.style.top)]; saveUI(); };
+function snap(win, x, y) {                                   // 候选位置：屏幕边留 GAP、和别的窗口对齐、贴着别的窗口隔 GAP
+  const w = win.offsetWidth, h = win.offsetHeight, xs = [GAP, innerWidth - GAP - w], ys = [GAP, innerHeight - GAP - h];
+  for (const o of WINS) {
+    if (o === win || o.hidden) continue;
+    const r = o.getBoundingClientRect();
+    xs.push(r.left, r.right - w, r.right + GAP, r.left - GAP - w);
+    ys.push(r.top, r.bottom - h, r.bottom + GAP, r.top - GAP - h);
+  }
+  const near = (v, c) => { const t = c.reduce((b, t) => Math.abs(t - v) < Math.abs(b - v) ? t : b); return Math.abs(t - v) < SNAP ? t : v; };
+  return [near(x, xs), near(y, ys)];
+}
+for (const win of WINS) {
+  const bar = win.querySelector(':scope > .bar');
+  bar.onpointerdown = e => {
+    if (narrow() || e.button || e.target.closest('button')) return;
+    e.preventDefault(); pinAll();
+    win.style.zIndex = ++zTop;
+    const r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+    bar.setPointerCapture(e.pointerId);
+    bar.onpointermove = m => place(win, ...snap(win, m.clientX - dx, m.clientY - dy));
+    bar.onpointerup = () => { bar.onpointermove = bar.onpointerup = null; savePos(); };
+  };
+  bar.ondblclick = e => {
+    if (narrow() || e.target.closest('button')) return;
+    UIP.pos = {}; saveUI();
+    for (const w of WINS) for (const k of ['position', 'left', 'top', 'right', 'bottom', 'zIndex']) w.style[k] = '';
+  };
+}
+if (!narrow()) for (const w of WINS) if (UIP.pos[w.id]) place(w, ...UIP.pos[w.id]);
+addEventListener('resize', () => { for (const w of WINS) if (w.style.left) place(w, parseFloat(w.style.left), parseFloat(w.style.top)); });   // 窗口变小了别让它们跑出屏幕
+
+// 右下角的拖柄：纪年、独白、身体可以拖大拖小，大小记在本机；双击拖柄恢复默认。
+// 贴着右边或底边摆的窗口（身体、独白），一开始拖就钉在当前位置、按左上角定位，这样右下角跟着手走
+UIP.size ??= {};
+for (const win of [$('chron'), $('log'), $('ups')]) {
+  const g = document.createElement('i'), set = ([w, h]) => { win.style.width = w + 'px'; win.style.height = h + 'px'; win.style.maxHeight = 'none'; win.classList.add('sized'); };
+  g.className = 'grip'; g.title = tr('拖动改大小，双击恢复', 'Drag to resize, double-click to reset');
+  win.append(g);
+  if (UIP.size[win.id]) set(UIP.size[win.id]);
+  g.onpointerdown = e => {
+    e.preventDefault(); g.setPointerCapture(e.pointerId);
+    const r = win.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
+    if (getComputedStyle(win).position === 'fixed') place(win, r.left, r.top);
+    g.onpointermove = m => set([Math.max(180, Math.min(innerWidth - r.left - 4, r.width + m.clientX - x0)), Math.max(80, Math.min(innerHeight - r.top - 4, r.height + m.clientY - y0))]);
+    g.onpointerup = () => { g.onpointermove = g.onpointerup = null; UIP.size[win.id] = [win.offsetWidth, win.offsetHeight]; savePos(); };
+  };
+  g.ondblclick = () => {
+    delete UIP.size[win.id]; saveUI();
+    for (const k of ['width', 'height', 'maxHeight']) win.style[k] = '';
+    win.classList.remove('sized');
+  };
+}
 for (const win of document.querySelectorAll('.win[id]:not(#bubble)')) {
   const bar = win.querySelector(':scope > .bar');
   if (!bar) continue;

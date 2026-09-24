@@ -13,6 +13,19 @@ body>.win{position:fixed}
 #annals p.soon{opacity:.45}
 #annals p.now{color:var(--clay);text-align:center;margin:2px 0 6px}
 #annals b{font-weight:400;color:var(--clay)}
+/* 右下角拖着改大小（纪年、独白、身体）；双击拖柄恢复默认。拉过的窗口带 .sized，里面的列表跟着填满 */
+#chron{position:relative}
+@media (min-width:641px){#hud>.bar,#chron>.bar,#log>.bar,#ups>.bar,#radio>.bar{cursor:move}}   /* 拖标题栏挪窗口，见 ui.js */
+.grip{position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;cursor:nwse-resize;touch-action:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' shape-rendering='crispEdges'%3E%3Cpath fill='%23a39c98' d='M8 0h2v2H8zM4 4h2v2H4zM8 4h2v2H8zM0 8h2v2H0zM4 8h2v2H4zM8 8h2v2H8z'/%3E%3C/svg%3E") no-repeat}
+.win.folded .grip{display:none}
+#chron.sized{display:flex;flex-direction:column}
+#chron.sized #annals{flex:1;min-height:0;max-height:none}
+#ups.sized{max-height:none}
+#log.sized{display:flex;flex-direction:column}
+#log.sized .logbody{flex:1;min-height:0}
+#log.sized #lines{overflow-y:auto}
+#log.sized .scroll{display:none}
 #pts{font-size:24px;line-height:30px;color:var(--clay);padding:0 2px}
 #hud .field{margin:2px 0 6px}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:4px}   /* 全图占一整行，下面两两一排 */
@@ -34,6 +47,7 @@ html:lang(en) #origin::before{content:"Where this sheet came from"}
 #log{position:fixed;left:12px;bottom:12px;width:min(480px,calc(100vw - 290px))}
 .logbody{display:flex;gap:4px}
 #lines{flex:1;min-width:0;min-height:54px}
+#log:not(.sized) #lines p:nth-last-child(n+6){display:none}
 #lines p{margin:0}
 #lines p:not(:last-child){color:var(--dim)}
 .scroll{width:14px;display:flex;flex-direction:column;flex:none}
@@ -58,7 +72,7 @@ html:lang(en) #origin::before{content:"Where this sheet came from"}
 #tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.35}}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
-#poster{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(40,34,44,.45)}
+#poster{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:rgba(40,34,44,.45)}
 #poster .win{max-width:94vw;max-height:94vh;display:flex;flex-direction:column}
 #poster .pv{overflow:auto;min-height:0}
 #pcv{display:block;max-width:88vw;max-height:76vh}
@@ -78,6 +92,7 @@ html.compact #area,html.compact .clock,html.compact #flat,html.compact #paper,ht
 html.compact #origin,html.compact #ups .up:not(.goal),html.compact .up small,html.compact .status,
 html.compact #lines p:not(:last-child),html.compact .scroll,
 html.compact #eq,html.compact #vol,html.compact #tune,html.compact #next,
+html.compact .grip,
 html.compact #civ,html.compact #annals p:not(.new):not(.now){display:none!important}
 #pet{display:none}
 html.pet,html.pet body{background:transparent}
@@ -97,4 +112,5 @@ html.pet #pet{cursor:pointer}
   #log{position:static;align-self:stretch;width:auto}
   #lines p:nth-last-child(n+4){display:none}
   .scroll{display:none}
+  .grip{display:none}
 }

@@ -89,6 +89,7 @@ function say(s, { chat = false, bubble = false } = {}) {
   const log = $('lines'), p = document.createElement('p');
   p.textContent = s;
   log.append(p);
-  while (log.children.length > 5) log.firstChild.remove();
+  while (log.children.length > 40) log.firstChild.remove();   // 平时只显示最后 5 句；窗口拉大了能往回翻
+  log.scrollTop = log.scrollHeight;
   $('log').hidden = false;
 }
