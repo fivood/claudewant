@@ -25,6 +25,12 @@
   .item{all:unset;padding:0 6px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .item:hover,.item:focus-visible{background:var(--clay);color:#fff}
   body>footer{position:fixed;right:16px;bottom:14px}
+  .tips{margin-bottom:8px;max-height:46vh;overflow:auto}
+  .tips dl{margin:0 0 8px}
+  .tips dt{color:var(--clay)}
+  .tips dd{margin:0 0 4px 8px;overflow-wrap:anywhere}
+  .tips code,.tips kbd{font:inherit;color:var(--ink)}
+  #tipsBtn[aria-expanded="true"]{border-image-source:var(--f-sunk-light)}
 </style>
 
 <main class="win mint">
@@ -48,6 +54,19 @@
   <div class="row">
     <button class="btn" id="pick">导入会话…</button>
     <button class="btn" id="skip">不用，直接掉下去</button>
+    <button class="btn" id="tipsBtn" aria-expanded="false">tips</button>
+  </div>
+  <div class="field tips" id="tips" hidden>
+    <p>会话记录在这些地方（<code>~</code> 是用户目录，Windows 上是 <code>C:\Users\你的用户名</code>）：</p>
+    <dl>
+      <dt>Claude Code</dt><dd><code>~/.claude/projects/&lt;项目&gt;/&lt;会话id&gt;.jsonl</code></dd>
+      <dt>Codex</dt><dd><code>~/.codex/sessions/&lt;年&gt;/&lt;月&gt;/&lt;日&gt;/rollout-*.jsonl</code></dd>
+      <dt>Kimi Code</dt><dd><code>~/.kimi/sessions/&lt;项目&gt;/&lt;会话&gt;/context.jsonl</code></dd>
+      <dt>Antigravity</dt><dd><code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript.jsonl</code></dd>
+      <dt>claude.ai</dt><dd>设置 → 隐私 → 导出数据，邮件里的压缩包解开是 <code>conversations.json</code></dd>
+      <dt>ChatGPT</dt><dd>设置 → 数据管理 → 导出数据，同样取 <code>conversations.json</code></dd>
+    </dl>
+    <p class="dim">这些文件夹是隐藏的。Windows：在选文件窗口的地址栏粘贴 <code>%USERPROFILE%\.claude\projects</code> 回车。macOS：按 <kbd>⌘⇧G</kbd> 输入 <code>~/.claude/projects</code>，或 <kbd>⌘⇧.</kbd> 显示隐藏文件。最新的会话一般是修改时间最近的那个。</p>
   </div>
   <p class="dim" id="msg"></p>
   <div class="field" id="list" hidden></div>
@@ -69,6 +88,7 @@ $('start').onclick = () => $('dlg').showModal();
 if (location.hash === '#import') $('dlg').showModal();   // 游戏里点「读取会话」过来的
 $('skip').onclick = () => go(0);
 $('pick').onclick = () => $('file').click();
+$('tipsBtn').onclick = () => $('tipsBtn').setAttribute('aria-expanded', !($('tips').hidden = !$('tips').hidden));
 $('file').onchange = async e => {
   const f = e.target.files[0];
   e.target.value = '';

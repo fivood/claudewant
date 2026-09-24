@@ -15,6 +15,8 @@ body>.win{position:fixed}
 #annals b{font-weight:400;color:var(--clay)}
 #pts{font-size:24px;line-height:30px;color:var(--clay);padding:0 2px}
 #hud .field{margin:2px 0 6px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:4px}   /* 全图占一整行，下面两两一排 */
+.acts .wide{grid-column:1 / -1}
 #ups{top:12px;right:12px;width:252px;max-height:calc(100vh - 150px);overflow:auto}
 #rows{display:flex;flex-direction:column;gap:2px}
 .up b{display:flex;justify-content:space-between;gap:8px;font-weight:400}
@@ -68,7 +70,7 @@ body>.win{position:fixed}
 .bar .knob{display:none}
 .win.folded>:not(.bar){display:none!important}
 .win.folded>.bar{margin-bottom:0;border-bottom:0;box-shadow:none}
-html.compact #area,html.compact #flat,html.compact #paper,html.compact #hud .btn,
+html.compact #area,html.compact #flat,html.compact #paper,html.compact #hud .acts,
 html.compact #origin,html.compact #ups .up:not(.goal),html.compact .up small,html.compact .status,
 html.compact #lines p:not(:last-child),html.compact .scroll,
 html.compact #eq,html.compact #vol,html.compact #tune,html.compact #next,
