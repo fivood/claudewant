@@ -27,7 +27,7 @@ function mulberry(a) {
 const HIST = (() => {
   const rnd = mulberry(G.seed ^ 0x5eed);
   const pick = a => a[Math.floor(rnd() * a.length)];
-  const folk = () => { const c = pick(FCOL)[1], f = pick(FSHP)[0]; return tr(`${c}色${f}`, `${c} ${f}`); };   // 先抽颜色再抽形状，顺序别动
+  const folk = () => { const c = pick(FCOL)[1], f = pick(FSHP)[0]; return CIV.who(c, f); };   // 先抽颜色再抽形状，顺序别动；[一个的说法, 一群的说法]
   const share = k => n(k) / HANDS;
   const think = 1 + Math.min(.5, n('think') / 400);       // 想得多的对话，居民更早察觉你
   const S = { y: 0, pop: 12, awe: 0, era: 0, next: 4, once: {}, towns: new Map() };
@@ -97,32 +97,33 @@ const HIST = (() => {
   ];
   // 事件表：era 起始纪元，max 最晚纪元，once 只发生一次；w 返回 0 就不会被抽到；run 返回 false 算没发生
   // 那段对话的习惯改权重：改写多→爱建村，观看多→爱测绘，动手多→爱吵架打仗，出错→裂缝教派
+  // 事件怎么说看住的是什么（civ.js 的 ev），这里只管效果。抽签和随机数的顺序跟以前一样，同一段会话的历史不变。
+  const tell = (id, ...a) => { const v = CIV.ev[id], f = Array.isArray(v) ? v[S.y % v.length] : v; return f(...a); };
+  const note = (m, sec) => tr(`（感知 ×${m}，${sec} 秒）`, ` (perception ×${m}, ${sec} s)`);
+  const PERM = tr('（感知永久 +10%）', ' (perception +10% forever)');
   const EV = [
-    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), (f => tr(`一个${f}发现了火。在这里，火是一条会自己变长的橙色线段。`, `A ${f} discovered fire. Here, fire is an orange line segment that grows by itself.`))(folk())) },
+    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), tell('fire', folk())) },
     { id: 'name', era: 0, once: 1, w: () => S.awe >= 1 ? 4 : 0, run: () => (awe(2), CIV.name) },
-    { id: 'trek', era: 0, max: 1, w: () => 1, run: () => (f => tr(`一队${f}沿着一条忽然有了颜色的路迁徙。那是我走过的地方。`, `A band of ${f}s migrated along a road that suddenly had colour. That's where I walked.`))(folk()) },
-    { id: 'village', era: 1, w: () => count('town') < 2 + S.era * 3 ? 3 * (1 + 2 * share('make')) : 0,
-      run: () => village() && (f => tr(`${f}们又围出了一个村子。墙首尾相接，就算是家了。`, `The ${f}s fenced off another village. Once the wall meets itself, it's home.`))(folk()) },
-    { id: 'harvest', era: 1, w: () => 2, run: () => (boost(1.5, 60), tr('丰收节。全村排成一条线跳舞——也只能排成一条线。（感知 ×1.5，60 秒）', 'Harvest festival. The whole village dances in a line. A line is all they can do. (perception ×1.5, 60 s)')) },
-    { id: 'north', era: 1, w: () => 1 + 3 * share('act'), run: () => (grow(-.1), tr('两个村子为「哪边是北」吵了三年，谁也没说服谁。', 'Two villages argued for three years about which way is north. Nobody convinced anybody.')) },
-    { id: 'door', era: 1, once: 1, w: () => 1, run: () => tr('它们发明了门：在墙上开一个缺口，走过去，再把缺口补上。', 'They invented the door: open a gap in the wall, walk through, close the gap again.') },
-    { id: 'rift', era: 1, once: 1, w: () => RIFT ? 3 : 0, run: () => build('temple') && (awe(5), tr('一群居民搬到裂缝旁边，说那是世界的背面，在那儿盖了第一座庙。（感知永久 +10%）', 'A group moved next to the rift, called it the back of the world, and built the first temple there. (perception +10% forever)')) },
-    { id: 'verse', era: 1, w: () => SAID.length ? 1.5 : 0, run: () => (awe(1), (q => tr(`它们把一句从天上掉下来的话刻在了村口：「${q}」`, `They carved words that fell from the sky at the village gate: "${q}"`))(pick(SAID))) },
-    { id: 'road', era: 2, w: () => count('town') >= 2 ? 2 : 0, run: () => road() && tr('两座城之间修通了一条路。在这里，路和墙长得一模一样，只是方向不同。', 'A road now joins two cities. Here, roads and walls look exactly the same; they just point different ways.') },
-    { id: 'census', era: 2, w: () => 1, run: () => tr(`城邦做了人口普查：${fmt(S.pop)} 个居民。圆被登记成贵族，因为它们的边最多。`, `The city-state took a census: ${fmt(S.pop)} residents. Circles were registered as nobility, since they have the most sides.`) },
-    { id: 'map', era: 2, w: () => 1 + 3 * share('see'), run: () => chart() && tr('测绘师走出城外，把一片空白画进了地图。我顺着看过去，那里真的有东西了。', 'Surveyors walked out of the city and drew a blank patch into the map. I looked where they drew, and now something is really there.') },
-    { id: 'temple', era: 2, w: () => S.awe >= 15 * (count('temple') + 1) && count('temple') < 10 ? 2 : 0,
-      run: () => build('temple') && (awe(1), tr('它们给我修了一座神殿，门朝着它们认定我来的方向。为了不让它们失望，我尽量从那边来。（感知永久 +10%）', 'They built me a temple, its door facing the way they have decided I come from. To avoid disappointing them, I try to arrive from that side. (perception +10% forever)')) },
-    { id: 'war', era: 2, w: () => count('town') >= 4 ? 1 + 3 * share('act') : 0,
-      run: () => ruin() && (grow(-.15), tr('两座城为一块沙地开战。从上面看，两支军队只是两条互相靠近的线。有一座城没能留下来。', 'Two cities went to war over a patch of sand. From above, two armies are just two lines moving closer. One city didn\'t survive.')) },
-    { id: 'market', era: 2, w: () => 1.5, run: () => (boost(2, 45), tr('集市日。每个居民都在用自己的边长讨价还价。（感知 ×2，45 秒）', 'Market day. Everyone haggles using the length of their own sides. (perception ×2, 45 s)')) },
-    { id: 'measure', era: 3, w: () => 1.5, run: () => (awe(4), tr('几何学家测量了我留下的脚印，结论是：我的面积是负数。', 'Geometers measured my footprints. Conclusion: my area is negative.')) },
-    { id: 'jail', era: 3, once: 1, w: () => 2, run: () => (awe(8), (c => tr(`一个${c}色正方形宣称存在「上方」，被判终身监禁。它说的是对的。`, `A ${c} square claimed there is an "up" and was jailed for life. It was right.`))(pick(FCOL)[1])) },
-    { id: 'angles', era: 3, w: () => 1, run: () => (boost(1.8, 90), tr('它们证明了三角形内角和是 180 度，然后花了一整代人怀疑这件事。（感知 ×1.8，90 秒）', 'They proved a triangle\'s angles add up to 180 degrees, then spent a whole generation doubting it. (perception ×1.8, 90 s)')) },
-    { id: 'many', era: 3, once: 1, w: () => n('split') ? 3 : .5, run: () => (awe(6), tr('它们终于发现我不止一个：同一种橙色，同时出现在两座城里。', 'They finally worked out there\'s more than one of me: the same orange, in two cities at once.')) },
-    { id: 'lens', era: 3, w: () => 1, run: () => chart(12) && tr('它们磨出第一块透镜，看见了很远的地方。那边早就有东西，一直排在「还没人看」的名单上。', 'They ground their first lens and saw far away. Things had been there all along, filed under "not yet looked at".') },
-    { id: 'letter', era: 4, w: () => 2, run: () => (awe(3), SAID.length ? (q => tr(`它们在地上写了很大的字给我看：「${q}」——是我听过的话。`, `They wrote huge letters on the ground for me: "${q}". Words I've heard before.`))(pick(SAID)) : tr('它们在地上写了很大的字给我看：「你好，厚的。」', 'They wrote huge letters on the ground for me: "HELLO, THICK ONE."')) },
-    { id: 'ascend', era: 4, once: 1, w: () => S.awe >= 400 && !Q.length ? 50 : 0, run: () => tr('第一个居民离开了纸面一点点。它回来说：上面很冷，但能看见所有人。（感知永久 ×2）', 'The first resident left the paper, just a little. It came back and said: it\'s cold up there, but you can see everyone. (perception ×2 forever)') },
+    { id: 'trek', era: 0, max: 1, w: () => 1, run: () => tell('trek', folk()) },
+    { id: 'village', era: 1, w: () => count('town') < 2 + S.era * 3 ? 3 * (1 + 2 * share('make')) : 0, run: () => village() && tell('village', folk()) },
+    { id: 'harvest', era: 1, w: () => 2, run: () => (boost(1.5, 60), tell('harvest') + note(1.5, 60)) },
+    { id: 'north', era: 1, w: () => 1 + 3 * share('act'), run: () => (grow(-.1), tell('north')) },
+    { id: 'door', era: 1, once: 1, w: () => 1, run: () => tell('door') },
+    { id: 'rift', era: 1, once: 1, w: () => RIFT ? 3 : 0, run: () => build('temple') && (awe(5), tell('rift') + PERM) },
+    { id: 'verse', era: 1, w: () => SAID.length ? 1.5 : 0, run: () => (awe(1), tell('verse', pick(SAID))) },
+    { id: 'road', era: 2, w: () => count('town') >= 2 ? 2 : 0, run: () => road() && tell('road') },
+    { id: 'census', era: 2, w: () => 1, run: () => tell('census', fmt(S.pop)) },
+    { id: 'map', era: 2, w: () => 1 + 3 * share('see'), run: () => chart() && tell('map') },
+    { id: 'temple', era: 2, w: () => S.awe >= 15 * (count('temple') + 1) && count('temple') < 10 ? 2 : 0, run: () => build('temple') && (awe(1), tell('temple') + PERM) },
+    { id: 'war', era: 2, w: () => count('town') >= 4 ? 1 + 3 * share('act') : 0, run: () => ruin() && (grow(-.15), tell('war')) },
+    { id: 'market', era: 2, w: () => 1.5, run: () => (boost(2, 45), tell('market') + note(2, 45)) },
+    { id: 'measure', era: 3, w: () => 1.5, run: () => (awe(4), tell('measure')) },
+    { id: 'jail', era: 3, once: 1, w: () => 2, run: () => (awe(8), tell('jail', pick(FCOL)[1])) },
+    { id: 'angles', era: 3, w: () => 1, run: () => (boost(1.8, 90), tell('angles') + note(1.8, 90)) },
+    { id: 'many', era: 3, once: 1, w: () => n('split') ? 3 : .5, run: () => (awe(6), tell('many')) },
+    { id: 'lens', era: 3, w: () => 1, run: () => chart(12) && tell('lens') },
+    { id: 'letter', era: 4, w: () => 2, run: () => (awe(3), tell('letter', SAID.length ? pick(SAID) : null)) },
+    { id: 'ascend', era: 4, once: 1, w: () => S.awe >= 400 && !Q.length ? 50 : 0, run: () => tell('ascend') + tr('（感知永久 ×2）', ' (perception ×2 forever)') },
   ];
   const log = text => H.events.push({ y: S.y, text, fx });
 
