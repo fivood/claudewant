@@ -1,6 +1,6 @@
 /* 游戏页的布局和桌宠样式；窗口、按钮、字体这些通用像素样式在 pixel.css */
 html,body{margin:0;height:100%;overflow:hidden;background:var(--paper)}
-canvas{display:block;width:100vw;height:100vh}
+#cv{display:block;width:100vw;height:100vh}
 body>.win{position:fixed}
 .col{position:fixed;left:12px;top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-height:calc(100vh - 200px)}
 #hud{width:196px}
