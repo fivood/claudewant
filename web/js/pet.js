@@ -268,5 +268,5 @@ if (TAURI) {
   };
   setTimeout(update, 5000);
   setInterval(update, 6 * 3600 * 1000);
-  setTimeout(() => setMode(true));                        // 等「开始」那段把 Clawd 放下来再缩进线国
+  if (!URL_SEED) setTimeout(() => setMode(true));         // 等「开始」那段把 Clawd 放下来再缩进线国；刚读完会话过来的就留在大窗口
 }

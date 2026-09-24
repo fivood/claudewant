@@ -4,8 +4,13 @@
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 let pet = false;                                           // 桌面版的桌宠模式
-// ?seed= 来自会话查看器：每条会话一张纸，各存各的档
-const SEED = Math.floor(+new URLSearchParams(location.search).get('seed')) || 0;
+// ?seed= 来自会话查看器：每条会话一张纸，各存各的档。
+// 桌面版每次都从 game.html 启动，所以记住上次读的会话，下次打开还在那张纸上
+const URL_SEED = Math.floor(+new URLSearchParams(location.search).get('seed')) || 0;
+let SEED = URL_SEED;
+try {
+  if (window.__TAURI__) SEED ? localStorage.setItem('clawd-seed', SEED) : SEED = +localStorage.getItem('clawd-seed') || 0;
+} catch { /* 无痕模式：不记 */ }
 const TAU = Math.PI * 2, CH = 32, TP = 4, SAVE = 'clawd-4d-v1' + (SEED ? ':' + SEED : '');
 
 // 会话查看器 / 首页用 worldOf() 写进来的：这段对话在二维世界留下的痕迹。没有就是一张普通的纸。

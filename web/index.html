@@ -59,13 +59,14 @@ import { loadFile, worldOf } from './parse.js';
 
 const $ = id => document.getElementById(id);
 const go = s => {
-  if (!s) { location.href = 'game.html'; return; }
+  if (!s) { try { localStorage.removeItem('clawd-seed'); } catch {} location.href = 'game.html'; return; }   // 桌面版不再回到上次的会话
   const w = worldOf(s);
   try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); } catch { /* 没存上就只用种子 */ }
   location.href = `game.html?seed=${w.seed}`;
 };
 
 $('start').onclick = () => $('dlg').showModal();
+if (location.hash === '#import') $('dlg').showModal();   // 游戏里点「读取会话」过来的
 $('skip').onclick = () => go(0);
 $('pick').onclick = () => $('file').click();
 $('file').onchange = async e => {
