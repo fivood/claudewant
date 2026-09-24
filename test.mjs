@@ -285,3 +285,24 @@ console.log('导出用例通过');
   assert.equal(v.told[0][0], 1, '带着在对话里的时间');
   console.log('自己的声音通过');
 }
+
+// annalsOf：写进平面国史书的几件事
+{
+  const { annalsOf, modelName } = await import('./web/parse.js');
+  assert.equal(modelName('claude-opus-4-5-20251101'), 'Opus 4.5');
+  assert.equal(modelName('claude-3-5-sonnet-20241022'), 'Sonnet 3.5');
+  assert.equal(modelName('gpt-5-codex'), 'gpt-5-codex');
+  const bash = (command, err) => ({ kind: 'tool', name: 'Bash', input: { command }, result: { text: '', isError: !!err } });
+  const a = annalsOf({ turns: [
+    { role: 'user', blocks: [{ kind: 'text', text: '做个游戏' }] },
+    { role: 'assistant', model: 'claude-opus-4-5-20251101', blocks: [bash('npm install zod@3 --save-dev lodash'), bash("git commit -qm \"修好气泡\n\nCo-Authored-By: x\"")] },
+    { role: 'user', blocks: [{ kind: 'text', text: '不对，按钮要在右边' }] },
+    { role: 'assistant', model: 'claude-sonnet-4-5-20250929', blocks: [bash("git commit -m \"$(cat <<'EOF'\n按钮挪到右边\n\nbody\nEOF\n)\""), bash('git commit -m "失败的"', true)] },
+    { role: 'user', blocks: [{ kind: 'text', text: '[Request interrupted by user]' }] },
+  ] });
+  assert.deepEqual(a.install.map(x => x[1]), ['zod, lodash'], '包名去掉版本号和参数');
+  assert.deepEqual(a.commit.map(x => x[1]), ['修好气泡', '按钮挪到右边'], '提交信息取第一行；-qm、heredoc 都认；失败的不算');
+  assert.deepEqual(a.nay.map(x => x[1]), ['不对，按钮要在右边', '……'], '「不对」和打断');
+  assert.deepEqual(a.model.map(x => x[1]), ['Opus 4.5', 'Sonnet 4.5'], '换模型');
+  console.log('史书原料通过');
+}

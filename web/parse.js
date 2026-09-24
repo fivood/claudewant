@@ -62,10 +62,10 @@ function acc(name, source) {
   const models = new Set(), tools = new Map();
   let cur = null;
   return {
-    s, models,
+    s, models, model: null,
     time(ts) { if (ts) { s.start = s.start ?? ts; s.end = ts; } },
     push(role, block, ts) {
-      if (!cur || cur.role !== role) s.turns.push(cur = { role, ts, sidechain: false, blocks: [] });
+      if (!cur || cur.role !== role) s.turns.push(cur = { role, ts, sidechain: false, blocks: [], model: this.model });
       if (block.kind === 'tool') tools.set(block.name, (tools.get(block.name) || 0) + 1);
       cur.blocks.push(block);
       return block;
@@ -90,7 +90,7 @@ function fromCodex(rows, name) {
     const p = r.payload || {}, ts = r.timestamp;
     a.time(ts);
     if (r.type === 'session_meta') Object.assign(a.s, { sessionId: p.id, cwd: p.cwd, version: p.cli_version });
-    else if (r.type === 'turn_context' && p.model) a.models.add(p.model);
+    else if (r.type === 'turn_context' && p.model) { a.models.add(p.model); a.model = p.model; }
     else if (r.type === 'event_msg' && p.type === 'token_count' && p.info?.total_token_usage) {
       const u = p.info.total_token_usage;                      // 累计值，取最后一条
       a.s.usage = { input: u.input_tokens - (u.cached_input_tokens || 0), output: u.output_tokens || 0,
@@ -182,7 +182,7 @@ function fromChatGPT(c) {
     const role = m.author?.role, ct = m.content || {}, ts = m.create_time ? new Date(m.create_time * 1000).toISOString() : null;
     const text = (ct.parts || []).filter(p => typeof p === 'string').join('\n') || ct.text || '';
     a.time(ts);
-    if (m.metadata?.model_slug) a.models.add(m.metadata.model_slug);
+    if (m.metadata?.model_slug) { a.models.add(m.metadata.model_slug); a.model = m.metadata.model_slug; }
     if (role === 'user' && text.trim()) a.push('user', { kind: 'text', text }, ts);
     else if (role === 'assistant' && ct.content_type === 'thoughts')
       a.push('assistant', { kind: 'thinking', text: (ct.thoughts || []).map(t => t.content).join('\n') }, ts);
@@ -306,7 +306,7 @@ export function buildSession(rows, name = '') {
       }
     }
     if (!blocks.length) continue;                          // 纯 tool-result 的那一轮
-    turns.push({ role: r.type, ts: r.timestamp, sidechain: !!r.isSidechain, blocks });
+    turns.push({ role: r.type, ts: r.timestamp, sidechain: !!r.isSidechain, blocks, model: m.model });
   }
 
   return {
@@ -420,7 +420,7 @@ function filesOf(b) {
   for (const m of String(i.patch || i.input || '').matchAll(/\*\*\* (?:Update|Add) File: (.+?)(?=\\n|[\r\n"]|$)/g)) found.push(m[1]);
   return found.map(f => f.trim().split(/[\\/]/).pop()).filter(Boolean);
 }
-const errLabel = t => clip(String(t || '').split('\n').map(l => l.replace(/^(<system>)?\s*(ERROR|Error)[:：]?\s*/, '').trim()).find(Boolean) || '', 20);
+const errLabel = t => clip(String(t || '').split('\n').map(l => l.replace(/<\/?[\w-]+>/g, '').replace(/^\s*(ERROR|Error)[:：]?\s*/, '').trim()).find(Boolean) || '', 20);
 const CMD_CATS = [
   ['deploy', /\b(deploy|wrangler|vercel|netlify|gh-pages)\b|git\s+push/i],
   ['install', /\b(npm|pnpm|yarn|pip3?|cargo)\s+(install|add|i)\b/i],
@@ -449,6 +449,42 @@ export function marksOf(s) {
   for (const [label, e] of top(errs, 3)) marks.push({ k: 'err', t: e.t, label, n: e.n, ok: e.ok });
   for (const [label, e] of top(cmds, 3)) marks.push({ k: 'cmd', t: e.t, label, n: e.n });
   return marks.sort((a, b) => a.t - b.t);
+}
+
+// --- 平面国历史的原料：对话里几件能写进史书的事，各带时间位置 t ------------------------------
+//   commit 提交信息的第一行 · install 一次装进来的包 · nay 你说「不对 / 停」或打断 · model 换了模型（朝代）
+const NAY = /^(\[Request interrupted|不对|不是这样|不是这个|错了|停一下|停下|先停|别这样|不要这样|撤回|回滚|no\b|nope\b|wrong\b|stop\b|that'?s not|revert\b|undo\b)/i;
+const COMMIT = /git\s+commit\b[^\n]*?\s-[a-z]*m\s*(?:"\$\(cat <<'?EOF'?\s*\n\s*([^\n]+)|@'\s*\n\s*([^\n]+)|"((?:[^"\\]|\\.)+)"|'([^']+)')/g;   // -m / -qm / -am，heredoc、PowerShell here-string、引号都认
+const INSTALL = /\b(?:(?:npm|pnpm|yarn|bun)\s+(?:install|add|i)|pip3?\s+install|cargo\s+add|go\s+get)\s+([^\n;&|]+)/g;
+export const modelName = m => {
+  const c = /^claude-(?:(\d+)-(\d+)-)?([a-z]+)(?:-(\d{1,2})(?:-(\d{1,2}))?(?!\d))?/.exec(m);   // claude-opus-4-5-2025… 和老的 claude-3-5-sonnet
+  if (!c) return m.replace(/-\d{8}$/, '');
+  const v = c[4] ? c[4] + (c[5] ? '.' + c[5] : '') : c[1] + '.' + c[2];
+  return c[3][0].toUpperCase() + c[3].slice(1) + ' ' + v;
+};
+export function annalsOf(s) {
+  const main = s.turns.filter(t => !t.sidechain), N = Math.max(1, main.length - 1), T = i => +(i / N).toFixed(3);
+  const out = { commit: [], install: [], nay: [], model: [] }, seen = new Set();
+  main.forEach((turn, i) => {
+    if (turn.role === 'assistant' && turn.model && !/synthetic/.test(turn.model)) {
+      const m = modelName(turn.model);
+      if (m !== out.model.at(-1)?.[1]) out.model.push([T(i), m]);
+    }
+    for (const b of turn.blocks) {
+      if (turn.role === 'user' && b.kind === 'text' && NAY.test(b.text.trim())) {
+        const q = clip(b.text.trim().replace(/^\[Request interrupted[^\]]*\]\s*/i, ''), 16);
+        out.nay.push([T(i), q || '……']);
+      }
+      if (b.kind !== 'tool' || b.result?.isError) continue;
+      const cmd = String(b.input?.command || b.input?.cmd || '');
+      for (const m of cmd.matchAll(COMMIT)) out.commit.push([T(i), clip((m[1] || m[2] || m[3] || m[4]).split(/\\n|\n/)[0].replace(/\\"/g, '"'), 24)]);
+      for (const m of cmd.matchAll(INSTALL)) {
+        const pk = m[1].split(/\s+/).filter(p => p && !/^[-.]/.test(p)).map(p => p.replace(/(?<=.)[@=<>~^].*$/, '')).filter(p => /^@?[a-z][\w./-]*$/i.test(p) && !seen.has(p) && seen.add(p));
+        if (pk.length) out.install.push([T(i), pk.slice(0, 3).join(', ')]);
+      }
+    }
+  });
+  return { commit: spread(out.commit, 8), install: spread(out.install, 5), nay: spread(out.nay, 5), model: out.model.slice(0, 5) };
 }
 
 // --- Clawd 自己的声音：AI 的回复是它掉下来之前说过的话，思考是它当时的念头 ------------------
@@ -504,7 +540,7 @@ export function worldOf(s) {
     }
     else if (b.kind === 'text' && t.role === 'user' && !t.sidechain) {
       const line = b.text.replace(/\s+/g, ' ').trim();
-      if (line.length < 2 || /^[<[]/.test(line)) continue;   // 标签、[Image …] 占位
+      if (line.length < 2 || /^[<[{]/.test(line)) continue;   // 标签、[Image …] 占位、图片块的 JSON
       w.talk++;
       said.push(line.length > 28 ? line.slice(0, 28) + '…' : line);
     }
@@ -516,6 +552,7 @@ export function worldOf(s) {
   w.path = pathOf(s, w.shape);
   w.marks = marksOf(s);
   Object.assign(w, voicesOf(s));
+  w.annals = annalsOf(s);
   return w;
 }
 

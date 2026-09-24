@@ -121,10 +121,10 @@ const THEMES = {
     sand: tr('沙。每一粒都是一个点，每个点都没有大小。', 'Sand. Every grain is a point, and every point has no size.'),
     forest: tr('树。我能同时看见它的每一圈年轮。', 'Trees. I can see every one of their rings at once.'),
     rock: tr('石头。二维的石头硌不到四维的脚。', 'Stone. A two-dimensional stone can\'t bruise a four-dimensional foot.'),
-    peak: tr('山。它们管这叫"高"，其实只是更难绕过去。', 'Mountains. They call this "high". It just means harder to walk around.'),
+    peak: tr('山。它们管这叫「高」。它们的词典里，「高」的定义是「绕过去要多走几步」。', 'Mountains. They call this "high". Their dictionary defines "high" as "takes a few extra steps to get around".'),
     snow: tr('雪。在一个没有"上面"的世界里，雪是从哪里落下来的？', 'Snow. In a world with no "up", where does snow fall from?'),
     rift: tr('裂缝。那段对话在这里出过错，纸被划破了。我能从破口看见下面。', 'A rift. The conversation went wrong here and the paper tore. I can see underneath through the gap.') } },
-  foil: { name: tr('二向箔', 'Dual-Vector Foil'), intro: tr('这张纸……不是画出来的。是一整个星系被压平以后铺成的。', 'This sheet wasn\'t drawn. It\'s a whole star system, flattened and laid out.'), t: {
+  foil: { name: tr('二向箔', 'Dual-Vector Foil'), intro: tr('这张纸的原材料是一整个星系：压平，铺开，裁成现在这个尺寸。', 'This sheet\'s raw material was an entire star system: flattened, spread out, trimmed to size.'), t: {
     deep: [tr('摊开的海', 'unfolded sea'), [40, 62, 120], 'stripe', [70, 98, 160]], water: [tr('平面的浪', 'planar waves'), [88, 120, 196], 'stripe', [140, 170, 230]],
     sand: [tr('压平的海岸', 'pressed coast'), [220, 196, 170], 'none'], grass: [tr('展开的城市', 'unfolded city'), [176, 170, 190], 'grid', [128, 120, 148]],
     forest: [tr('叶子全摊开的森林', 'forest with every leaf laid flat'), [70, 150, 110], 'speck', [150, 220, 160]], rock: [tr('展开的地壳', 'unrolled crust'), [168, 120, 96], 'ring', [196, 150, 120]],
