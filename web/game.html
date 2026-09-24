@@ -2,16 +2,16 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>四维来客</title>
+<title data-en="A Visitor from the Fourth Dimension">四维来客</title>
 <meta name="description" content="一只四维生物掉进了无限展开的二维世界。它走到哪，世界就展开到哪。像素挂机游戏。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23d97757' d='M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z'/%3E%3Cpath fill='%231f1d1b' d='M4 1h1v2H4zM9 1h1v2H9z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="pixel.css">
 <link rel="stylesheet" href="game.css">
 
-<canvas id="cv" aria-label="二维世界"></canvas>
+<canvas id="cv" aria-label="二维世界" data-en-label="The two-dimensional world"></canvas>
 <div class="col">
 <section class="win mint" id="hud" hidden>
-  <header class="bar"><i class="ico" aria-hidden="true"></i><b>感知.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <header class="bar"><i class="ico" aria-hidden="true"></i><b data-en="sense.exe">感知.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
   <div id="pts"></div>
   <div class="field">
     <div id="rate"></div>
@@ -19,23 +19,23 @@
     <div id="flat" hidden></div>
     <div id="paper" hidden></div>
   </div>
-  <div class="clock"><span id="clockT"></span><input type="range" id="hour" min="0" max="23.75" step="0.25" aria-label="纸面上的钟点"><button class="tb" id="clockBtn" type="button" title="跟着你那边的真实时间">实时</button></div>
+  <div class="clock"><span id="clockT"></span><input type="range" id="hour" min="0" max="23.75" step="0.25" aria-label="纸面上的钟点" data-en-label="Hour on the paper"><button class="tb" id="clockBtn" type="button" title="跟着你那边的真实时间" data-en-title="Follow your real clock" data-en="live">实时</button><button class="tb lang" type="button"></button></div>
   <div class="acts">
-    <button class="btn wide" id="mapBtn">全图</button>
-    <a class="btn" id="loadBtn" href="index.html#import">读取会话</a>
-    <button class="btn" id="reset">重新掉落</button>
-    <button class="btn" id="petBtn" hidden>缩成桌宠</button>
-    <button class="btn" id="quitBtn" hidden>退出</button>
+    <button class="btn wide" id="mapBtn" data-en="Full map">全图</button>
+    <a class="btn" id="loadBtn" href="index.html#import" data-en="Load session">读取会话</a>
+    <button class="btn" id="reset" data-en="Fall again">重新掉落</button>
+    <button class="btn" id="petBtn" hidden data-en="Shrink to pet">缩成桌宠</button>
+    <button class="btn" id="quitBtn" hidden data-en="Quit">退出</button>
   </div>
 </section>
 <section class="win light" id="chron" hidden>
-  <header class="bar"><b>纪年.log</b><i class="knob" aria-hidden="true"></i></header>
+  <header class="bar"><b data-en="annals.log">纪年.log</b><i class="knob" aria-hidden="true"></i></header>
   <div class="field" id="civ"></div>
   <div id="annals" aria-live="polite"></div>
 </section>
 <!-- log 在左列里：桌面上用 fixed 钉到左下角，手机上跟在感知窗口下面 -->
 <section class="win light" id="log" hidden>
-  <header class="bar"><b>独白.txt</b><i class="knob" aria-hidden="true"></i></header>
+  <header class="bar"><b data-en="monologue.txt">独白.txt</b><i class="knob" aria-hidden="true"></i></header>
   <div class="logbody">
     <div class="field" id="lines" aria-live="polite"></div>
     <div class="scroll" aria-hidden="true"><i>▲</i><span></span><i>▼</i></div>
@@ -43,34 +43,35 @@
 </section>
 </div>
 <section class="win beige" id="ups" hidden>
-  <header class="bar"><b>身体.sys</b><i class="knob" aria-hidden="true"></i></header>
+  <header class="bar"><b data-en="body.sys">身体.sys</b><i class="knob" aria-hidden="true"></i></header>
   <div class="field" id="origin" hidden></div>
   <div id="rows"></div>
 </section>
 
 <section class="win mint" id="radio">
-  <header class="bar"><b>电台.fm</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <header class="bar"><b data-en="radio.fm">电台.fm</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
   <div class="deck">
-    <button class="btn" id="play" aria-label="播放电台">▶</button>
-    <button class="btn" id="next" aria-label="换台" title="换台">»</button>
+    <button class="btn" id="play" aria-label="播放电台" data-en-label="Play the radio">▶</button>
+    <button class="btn" id="next" aria-label="换台" title="换台" data-en-label="Next station" data-en-title="Next station">»</button>
     <div class="field eq" id="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-    <input type="range" id="vol" min="0" max="100" value="60" aria-label="音量">
+    <input type="range" id="vol" min="0" max="100" value="60" aria-label="音量" data-en-label="Volume">
   </div>
-  <div id="tune">FM 4.0 · 纸面电台</div>
+  <div id="tune" data-en="FM 4.0 · Paper Radio">FM 4.0 · 纸面电台</div>
 </section>
 <div id="flash"></div>
 <div id="poster" hidden>
   <section class="win light">
-    <header class="bar"><b>全图.png</b></header>
-    <div class="pv"><canvas id="pcv" aria-label="整张纸的全图"></canvas></div>
-    <div class="prow"><button class="btn" id="pmap">纸面</button><button class="btn" id="p4d" hidden>四维</button><span class="sp"></span><button class="btn" id="pdl">下载 PNG</button><button class="btn" id="pclose">关闭</button></div>
+    <header class="bar"><b data-en="map.png">全图.png</b></header>
+    <div class="pv"><canvas id="pcv" aria-label="整张纸的全图" data-en-label="The whole sheet"></canvas></div>
+    <div class="prow"><button class="btn" id="pmap" data-en="Paper">纸面</button><button class="btn" id="p4d" hidden data-en="4D">四维</button><span class="sp"></span><button class="btn" id="pdl" data-en="Download PNG">下载 PNG</button><button class="btn" id="pclose" data-en="Close">关闭</button></div>
   </section>
 </div>
 <div id="pet">
   <div class="win light" id="bubble" hidden aria-live="polite"></div>
-  <canvas id="petcv" aria-label="Clawd，点一下展开"></canvas>
+  <canvas id="petcv" aria-label="Clawd，点一下展开" data-en-label="Clawd. Click to expand"></canvas>
 </div>
 
+<script src="i18n.js"></script>
 <script src="js/world.js"></script>
 <script src="js/life.js"></script>
 <script src="js/talk.js"></script>

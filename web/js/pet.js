@@ -75,11 +75,11 @@ const footing = ax => Math.max(groundAt(ax - 2), groundAt(ax), groundAt(ax + 2))
 const CLIMB_MAX = 22, SAID_AT = new Map();
 function passLine(l) {
   const m = l.w.m, n = l.w.name;
-  if (m.kindKey === 'deploy') return ['launch', `那段对话从这里发射过 ${m.n} 次。这次发射的是我。三、二、一——`];
-  if (m.kindKey === 'build') return ['furnace', `我从${n}里穿了过去。进去的时候是橙色的，出来的时候更橙了。`];
-  if (l.maxTop > CLIMB_MAX) return ['phase', `${n}太高了。我往第四个方向迈了一步——线国的人会以为我死了一次。`];
-  if (m.k === 'err') return ['climb', m.ok ? `有人修好了「${m.label}」，所以这里有桥。` : `「${m.label}」一直没修好。每个经过的人都得下去一趟。`];
-  return ['climb', `${n}横在线上。在一维里，爬高就是换一种方式往前走。`];
+  if (m.kindKey === 'deploy') return ['launch', tr(`那段对话从这里发射过 ${m.n} 次。这次发射的是我。三、二、一——`, `The conversation launched from here ${m.n} times. This time it's launching me. Three, two, one...`)];
+  if (m.kindKey === 'build') return ['furnace', tr(`我从${n}里穿了过去。进去的时候是橙色的，出来的时候更橙了。`, `I walked straight through the ${n}. I went in orange and came out more orange.`)];
+  if (l.maxTop > CLIMB_MAX) return ['phase', tr(`${n}太高了。我往第四个方向迈了一步——线国的人会以为我死了一次。`, `The ${n} is too tall. I stepped into the fourth direction. Lineland will think I died for a moment.`)];
+  if (m.k === 'err') return ['climb', m.ok ? tr(`有人修好了「${m.label}」，所以这里有桥。`, `Someone fixed "${m.label}", so there's a bridge here.`) : tr(`「${m.label}」一直没修好。每个经过的人都得下去一趟。`, `"${m.label}" was never fixed. Everyone who passes has to climb down into it.`)];
+  return ['climb', tr(`${n}横在线上。在一维里，爬高就是换一种方式往前走。`, `The ${n} lies across the line. In one dimension, climbing is just another way of going forward.`)];
 }
 function speakOnce(l, text) {                              // 同一个奇观两分钟内只念叨一次
   const now = performance.now();
@@ -140,7 +140,7 @@ function petTick(dt) {
   }
   if (b.x < 0 || b.x > max) {                              // 屏幕到头：把线折一下，从另一头接着走
     b.x = b.x < 0 ? max : 0;
-    if (!G.seen.lineFold) { G.seen.lineFold = 1; bubbleAt = -1e9; say('屏幕到头了。我把这条线折了一下，从另一头接着走。', { bubble: true }); }
+    if (!G.seen.lineFold) { G.seen.lineFold = 1; bubbleAt = -1e9; say(tr('屏幕到头了。我把这条线折了一下，从另一头接着走。', 'End of the screen. I folded the line and carried on from the other end.'), { bubble: true }); }
   }
   const cell = Math.floor(L1.x);
   if (cell !== lineCell) {
@@ -149,7 +149,7 @@ function petTick(dt) {
       if (!rev.has(key(c, L1.y))) { if (c === cell) L1.walked++; reveal(c, L1.y, 0); }
     if (L1.walked >= 80 && !G.seen.lineKing) {
       G.seen.lineKing = 1; bubbleAt = -1e9;
-      say('我遇见了线国国王。他坚持世界只有一条线。我往「旁边」挪了一步，他以为我死了。', { bubble: true });
+      say(tr('我遇见了线国国王。他坚持世界只有一条线。我往「旁边」挪了一步，他以为我死了。', 'I met the King of Lineland. He insists the world is a single line. I stepped "sideways" and he thought I\'d died.'), { bubble: true });
     }
   }
   // 窗口要够高：看得见的奇观和 Clawd 飞到的高度都要装下；按 32 像素一档变，免得一直改大小
@@ -222,12 +222,12 @@ async function setMode(p) {
     Object.assign(buddy, { hop: 0, alt: 0, act: null, alpha: 1, lastL: null });
     lineCell = null;
     bubbleAt = -1e9;
-    say('我缩成了二维。世界跟着缩成了一条线。', { bubble: true });
+    say(tr('我缩成了二维。世界跟着缩成了一条线。', 'I shrank down to two dimensions. The world shrank with me, into a line.'), { bubble: true });
   } else {                                                 // 回到纸面：从线国走到的地方接着逛
     ws[0].x = G.line.x; ws[0].y = G.line.y + .5; ws[0].k = -1;
     retarget(ws[0]);
     cam.x = ws[0].x; cam.y = ws[0].y;
-    if (G.line.walked) say(`回到上面了。线国在纸上留下了一道 ${G.line.walked} 格长的细线。`);
+    if (G.line.walked) say(tr(`回到上面了。线国在纸上留下了一道 ${G.line.walked} 格长的细线。`, `Back up top. Lineland left a thin line ${G.line.walked} tiles long on the paper.`));
   }
   if (!TAURI) return;
   const w = TAURI.window.getCurrentWindow(), { LogicalSize } = TAURI.dpi;
@@ -260,7 +260,7 @@ if (TAURI) {
       const u = await TAURI.updater.check();
       if (!u) return;
       bubbleAt = -1e9;
-      say(`发现新版本 ${u.version}，我去换一身新的截面……`, { bubble: true });
+      say(tr(`发现新版本 ${u.version}，我去换一身新的截面……`, `Version ${u.version} is out. Off to change into a new cross-section...`), { bubble: true });
       save();
       await u.downloadAndInstall();
       await TAURI.process.relaunch();

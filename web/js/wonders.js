@@ -21,9 +21,9 @@ const readPct = () => ROUTE.size ? Math.floor(routeSeen / ROUTE.size * 100) : 0;
 function routeStep() {                                     // 又读到一格
   routeSeen++;
   const pct = readPct();
-  for (const [q, line] of [[25, '那段对话我读到四分之一了。前面的路是它后来说的话。'], [50, '读到一半了。回头看，路上的颜色就是那段对话的样子。'], [75, '还剩四分之一。我大概猜得到结尾，但还是想走过去。']])
+  for (const [q, line] of [[25, tr('那段对话我读到四分之一了。前面的路是它后来说的话。', 'I\'ve read a quarter of that conversation. The road ahead is what it said later.')], [50, tr('读到一半了。回头看，路上的颜色就是那段对话的样子。', 'Halfway. Looking back, the colours on the road are what the conversation looked like.')], [75, tr('还剩四分之一。我大概猜得到结尾，但还是想走过去。', 'A quarter left. I can probably guess the ending, but I want to walk there anyway.')]])
     if (pct >= q && !G.seen['read' + q]) { G.seen['read' + q] = 1; say(line, { bubble: true }); }
-  if (routeSeen >= ROUTE.size && !G.seen.readAll) { G.seen.readAll = 1; bubbleAt = -1e9; say('这段对话我从头到尾走完了。可以把整张纸收起来看看了。', { bubble: true }); mapReady(); }
+  if (routeSeen >= ROUTE.size && !G.seen.readAll) { G.seen.readAll = 1; bubbleAt = -1e9; say(tr('这段对话我从头到尾走完了。可以把整张纸收起来看看了。', 'I\'ve walked this conversation from start to finish. Time to fold up the whole sheet and have a look.'), { bubble: true }); mapReady(); }
 }
 // 顺着对话往后读：挑下一格还没展开的路，太远就算了
 function nextRoute(w) {
@@ -42,30 +42,30 @@ const C3 = { stone: [196, 190, 180], dark: [120, 114, 110], clay: [214, 128, 92]
 // 一个模型：方块 [x, y, z, 宽, 深, 高, 颜色]（美术像素，一格 = 4），可选的坑 [x, y, 宽, 深, 深度] 和夜灯 [x, y, z]
 function model(m) {
   const ext = (m.label.match(/\.(\w+)$/) || [])[1]?.toLowerCase() || '';
-  if (m.k === 'first') return { name: '开篇碑', boxes: [[0, 8, 0, 14, 6, 3, 'stone'], [4, 9, 3, 6, 3, 20, 'stone'], [4, 8, 23, 6, 4, 2, 'dark']],
-    line: `一块碑，立在我落下来的地方。上面刻着：「${m.label}」` };
+  if (m.k === 'first') return { name: tr('开篇碑', 'Opening Stele'), boxes: [[0, 8, 0, 14, 6, 3, 'stone'], [4, 9, 3, 6, 3, 20, 'stone'], [4, 8, 23, 6, 4, 2, 'dark']],
+    line: tr(`一块碑，立在我落下来的地方。上面刻着：「${m.label}」`, `A stele, standing where I fell in. It's inscribed: "${m.label}"`) };
   if (m.k === 'file') {
     let shape, boxes;
     if (/^(m?js|jsx|ts|tsx|cjs)$/.test(ext)) {
-      shape = '方塔'; boxes = [];
+      shape = tr('方塔', 'tower'); boxes = [];
       for (let k = 0; k < 2 + Math.min(2, Math.floor(m.n / 5)); k++) boxes.push([2 * k, 2 * k, 6 * k, 14 - 4 * k, 14 - 4 * k, 6, /^t/.test(ext) ? 'ts' : 'js']);
-    } else if (/^html?$/.test(ext)) { shape = '城门'; boxes = [[0, 6, 0, 4, 4, 16, 'html'], [12, 6, 0, 4, 4, 16, 'html'], [0, 6, 16, 16, 4, 4, 'clay']]; }
+    } else if (/^html?$/.test(ext)) { shape = tr('城门', 'gate'); boxes = [[0, 6, 0, 4, 4, 16, 'html'], [12, 6, 0, 4, 4, 16, 'html'], [0, 6, 16, 16, 4, 4, 'clay']]; }
     else if (/^(s?css|less)$/.test(ext)) {
-      shape = '彩砖台'; boxes = [[0, 0, 0, 16, 12, 2, 'stone']];
+      shape = tr('彩砖台', 'mosaic terrace'); boxes = [[0, 0, 0, 16, 12, 2, 'stone']];
       for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) boxes.push([i * 4, j * 4, 2, 4, 4, .5, ['clay', 'ts', 'gold'][(i + j) % 3]]);
-    } else if (/^(md|txt|rst)$/.test(ext)) { shape = '摊开的书'; boxes = [[0, 3, 0, 7, 10, 3, 'white'], [9, 3, 0, 7, 10, 3, 'white'], [7, 3, 0, 2, 10, 2, 'ink']]; }
-    else if (ext === 'py') { shape = '蛇形墙'; boxes = Array.from({ length: 7 }, (_, i) => [i * 2.5, 5 + Math.round(3 * Math.sin(i * 1.1)), 0, 3, 3, 4 + i % 2, 'py']); }
-    else { shape = '方尖碑'; boxes = [[2, 2, 0, 10, 10, 2, 'stone'], [4, 4, 2, 6, 6, 22, 'dark'], [5, 5, 24, 4, 4, 3, 'gold']]; }
-    return { name: `${m.label} ${shape}`, boxes, line: `${m.label}。那段对话在这里改了 ${m.n} 次，改成了一座${shape}。` };
+    } else if (/^(md|txt|rst)$/.test(ext)) { shape = tr('摊开的书', 'open book'); boxes = [[0, 3, 0, 7, 10, 3, 'white'], [9, 3, 0, 7, 10, 3, 'white'], [7, 3, 0, 2, 10, 2, 'ink']]; }
+    else if (ext === 'py') { shape = tr('蛇形墙', 'serpent wall'); boxes = Array.from({ length: 7 }, (_, i) => [i * 2.5, 5 + Math.round(3 * Math.sin(i * 1.1)), 0, 3, 3, 4 + i % 2, 'py']); }
+    else { shape = tr('方尖碑', 'obelisk'); boxes = [[2, 2, 0, 10, 10, 2, 'stone'], [4, 4, 2, 6, 6, 22, 'dark'], [5, 5, 24, 4, 4, 3, 'gold']]; }
+    return { name: `${m.label} ${shape}`, boxes, line: tr(`${m.label}。那段对话在这里改了 ${m.n} 次，改成了一座${shape}。`, `${m.label}. The conversation changed it ${m.n} times, and it became ${/^[aeiou]/.test(shape) ? 'an' : 'a'} ${shape}.`) };
   }
-  if (m.k === 'err') return { name: `「${m.label}」峡谷`, pits: [[0, 0, 20, 8, 6, true]], boxes: m.ok ? [[8, -3, 0, 4, 14, 1, 'wood']] : [],
-    line: m.ok ? `「${m.label}」——一道裂谷。上面架着一座桥：那个错后来修好了。` : `「${m.label}」——一道裂谷，没有桥。那个错一直没修好。` };
+  if (m.k === 'err') return { name: tr(`「${m.label}」峡谷`, `"${m.label}" ravine`), pits: [[0, 0, 20, 8, 6, true]], boxes: m.ok ? [[8, -3, 0, 4, 14, 1, 'wood']] : [],
+    line: m.ok ? tr(`「${m.label}」——一道裂谷。上面架着一座桥：那个错后来修好了。`, `"${m.label}": a ravine with a bridge over it. That error got fixed later.`) : tr(`「${m.label}」——一道裂谷，没有桥。那个错一直没修好。`, `"${m.label}": a ravine with no bridge. That error was never fixed.`) };
   const cmd = {
-    deploy: ['发射台', [[0, 0, 0, 16, 16, 2, 'stone'], [12, 2, 2, 3, 3, 24, 'dark'], [5, 6, 2, 5, 5, 14, 'white'], [5, 6, 16, 5, 5, 3, 'clay'], [6, 7, 19, 3, 3, 3, 'clay']], [[13, 2, 26]], `发射台。那段对话从这里往外发射过 ${m.n} 次。`],
-    build: ['锻炉', [[0, 4, 0, 14, 10, 10, 'brick'], [10, 5, 10, 3, 3, 10, 'brick']], [[6, 13, 3]], `锻炉。东西在这里被烧成了形状，一共 ${m.n} 炉。`],
-    test: ['试炼场', Array.from({ length: 6 }, (_, i) => [8 + 7 * Math.cos(i * Math.PI / 3) - 1, 8 + 7 * Math.sin(i * Math.PI / 3) - 1, 0, 2, 2, 9, 'stone']), [], `试炼场。${m.n} 次，它们在这里证明自己没坏。`],
-    git: ['分叉树', [[7, 7, 0, 3, 3, 16, 'wood'], [2, 8, 9, 5, 2, 2, 'wood'], [10, 8, 11, 5, 2, 2, 'wood'], [1, 7, 11, 2, 2, 6, 'green'], [14, 7, 13, 2, 2, 6, 'green'], [7, 6, 16, 3, 3, 4, 'green']], [], `一棵分叉的树，${m.n} 根枝。每一根都是一次决定。`],
-    install: ['依赖森林', [[2, 3], [9, 1], [13, 7], [4, 10], [10, 12]].flatMap(([x, y]) => [[x, y, 0, 1, 1, 3, 'wood'], [x - 1, y - 1, 3, 3, 3, 5, 'green']]), [], `依赖森林。${m.n} 次，它把别人的东西种了进来。`],
+    deploy: [tr('发射台', 'Launch Pad'), [[0, 0, 0, 16, 16, 2, 'stone'], [12, 2, 2, 3, 3, 24, 'dark'], [5, 6, 2, 5, 5, 14, 'white'], [5, 6, 16, 5, 5, 3, 'clay'], [6, 7, 19, 3, 3, 3, 'clay']], [[13, 2, 26]], tr(`发射台。那段对话从这里往外发射过 ${m.n} 次。`, `A launch pad. The conversation launched things from here ${m.n} times.`)],
+    build: [tr('锻炉', 'Forge'), [[0, 4, 0, 14, 10, 10, 'brick'], [10, 5, 10, 3, 3, 10, 'brick']], [[6, 13, 3]], tr(`锻炉。东西在这里被烧成了形状，一共 ${m.n} 炉。`, `A forge. Things were fired into shape here, ${m.n} batches in all.`)],
+    test: [tr('试炼场', 'Proving Ground'), Array.from({ length: 6 }, (_, i) => [8 + 7 * Math.cos(i * Math.PI / 3) - 1, 8 + 7 * Math.sin(i * Math.PI / 3) - 1, 0, 2, 2, 9, 'stone']), [], tr(`试炼场。${m.n} 次，它们在这里证明自己没坏。`, `A proving ground. ${m.n} times, things came here to prove they weren't broken.`)],
+    git: [tr('分叉树', 'Branching Tree'), [[7, 7, 0, 3, 3, 16, 'wood'], [2, 8, 9, 5, 2, 2, 'wood'], [10, 8, 11, 5, 2, 2, 'wood'], [1, 7, 11, 2, 2, 6, 'green'], [14, 7, 13, 2, 2, 6, 'green'], [7, 6, 16, 3, 3, 4, 'green']], [], tr(`一棵分叉的树，${m.n} 根枝。每一根都是一次决定。`, `A branching tree with ${m.n} branches. Each one was a decision.`)],
+    install: [tr('依赖森林', 'Dependency Grove'), [[2, 3], [9, 1], [13, 7], [4, 10], [10, 12]].flatMap(([x, y]) => [[x, y, 0, 1, 1, 3, 'wood'], [x - 1, y - 1, 3, 3, 3, 5, 'green']]), [], tr(`依赖森林。${m.n} 次，它把别人的东西种了进来。`, `A dependency grove. ${m.n} times, it planted other people's things here.`)],
   }[m.label];
   return cmd && { name: cmd[0], boxes: cmd[1], glow: cmd[2], line: cmd[3] };
 }
@@ -195,9 +195,9 @@ function discover(w) {
   bubbleAt = -1e9;
   say(w.line, { bubble: true });
   const r = w.r;
-  if (r) setTimeout(() => { bubbleAt = -1e9; say(`看着它，我想起当时${r[2] ? '在想' : '说过'}：「${r[1]}」`, { bubble: true }); }, 9000);   // 等上一个气泡说完
+  if (r) setTimeout(() => { bubbleAt = -1e9; say(r[2] ? tr(`看着它，我想起当时在想：「${r[1]}」`, `Looking at it, I remember thinking: "${r[1]}"`) : tr(`看着它，我想起当时说过：「${r[1]}」`, `Looking at it, I remember saying: "${r[1]}"`), { bubble: true }); }, 9000);   // 等上一个气泡说完
   earn(150 * mult() * (1 + 3 * w.m.t));
-  if (!G.seen.shadowNote) { G.seen.shadowNote = 1; say('它立在纸上，但居民看不见它——它们只看得见它投下来的影子。在它们眼里，那是一块会跟着天色转动的暗斑。'); }
+  if (!G.seen.shadowNote) { G.seen.shadowNote = 1; say(tr('它立在纸上，但居民看不见它——它们只看得见它投下来的影子。在它们眼里，那是一块会跟着天色转动的暗斑。', 'It stands on the paper, but the residents can\'t see it. They only see its shadow: a dark patch that turns with the time of day.')); }
 }
 const foundCount = () => WONDERS.filter(w => G.found[w.id]).length;
 
@@ -289,11 +289,11 @@ function renderPoster() {
   drawWonders(ox, oy, px, px / TP, g, W, H, { x: 0, y: -.5 });
   drawClawd(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
   g.fillStyle = INK; g.font = `24px ${font}`;
-  g.fillText(`四维来客 · ${TH.name}`, M, 44);
+  g.fillText(`${tr('四维来客', 'A Visitor from the Fourth Dimension')} · ${TH.name}`, M, 44);
   g.fillStyle = '#7d7780'; g.font = `12px ${font}`;
-  g.fillText(`${SEED ? `纸面 #${SEED} · 从一段对话里折出来` : `纸面 #${G.seed} · 直接开始的一张`} · ${new Date().toLocaleDateString()}`, M, 66);
+  g.fillText(`${SEED ? tr(`纸面 #${SEED} · 从一段对话里折出来`, `Sheet #${SEED} · folded out of a conversation`) : tr(`纸面 #${G.seed} · 直接开始的一张`, `Sheet #${G.seed} · started from scratch`)} · ${new Date().toLocaleDateString(LANG === 'en' ? 'en' : 'zh-CN')}`, M, 66);
   const y = yearNow();
-  g.fillText([`已展开 ${fmt(rev.size)} 格`, `遇见居民 ${fmt(G.flat)}`, seen() ? `二维历 ${y + 1} 年 · ${ERAS[HIST.era[y]]}` : '', ROUTE.size ? `对话读到 ${readPct()}%` : ''].filter(Boolean).join(' · '), M, H - 20);
+  g.fillText([tr(`已展开 ${fmt(rev.size)} 格`, `${fmt(rev.size)} tiles unfolded`), tr(`遇见居民 ${fmt(G.flat)}`, `${fmt(G.flat)} residents met`), seen() ? tr(`二维历 ${y + 1} 年 · ${ERAS[HIST.era[y]]}`, `Flat Year ${y + 1} · ${ERAS[HIST.era[y]]}`) : '', ROUTE.size ? tr(`对话读到 ${readPct()}%`, `conversation read ${readPct()}%`) : ''].filter(Boolean).join(' · '), M, H - 20);
 }
 
 // 全图有两个视图：「纸面」是展开过的地图；「四维」是这段对话本来的样子——
@@ -321,16 +321,16 @@ function shapeView(now) {
   };
   const a = now / 1000 * .35, b = a * .61, ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
   trace(P.map(([x, y, z, w, k]) => [x * ca - w * sa, y * cb - z * sb, k]), 360, 440, 700, 2);   // 半径 350，转到哪都不出界
-  [['x-y · 纸面', 0, 1], ['x-z', 0, 2], ['x-w', 0, 3], ['y-z', 1, 2], ['y-w', 1, 3], ['z-w', 2, 3]].forEach(([name, i, j], n) => {
+  [[tr('x-y · 纸面', 'x-y · paper'), 0, 1], ['x-z', 0, 2], ['x-w', 0, 3], ['y-z', 1, 2], ['y-w', 1, 3], ['z-w', 2, 3]].forEach(([name, i, j], n) => {
     const cx = 800 + (n % 3) * 200, cy = 290 + Math.floor(n / 3) * 290;
     g.strokeStyle = '#e3ded4'; g.lineWidth = 2; g.strokeRect(cx - 92, cy - 106, 184, 196);
     trace(P.map(q => [q[i], q[j], q[4]]), cx, cy, 170, 1.2, true);
     g.fillStyle = '#7d7780'; g.font = `12px ${font}`; g.fillText(name, cx - 84, cy - 90);
   });
-  g.fillStyle = INK; g.font = `24px ${font}`; g.fillText('这段对话的四维样子', 32, 44);
+  g.fillStyle = INK; g.font = `24px ${font}`; g.fillText(tr('这段对话的四维样子', 'This conversation in four dimensions'), 32, 44);
   g.fillStyle = '#7d7780'; g.font = `12px ${font}`;
-  g.fillText('纸上那条路，只是它在 x-y 平面上的影子。换一个方向投下去，就是另一个图案。', 32, 68);
-  g.fillText('橙 你说的话 · 蓝 观看 · 褐 动手 · 绿 改写 · 紫 思考 · 灰蓝 回话 · 红 出错', 32, H - 24);
+  g.fillText(tr('纸上那条路，只是它在 x-y 平面上的影子。换一个方向投下去，就是另一个图案。', 'The road on the paper is only its shadow on the x-y plane. Project it another way and you get another pattern.'), 32, 68);
+  g.fillText(tr('橙 你说的话 · 蓝 观看 · 褐 动手 · 绿 改写 · 紫 思考 · 灰蓝 回话 · 红 出错', 'orange: your words · blue: looking · brown: doing · green: editing · purple: thinking · slate: replies · red: errors'), 32, H - 24);
 }
 function posterView(mode) {
   posterMode = mode;
@@ -345,7 +345,7 @@ $('mapBtn').onclick = () => {
   $('poster').hidden = false; $('mapBtn').classList.remove('ready');
   const c = $('pcv'), g = c.getContext('2d');                // 大地图要画一两秒，先说一声再画
   c.width = 480; c.height = 120; g.fillStyle = PAPER; g.fillRect(0, 0, 480, 120);
-  g.fillStyle = INK; g.font = `12px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`; g.fillText('正在把整张纸铺开……', 24, 64);
+  g.fillStyle = INK; g.font = `12px ${getComputedStyle(document.documentElement).getPropertyValue('--px')}`; g.fillText(tr('正在把整张纸铺开……', 'Laying out the whole sheet...'), 24, 64);
   setTimeout(() => posterView('map'), 30);
 };
 $('pmap').onclick = () => posterView('map');
@@ -354,7 +354,7 @@ $('pclose').onclick = () => { cancelAnimationFrame(spin); $('poster').hidden = t
 $('pdl').onclick = () => $('pcv').toBlob(b => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
-  a.download = `四维来客-${posterMode === '4d' ? '四维投影' : TH.name}-${SEED || G.seed}.png`;
+  a.download = `${tr('四维来客', 'visitor4d')}-${posterMode === '4d' ? tr('四维投影', '4d-projection') : TH.name}-${SEED || G.seed}.png`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });

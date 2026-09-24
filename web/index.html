@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>四维来客</title>
+<title data-en="A Visitor from the Fourth Dimension">四维来客</title>
 <meta name="description" content="一只四维生物掉进了无限展开的二维世界。它走到哪，世界就展开到哪。像素挂机游戏。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23d97757' d='M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z'/%3E%3Cpath fill='%231f1d1b' d='M4 1h1v2H4zM9 1h1v2H9z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="pixel.css">
@@ -34,7 +34,7 @@
 </style>
 
 <main class="win mint">
-  <header class="bar"><i class="ico" aria-hidden="true"></i><b>四维来客.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
+  <header class="bar"><i class="ico" aria-hidden="true"></i><b data-en="visitor4d.exe">四维来客.exe</b><span class="gems" aria-hidden="true"><i></i><i></i><i></i></span></header>
   <div class="field stage">
     <svg class="clawd" viewBox="0 0 14 8" shape-rendering="crispEdges" role="img" aria-label="Clawd">
       <path fill="#d97757" d="M2 0h10v3h2v2h-2v1H2V5H0V3h2zM2 6h1v2H2zM4 6h1v2H4zM9 6h1v2H9zM11 6h1v2h-1z"/>
@@ -42,37 +42,52 @@
     </svg>
     <button class="btn" id="start">START</button>
   </div>
-  <footer class="status"><span class="field">四维 → 二维</span><span class="field">挂机中</span></footer>
+  <footer class="status"><span class="field" data-en="4D → 2D">四维 → 二维</span><span class="field" data-en="idling">挂机中</span></footer>
 </main>
-<footer><a class="btn" href="viewer.html">会话查看器</a></footer>
+<footer><button class="btn lang"></button> <a class="btn" href="viewer.html" data-en="Session viewer">会话查看器</a></footer>
 
 <dialog id="dlg" class="win beige">
-  <header class="bar"><b>导入.dlg</b><i class="knob" aria-hidden="true"></i></header>
-  <p>要用一段会话当种子吗？</p>
-  <p class="dim">对话会变成这张纸的地形、居民和它长大的方式。同一段会话永远折出同一张纸，各存各的档。文件只在本地读取，不会上传。</p>
-  <p class="dim">认得 Claude Code、Codex、Kimi Code、Antigravity 的会话记录，claude.ai / ChatGPT 的数据导出，以及 OpenAI 格式的 messages。</p>
+  <header class="bar"><b data-en="import.dlg">导入.dlg</b><i class="knob" aria-hidden="true"></i></header>
+  <p data-en="Use a session as the seed?">要用一段会话当种子吗？</p>
+  <p class="dim" data-en="The conversation becomes this sheet of paper: its terrain, its residents, the way it grows. The same session always folds into the same sheet, with its own save. The file is read locally and never uploaded.">对话会变成这张纸的地形、居民和它长大的方式。同一段会话永远折出同一张纸，各存各的档。文件只在本地读取，不会上传。</p>
+  <p class="dim" data-en="Reads Claude Code, Codex, Kimi Code and Antigravity session logs, claude.ai / ChatGPT data exports, and OpenAI-style messages.">认得 Claude Code、Codex、Kimi Code、Antigravity 的会话记录，claude.ai / ChatGPT 的数据导出，以及 OpenAI 格式的 messages。</p>
   <div class="row">
-    <button class="btn" id="pick">导入会话…</button>
-    <button class="btn" id="skip">不用，直接掉下去</button>
+    <button class="btn" id="pick" data-en="Import session…">导入会话…</button>
+    <button class="btn" id="skip" data-en="No, just fall in">不用，直接掉下去</button>
     <button class="btn" id="tipsBtn" aria-expanded="false">tips</button>
   </div>
   <div class="field tips" id="tips" hidden>
-    <p>会话记录在这些地方（<code>~</code> 是用户目录，Windows 上是 <code>C:\Users\你的用户名</code>）：</p>
-    <dl>
-      <dt>Claude Code</dt><dd><code>~/.claude/projects/&lt;项目&gt;/&lt;会话id&gt;.jsonl</code></dd>
-      <dt>Codex</dt><dd><code>~/.codex/sessions/&lt;年&gt;/&lt;月&gt;/&lt;日&gt;/rollout-*.jsonl</code></dd>
-      <dt>Kimi Code</dt><dd><code>~/.kimi/sessions/&lt;项目&gt;/&lt;会话&gt;/context.jsonl</code></dd>
-      <dt>Antigravity</dt><dd><code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript.jsonl</code></dd>
-      <dt>claude.ai</dt><dd>设置 → 隐私 → 导出数据，邮件里的压缩包解开是 <code>conversations.json</code></dd>
-      <dt>ChatGPT</dt><dd>设置 → 数据管理 → 导出数据，同样取 <code>conversations.json</code></dd>
-    </dl>
-    <p class="dim">这些文件夹是隐藏的。Windows：在选文件窗口的地址栏粘贴 <code>%USERPROFILE%\.claude\projects</code> 回车。macOS：按 <kbd>⌘⇧G</kbd> 输入 <code>~/.claude/projects</code>，或 <kbd>⌘⇧.</kbd> 显示隐藏文件。最新的会话一般是修改时间最近的那个。</p>
+    <div data-lang="zh">
+      <p>会话记录在这些地方（<code>~</code> 是用户目录，Windows 上是 <code>C:\Users\你的用户名</code>）：</p>
+      <dl>
+        <dt>Claude Code</dt><dd><code>~/.claude/projects/&lt;项目&gt;/&lt;会话id&gt;.jsonl</code></dd>
+        <dt>Codex</dt><dd><code>~/.codex/sessions/&lt;年&gt;/&lt;月&gt;/&lt;日&gt;/rollout-*.jsonl</code></dd>
+        <dt>Kimi Code</dt><dd><code>~/.kimi/sessions/&lt;项目&gt;/&lt;会话&gt;/context.jsonl</code></dd>
+        <dt>Antigravity</dt><dd><code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript.jsonl</code></dd>
+        <dt>claude.ai</dt><dd>设置 → 隐私 → 导出数据，邮件里的压缩包解开是 <code>conversations.json</code></dd>
+        <dt>ChatGPT</dt><dd>设置 → 数据管理 → 导出数据，同样取 <code>conversations.json</code></dd>
+      </dl>
+      <p class="dim">这些文件夹是隐藏的。Windows：在选文件窗口的地址栏粘贴 <code>%USERPROFILE%\.claude\projects</code> 回车。macOS：按 <kbd>⌘⇧G</kbd> 输入 <code>~/.claude/projects</code>，或 <kbd>⌘⇧.</kbd> 显示隐藏文件。最新的会话一般是修改时间最近的那个。</p>
+    </div>
+    <div data-lang="en">
+      <p>Where the session logs live (<code>~</code> is your home folder; on Windows that's <code>C:\Users\&lt;you&gt;</code>):</p>
+      <dl>
+        <dt>Claude Code</dt><dd><code>~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl</code></dd>
+        <dt>Codex</dt><dd><code>~/.codex/sessions/&lt;year&gt;/&lt;month&gt;/&lt;day&gt;/rollout-*.jsonl</code></dd>
+        <dt>Kimi Code</dt><dd><code>~/.kimi/sessions/&lt;project&gt;/&lt;session&gt;/context.jsonl</code></dd>
+        <dt>Antigravity</dt><dd><code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript.jsonl</code></dd>
+        <dt>claude.ai</dt><dd>Settings → Privacy → Export data; unzip the archive from the email and take <code>conversations.json</code></dd>
+        <dt>ChatGPT</dt><dd>Settings → Data controls → Export data; same <code>conversations.json</code></dd>
+      </dl>
+      <p class="dim">These folders are hidden. Windows: paste <code>%USERPROFILE%\.claude\projects</code> into the file picker's address bar and press Enter. macOS: press <kbd>⌘⇧G</kbd> and type <code>~/.claude/projects</code>, or <kbd>⌘⇧.</kbd> to show hidden files. The newest session is usually the most recently modified file.</p>
+    </div>
   </div>
   <p class="dim" id="msg"></p>
   <div class="field" id="list" hidden></div>
   <input type="file" id="file" accept=".jsonl,.json" hidden>
 </dialog>
 
+<script src="i18n.js"></script>
 <script type="module">
 import { loadFile, worldOf } from './parse.js';
 
@@ -95,10 +110,10 @@ $('file').onchange = async e => {
   if (!f) return;
   $('list').replaceChildren();
   const ss = loadFile(await f.text(), f.name);
-  if (!ss.length) { $('msg').textContent = '这个文件里没读到会话，换一个试试？'; return; }
+  if (!ss.length) { $('msg').textContent = tr('这个文件里没读到会话，换一个试试？', 'No session found in this file. Try another one?'); return; }
   if (ss.length === 1) return go(ss[0]);
   // claude.ai 导出是一整包对话，让人挑一段
-  $('msg').textContent = `里面有 ${ss.length} 段对话，挑一段：`;
+  $('msg').textContent = tr(`里面有 ${ss.length} 段对话，挑一段：`, `${ss.length} conversations inside. Pick one:`);
   $('list').hidden = false;
   $('list').replaceChildren(...ss.map(s => {
     const b = document.createElement('button');

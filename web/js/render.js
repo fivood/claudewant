@@ -154,7 +154,7 @@ function frame(now) {
     $('flash').style.transition = 'none';
     $('flash').style.opacity = 1;
     requestAnimationFrame(() => { $('flash').style.transition = ''; $('flash').style.opacity = 0; });
-    if (!G.seen.fold1) { G.seen.fold1 = 1; say('我把纸对折了一下，从这一头直接踩到了那一头。'); }
+    if (!G.seen.fold1) { G.seen.fold1 = 1; say(tr('我把纸对折了一下，从这一头直接踩到了那一头。', 'I folded the paper and stepped straight from one end to the other.')); }
   }
 
   const f = Math.min(1, dt * 4);
@@ -166,7 +166,7 @@ function frame(now) {
   const dl = daylight();
   if (seen() && HIST.era[yearNow()] >= 1) earn(live.town * (1 + HIST.era[yearNow()]) * .6 * mult() * buff() * (1.5 - .5 * dl) * dt);   // 城镇也在想你，夜里想得更多
   const phase = dl < .5 ? 'night' : 'day';
-  if (G.phase && G.phase !== phase) { bubbleAt = -1e9; say(phase === 'night' ? '天黑了。纸面上的城一个个亮起灯。它们不知道光从哪来，也不知道它为什么会走。' : '天亮了。光又从那个它们不存在的方向照了下来。', { bubble: true }); }
+  if (G.phase && G.phase !== phase) { bubbleAt = -1e9; say(phase === 'night' ? tr('天黑了。纸面上的城一个个亮起灯。它们不知道光从哪来，也不知道它为什么会走。', 'Night. The towns on the paper light up one by one. They don\'t know where the light comes from, or why it leaves.') : tr('天亮了。光又从那个它们不存在的方向照了下来。', 'Morning. The light is back, from the direction they don\'t have.'), { bubble: true }); }
   G.phase = phase;
   if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
   if ((civT += dt) >= 1) { civT = 0; annals(); }

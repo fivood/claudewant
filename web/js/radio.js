@@ -8,7 +8,7 @@
 //   底下是宫和徵的持续低音，句首一声磬，木鱼轻轻点拍，句尾落在宫或徵上。
 (() => {
   const KEY = (G.seed % 7) - 3;
-  const STATIONS = [{ name: 'FM 4.0 · 纸面电台', bpm: 72 }, { name: 'FM 5.1 · 宫商角徵羽', bpm: 60 }];
+  const STATIONS = [{ name: tr('FM 4.0 · 纸面电台', 'FM 4.0 · Paper Radio'), bpm: 72 }, { name: tr('FM 5.1 · 宫商角徵羽', 'FM 5.1 · Five Tones'), bpm: 60 }];
   let st = (() => { try { return +localStorage.getItem('clawd-station') % STATIONS.length || 0; } catch { return 0; } })();
   let S16 = 60 / STATIONS[st].bpm / 4, B;                   // B：当前这个台的总线，换台时整条淡出
   const CHORDS = [
@@ -190,11 +190,11 @@
   function setVol() { if (out) out.gain.value = ($('vol').value / 100) ** 2 * 1.6; }   // 满音量峰值约 0.9
   function ui() {
     $('play').textContent = on() ? '❚❚' : '▶';
-    $('play').setAttribute('aria-label', on() ? '暂停电台' : '播放电台');
+    $('play').setAttribute('aria-label', on() ? tr('暂停电台', 'Pause the radio') : tr('播放电台', 'Play the radio'));
     $('eq').classList.toggle('live', on());
     const waiting = pref() === 'on' && !on();
     $('tune').classList.toggle('hint', waiting);
-    $('tune').textContent = waiting ? '▶ 点一下页面开电台' : `${STATIONS[st].name}${KEY ? ` · ${KEY > 0 ? '+' : ''}${KEY}` : ''}`;
+    $('tune').textContent = waiting ? tr('▶ 点一下页面开电台', '▶ Click the page to start the radio') : `${STATIONS[st].name}${KEY ? ` · ${KEY > 0 ? '+' : ''}${KEY}` : ''}`;
   }
   const pref = (v) => { try { if (v) localStorage.setItem('clawd-radio', v); return localStorage.getItem('clawd-radio') || 'on'; } catch { return 'on'; } };
 

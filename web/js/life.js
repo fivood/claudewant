@@ -9,19 +9,19 @@ const mult = () => 1.25 ** L('mult') * (seen() ? (1 + .1 * Math.min(10, live.tem
 const foldCD = () => 48 - 6 * L('fold');
 
 const UPS = [
-  { id: 'speed', name: '步长', max: 20, cost: l => 40 * 1.9 ** l, info: l => `每秒走 ${(1.2 + .35 * l).toFixed(2)} 格`,
-    say: '少往第四个方向漏一点，就走得快一点。' },
-  { id: 'radius', name: '截面', max: 8, cost: l => 150 * 4 ** l, info: l => `落在纸面上的截面半径 ${1 + l}`,
-    say: '我把更大的一截放进了这个平面。' },
-  { id: 'color', name: '色彩', max: 1, cost: () => 200, info: () => '这里原本是有颜色的',
-    say: '颜色回来了。或者说，我终于看见了它们。' },
-  { id: 'mult', name: '理解', max: 40, cost: l => 400 * 3 ** l, info: l => `每格感知 ×${(1.25 ** l).toFixed(2)}`,
-    say: '我开始理解这里的规则。规则只沿着两条轴。' },
-  { id: 'clone', name: '投影', max: 5, cost: l => 6000 * 10 ** l, info: l => `同时落在纸面上的截面 ${1 + l} 个`,
-    say: '我又放下了自己的另一截。在这里，它们看起来毫无关系。' },
-  { id: 'life', name: '居民', max: 1, need: 'color', cost: () => 2000, info: () => '看见生活在纸面上的东西', say: '' },
-  { id: 'fold', name: '折纸', max: 6, cost: l => 60000 * 4 ** l, info: l => `每 ${48 - 6 * l} 秒把纸对折一次，跳去远处`,
-    say: '纸是可以折的。住在纸上的人不知道。' },
+  { id: 'speed', name: tr('步长', 'Stride'), max: 20, cost: l => 40 * 1.9 ** l, info: l => tr(`每秒走 ${(1.2 + .35 * l).toFixed(2)} 格`, `${(1.2 + .35 * l).toFixed(2)} tiles per second`),
+    say: tr('少往第四个方向漏一点，就走得快一点。', 'Leak a little less into the fourth direction, and I walk a little faster.') },
+  { id: 'radius', name: tr('截面', 'Cross-section'), max: 8, cost: l => 150 * 4 ** l, info: l => tr(`落在纸面上的截面半径 ${1 + l}`, `Cross-section radius on the paper: ${1 + l}`),
+    say: tr('我把更大的一截放进了这个平面。', 'I put a bigger slice of myself into the plane.') },
+  { id: 'color', name: tr('色彩', 'Colour'), max: 1, cost: () => 200, info: () => tr('这里原本是有颜色的', 'This place had colours all along'),
+    say: tr('颜色回来了。或者说，我终于看见了它们。', 'The colours came back. Or rather, I finally saw them.') },
+  { id: 'mult', name: tr('理解', 'Understanding'), max: 40, cost: l => 400 * 3 ** l, info: l => tr(`每格感知 ×${(1.25 ** l).toFixed(2)}`, `Perception per tile ×${(1.25 ** l).toFixed(2)}`),
+    say: tr('我开始理解这里的规则。规则只沿着两条轴。', 'I\'m starting to understand the rules here. They only run along two axes.') },
+  { id: 'clone', name: tr('投影', 'Projection'), max: 5, cost: l => 6000 * 10 ** l, info: l => tr(`同时落在纸面上的截面 ${1 + l} 个`, `${1 + l} cross-sections on the paper at once`),
+    say: tr('我又放下了自己的另一截。在这里，它们看起来毫无关系。', 'I set down another slice of myself. Down here they look completely unrelated.') },
+  { id: 'life', name: tr('居民', 'Residents'), max: 1, need: 'color', cost: () => 2000, info: () => tr('看见生活在纸面上的东西', 'See the things that live on the paper'), say: '' },
+  { id: 'fold', name: tr('折纸', 'Folding'), max: 6, cost: l => 60000 * 4 ** l, info: l => tr(`每 ${48 - 6 * l} 秒把纸对折一次，跳去远处`, `Fold the paper every ${48 - 6 * l} s and jump somewhere far`),
+    say: tr('纸是可以折的。住在纸上的人不知道。', 'Paper can be folded. The people who live on it don\'t know that.') },
 ];
 
 const rows = {};
@@ -69,7 +69,7 @@ function buy(u) {
     for (const k of rev) { const x = kx(k), y = ky(k); if (h(x, y, G.seed + 99) < FLATP && isFlat(x, y, tile(x, y))) n++; }
     G.flat += n;
     if (n) earn(n * FLATV * mult());
-    say(n ? `原来它们一直都在。我走过的地方住着 ${n} 个居民。` : '这里应该有人住。我还没走到。');
+    say(n ? tr(`原来它们一直都在。我走过的地方住着 ${n} 个居民。`, `They were here all along. ${n} residents live where I've walked.`) : tr('这里应该有人住。我还没走到。', 'Someone should live here. I just haven\'t reached them yet.'));
     seeHistory();
   }
   hud();
@@ -128,10 +128,10 @@ function earn(v) { G.pts += v; G.total += v; secGain += v; }
 function meet(x, y) {
   G.flat++;
   const [[, cn], [sn]] = flatOf(x, y);
-  if (pet) return say(`我从一个${cn}色${sn}上面跨了过去。在它看来，我凭空消失了一瞬间。`, { chat: true, bubble: true });
-  if (SAID.length) return say(`遇见一个${cn}色的${sn}。它反复念着一句从上方掉下来的话：「${SAID[G.heard++ % SAID.length]}」`, { chat: true });
-  const sees = ['一段会变长变短的橙色线段', '一团忽大忽小的颜色', '一个不讲道理的影子', '天气'];
-  say(`遇见一个${cn}色的${sn}。它把我看成了${sees[Math.floor(Math.random() * sees.length)]}。`, { chat: true });
+  if (pet) return say(tr(`我从一个${cn}色${sn}上面跨了过去。在它看来，我凭空消失了一瞬间。`, `I stepped over a ${cn} ${sn}. To it, I vanished for a moment.`), { chat: true, bubble: true });
+  if (SAID.length) { const q = SAID[G.heard++ % SAID.length]; return say(tr(`遇见一个${cn}色的${sn}。它反复念着一句从上方掉下来的话：「${q}」`, `Met a ${cn} ${sn}. It keeps repeating something that fell from above: "${q}"`), { chat: true }); }
+  const sees = [tr('一段会变长变短的橙色线段', 'an orange line segment that grows and shrinks'), tr('一团忽大忽小的颜色', 'a blob of colour that swells and fades'), tr('一个不讲道理的影子', 'an unreasonable shadow'), tr('天气', 'weather')];
+  say(tr(`遇见一个${cn}色的${sn}。它把我看成了${sees[Math.floor(Math.random() * sees.length)]}。`, `Met a ${cn} ${sn}. It saw me as ${sees[Math.floor(Math.random() * sees.length)]}.`), { chat: true });
 }
 
 // 不在的时候按离开前的速度折半算，不模拟地图。
@@ -140,11 +140,11 @@ function away(sec) {
   const y0 = yearNow();
   G.age += sec;
   advance(true);
-  if (seen() && yearNow() > y0) say(`你不在的时候，它们过了 ${yearNow() - y0} 年。纪年里记着。`);
+  if (seen() && yearNow() > y0) say(tr(`你不在的时候，它们过了 ${yearNow() - y0} 年。纪年里记着。`, `While you were gone, ${yearNow() - y0} year${yearNow() - y0 > 1 ? 's' : ''} passed for them. It's all in the annals.`));
   sec = Math.min(sec, 8 * 3600);
   const v = G.rate * sec * .5;
   if (v < 10) return;
   earn(v);
   const m = Math.round(sec / 60);
-  say(`你离开的 ${m >= 60 ? (m / 60).toFixed(1) + ' 小时' : Math.max(m, 1) + ' 分钟'}里，我在纸面上继续游荡，带回 ${fmt(v)} 感知。`);
+  say(tr(`你离开的 ${m >= 60 ? (m / 60).toFixed(1) + ' 小时' : Math.max(m, 1) + ' 分钟'}里，我在纸面上继续游荡，带回 ${fmt(v)} 感知。`, `In the ${m >= 60 ? (m / 60).toFixed(1) + ' hours' : m > 1 ? m + ' minutes' : 'minute'} you were away, I kept wandering the paper and brought back ${fmt(v)} perception.`));
 }

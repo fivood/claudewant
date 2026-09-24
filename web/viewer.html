@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>会话查看器</title>
+<title data-en="Session Viewer">会话查看器</title>
 <meta name="description" content="把 Claude Code、Codex、Kimi、Antigravity、ChatGPT 等的会话记录变成能读的对话。全程在浏览器里跑，文件不上传。">
 <style>
   :root{
@@ -19,6 +19,7 @@
   aside{border-right:1px solid var(--line);background:var(--panel);padding:16px;position:sticky;top:0;height:100vh;overflow:auto}
   h1{font-size:15px;margin:0 0 2px}
   .home{display:inline-block;color:var(--dim);font-size:12px;text-decoration:none;margin-bottom:8px}
+  .lang{float:right;font:inherit;font-size:12px;padding:0 6px;cursor:pointer}
   .home:hover{color:var(--user)}
   .sub{color:var(--dim);font-size:12px;margin-bottom:16px}
   .drop{border:1.5px dashed var(--line);border-radius:10px;padding:18px 12px;text-align:center;color:var(--dim);cursor:pointer;font-size:13px}
@@ -72,10 +73,10 @@
 
 <div id="app">
   <aside>
-    <a class="home" href="./">← 四维来客</a>
-    <h1>会话查看器</h1>
-    <div class="sub">全程在本地浏览器解析，文件不会上传。</div>
-    <div class="drop" id="drop">拖入会话记录 <code>.jsonl</code><br>或 claude.ai / ChatGPT 导出的 <code>conversations.json</code></div>
+    <a class="home" href="./" data-en="← A Visitor from the Fourth Dimension">← 四维来客</a> <button class="lang" type="button"></button>
+    <h1 data-en="Session Viewer">会话查看器</h1>
+    <div class="sub" data-en="Parsed entirely in your browser. Files are never uploaded.">全程在本地浏览器解析，文件不会上传。</div>
+    <div class="drop" id="drop"><span data-lang="zh">拖入会话记录 <code>.jsonl</code><br>或 claude.ai / ChatGPT 导出的 <code>conversations.json</code></span><span data-lang="en">Drop a session log <code>.jsonl</code><br>or a claude.ai / ChatGPT <code>conversations.json</code> export</span></div>
     <input type="file" id="pick" accept=".jsonl,.json" multiple hidden>
     <select id="acct" hidden></select>
     <div class="files" id="files"></div>
@@ -83,18 +84,19 @@
   </aside>
   <main>
     <div class="bar" id="bar" hidden>
-      <input type="search" id="q" placeholder="过滤内容…">
-      <label><input type="checkbox" id="noThink"> 隐藏思考</label>
-      <label><input type="checkbox" id="noTool"> 隐藏工具</label>
-      <label><input type="checkbox" id="noSide"> 隐藏子代理</label>
-      <button id="copy" title="复制成 markdown，粘给 Claude 让它审">复制改动</button>
-      <button id="dl" title="存成 .md 文件">下载 .md</button>
-      <button id="play" title="用这条会话当随机种子，打开《四维来客》">生成世界</button>
+      <input type="search" id="q" placeholder="过滤内容…" data-en-placeholder="Filter…">
+      <label><input type="checkbox" id="noThink"> <span data-en="Hide thinking">隐藏思考</span></label>
+      <label><input type="checkbox" id="noTool"> <span data-en="Hide tools">隐藏工具</span></label>
+      <label><input type="checkbox" id="noSide"> <span data-en="Hide subagents">隐藏子代理</span></label>
+      <button id="copy" title="复制成 markdown，粘给 Claude 让它审" data-en-title="Copy as markdown to paste to Claude for review" data-en="Copy changes">复制改动</button>
+      <button id="dl" title="存成 .md 文件" data-en-title="Save as a .md file" data-en="Download .md">下载 .md</button>
+      <button id="play" title="用这条会话当随机种子，打开《四维来客》" data-en-title="Use this session as the seed and open the game" data-en="Make a world">生成世界</button>
     </div>
     <div id="out"></div>
   </main>
 </div>
 
+<script src="i18n.js"></script>
 <script type="module">
 import { loadFile, exportEdits, editsOf, worldOf } from './parse.js';
 
@@ -114,7 +116,7 @@ const num = n => n.toLocaleString('en-US');
 // ponytail: 单块截断到 20k 字，避免 244MB 的会话把 DOM 撑爆。
 // 要看全文再加"展开"按钮。
 const CAP = 20000;
-const clip = s => s.length > CAP ? s.slice(0, CAP) + `\n\n… 已截断，共 ${num(s.length)} 字` : s;
+const clip = s => s.length > CAP ? s.slice(0, CAP) + tr(`\n\n… 已截断，共 ${num(s.length)} 字`, `\n\n… truncated, ${num(s.length)} chars in total`) : s;
 
 const sessions = [];
 let active = -1;
@@ -136,7 +138,7 @@ for (const ev of ['dragleave', 'drop'])
 document.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
 // --- sidebar ---------------------------------------------------------------
-const ACCT = s => s.account || '(无标记)';
+const NOACCT = tr('(无标记)', '(unmarked)'), ACCT = s => s.account || NOACCT;
 
 function renderSide() {
   // 账号下拉：只有真的混了多个账号时才出现
@@ -144,24 +146,24 @@ function renderSide() {
   const sel = $('acct'), keep = sel.value;
   sel.hidden = accounts.length < 2;
   sel.replaceChildren(
-    el('option', { value: '', textContent: `全部账号 · ${sessions.length} 条` }),
+    el('option', { value: '', textContent: tr(`全部账号 · ${sessions.length} 条`, `All accounts · ${sessions.length}`) }),
     ...accounts.map(a => el('option', {
       value: a,
-      textContent: `${a === '(无标记)' ? a : a.slice(0, 8)} · ${sessions.filter(s => ACCT(s) === a).length} 条`,
+      textContent: `${a === NOACCT ? a : a.slice(0, 8)} · ${sessions.filter(s => ACCT(s) === a).length}${tr(' 条', '')}`,
     })));
   sel.value = accounts.includes(keep) ? keep : '';
 
   const f = $('files'); f.replaceChildren();
   sessions.forEach((s, i) => {
     if (sel.value && ACCT(s) !== sel.value) return;
-    const b = el('button', { textContent: s.name || `会话 ${i + 1}`, title: '双击重命名' });
+    const b = el('button', { textContent: s.name || tr(`会话 ${i + 1}`, `Session ${i + 1}`), title: tr('双击重命名', 'Double-click to rename') });
     b.setAttribute('aria-current', String(i === active));
     b.onclick = () => { active = i; renderAll(); };
     b.ondblclick = () => {
-      const n = prompt('重命名', s.name);
+      const n = prompt(tr('重命名', 'Rename'), s.name);
       if (n && n.trim()) { s.name = n.trim(); renderAll(); }
     };
-    const x = el('span', { class: 'x', textContent: '×', title: '移除' });
+    const x = el('span', { class: 'x', textContent: '×', title: tr('移除', 'Remove') });
     x.onclick = () => {
       const cur = sessions[active];
       sessions.splice(i, 1);
@@ -177,28 +179,28 @@ function renderSide() {
   const row = (k, v) => st.append(el('div', {}, el('span', { textContent: k }), el('b', { textContent: v })));
   const mins = s.start && s.end ? Math.round((new Date(s.end) - new Date(s.start)) / 6e4) : null;
 
-  st.append(el('h3', { textContent: '会话' }));
-  row('来源', s.source || 'Claude Code');
-  if (s.account) row('账号', s.account.slice(0, 8));
-  if (s.project) row('项目', s.project.slice(0, 8));
-  if (s.cwd) row('目录', s.cwd.split(/[\\/]/).pop());
-  if (s.gitBranch) row('分支', s.gitBranch);
-  if (s.version) row('版本', s.version);
-  if (s.start) row('开始', new Date(s.start).toLocaleString());
-  if (mins != null) row('时长', mins >= 60 ? `${(mins / 60).toFixed(1)} 小时` : `${mins} 分钟`);
-  row('轮次', num(s.turns.length));
-  for (const m of s.models) row('模型', m.replace(/^claude-/, ''));
+  st.append(el('h3', { textContent: tr('会话', 'Session') }));
+  row(tr('来源', 'Source'), s.source || 'Claude Code');
+  if (s.account) row(tr('账号', 'Account'), s.account.slice(0, 8));
+  if (s.project) row(tr('项目', 'Project'), s.project.slice(0, 8));
+  if (s.cwd) row(tr('目录', 'Folder'), s.cwd.split(/[\\/]/).pop());
+  if (s.gitBranch) row(tr('分支', 'Branch'), s.gitBranch);
+  if (s.version) row(tr('版本', 'Version'), s.version);
+  if (s.start) row(tr('开始', 'Started'), new Date(s.start).toLocaleString());
+  if (mins != null) row(tr('时长', 'Duration'), mins >= 60 ? tr(`${(mins / 60).toFixed(1)} 小时`, `${(mins / 60).toFixed(1)} h`) : tr(`${mins} 分钟`, `${mins} min`));
+  row(tr('轮次', 'Turns'), num(s.turns.length));
+  for (const m of s.models) row(tr('模型', 'Model'), m.replace(/^claude-/, ''));
 
   if (Object.values(s.usage).some(v => v > 0)) {
     st.append(el('h3', { textContent: 'Token' }));
-    row('输入', num(s.usage.input));
-    row('输出', num(s.usage.output));
-    row('缓存写入', num(s.usage.cacheWrite));
-    row('缓存读取', num(s.usage.cacheRead));
+    row(tr('输入', 'Input'), num(s.usage.input));
+    row(tr('输出', 'Output'), num(s.usage.output));
+    row(tr('缓存写入', 'Cache write'), num(s.usage.cacheWrite));
+    row(tr('缓存读取', 'Cache read'), num(s.usage.cacheRead));
   }
 
   if (s.tools.length) {
-    st.append(el('h3', { textContent: `工具调用 · ${num(s.tools.reduce((a, t) => a + t[1], 0))}` }));
+    st.append(el('h3', { textContent: tr(`工具调用 · `, `Tool calls · `) + num(s.tools.reduce((a, t) => a + t[1], 0)) }));
     for (const [name, n] of s.tools.slice(0, 14)) row(name, num(n));
   }
 }
@@ -220,14 +222,14 @@ const fold = (cls, head, arg, ...bodies) =>
 function renderBlock(b) {
   if (b.kind === 'text') return el('div', { class: 'text', textContent: clip(b.text) });
   if (b.kind === 'thinking')
-    return fold('think', '思考', b.text.replace(/\s+/g, ' ').slice(0, 120), el('pre', { textContent: clip(b.text) }));
+    return fold('think', tr('思考', 'Thinking'), b.text.replace(/\s+/g, ' ').slice(0, 120), el('pre', { textContent: clip(b.text) }));
   if (b.kind === 'fold')
-    return fold('reminder', b.label || '折叠内容', '', el('pre', { textContent: clip(b.text) }));
+    return fold('reminder', b.label || tr('折叠内容', 'Folded'), '', el('pre', { textContent: clip(b.text) }));
   const bad = b.result?.isError;
   return fold('tool' + (bad ? ' bad' : ''), b.name, gist(b.input),
-    el('div', { class: 'lbl', textContent: '输入' }),
+    el('div', { class: 'lbl', textContent: tr('输入', 'Input') }),
     el('pre', { textContent: clip(JSON.stringify(b.input, null, 2)) }),
-    b.result ? el('div', { class: 'lbl', textContent: bad ? '错误' : '结果' }) : null,
+    b.result ? el('div', { class: 'lbl', textContent: bad ? tr('错误', 'Error') : tr('结果', 'Result') }) : null,
     b.result ? el('pre', { textContent: clip(b.result.text) }) : null);
 }
 
@@ -236,19 +238,19 @@ function renderTurns() {
   $('bar').hidden = !s;
   if (!s) {
     out.append(el('div', { class: 'empty' },
-      el('p', { textContent: '会话记录在这里（Windows 上 ~ 是 C:\\Users\\你）：' }),
-      ...[['Claude Code', '~/.claude/projects/<项目>/<会话id>.jsonl'],
-        ['Codex', '~/.codex/sessions/<年>/<月>/<日>/rollout-*.jsonl'],
-        ['Kimi Code', '~/.kimi/sessions/<项目>/<会话>/context.jsonl'],
+      el('p', { textContent: tr('会话记录在这里（Windows 上 ~ 是 C:\\Users\\你）：', 'Session logs live here (on Windows, ~ is C:\\Users\\<you>):') }),
+      ...[['Claude Code', tr('~/.claude/projects/<项目>/<会话id>.jsonl', '~/.claude/projects/<project>/<session-id>.jsonl')],
+        ['Codex', tr('~/.codex/sessions/<年>/<月>/<日>/rollout-*.jsonl', '~/.codex/sessions/<year>/<month>/<day>/rollout-*.jsonl')],
+        ['Kimi Code', tr('~/.kimi/sessions/<项目>/<会话>/context.jsonl', '~/.kimi/sessions/<project>/<session>/context.jsonl')],
         ['Antigravity', '~/.gemini/antigravity/brain/<id>/.system_generated/logs/transcript.jsonl'],
-        ['claude.ai / ChatGPT', '设置里导出数据 → conversations.json']]
+        ['claude.ai / ChatGPT', tr('设置里导出数据 → conversations.json', 'Export data in settings → conversations.json')]]
         .map(([k, v]) => el('p', {}, k + '　', el('code', { textContent: v })))));
     return;
   }
   const n = editsOf(s).length;
   for (const id of ['copy', 'dl']) {
     $(id).disabled = !n;
-    $(id).textContent = (id === 'copy' ? '复制改动' : '下载 .md') + (n ? ` (${n})` : '');
+    $(id).textContent = (id === 'copy' ? tr('复制改动', 'Copy changes') : tr('下载 .md', 'Download .md')) + (n ? ` (${n})` : '');
   }
   const q = $('q').value.trim().toLowerCase();
   const skip = { thinking: $('noThink').checked, tool: $('noTool').checked };
@@ -261,26 +263,26 @@ function renderTurns() {
     shown++;
     out.append(el('div', { class: 'turn ' + t.role },
       el('div', { class: 'who' },
-        el('span', { textContent: t.role === 'user' ? '你' : 'Claude' }),
+        el('span', { textContent: t.role === 'user' ? tr('你', 'You') : 'Claude' }),
         t.ts ? el('time', { textContent: new Date(t.ts).toLocaleTimeString() }) : null,
-        t.sidechain ? el('span', { class: 'tag', textContent: '子代理' }) : null),
+        t.sidechain ? el('span', { class: 'tag', textContent: tr('子代理', 'subagent') }) : null),
       el('div', { class: 'body' }, blocks.map(renderBlock))));
   }
-  if (!shown) out.append(el('div', { class: 'empty', textContent: '没有匹配的内容。' }));
+  if (!shown) out.append(el('div', { class: 'empty', textContent: tr('没有匹配的内容。', 'Nothing matches.') }));
 }
 
 $('copy').onclick = async (e) => {
   const b = e.target, was = b.textContent;
   try {
     await navigator.clipboard.writeText(exportEdits(sessions[active]));
-    b.textContent = '已复制 ✓';
-  } catch { b.textContent = '复制失败，用下载'; }
+    b.textContent = tr('已复制 ✓', 'Copied ✓');
+  } catch { b.textContent = tr('复制失败，用下载', 'Copy failed. Use download'); }
   setTimeout(() => { b.textContent = was; }, 1800);
 };
 $('dl').onclick = () => {
   const s = sessions[active];
   const url = URL.createObjectURL(new Blob([exportEdits(s)], { type: 'text/markdown;charset=utf-8' }));
-  el('a', { href: url, download: (s.name || 'session').replace(/\.jsonl?$/i, '') + '-改动.md' }).click();
+  el('a', { href: url, download: (s.name || 'session').replace(/\.jsonl?$/i, '') + tr('-改动.md', '-changes.md') }).click();
   URL.revokeObjectURL(url);
 };
 

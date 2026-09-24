@@ -7,7 +7,7 @@
 // 游戏里的「现在」只是随真实时间前进的光标；买下「居民」后，四维生物能看见整条时间线，包括还没到的部分。
 // 同一个会话文件永远是同一部历史；唯一的随机是「直接开始」那张纸自己的种子。Clawd 走哪条路不算历史。
 const YEAR = 8;                                            // 现实 8 秒 = 二维历一年
-const ERAS = ['游荡', '村落', '城邦', '几何', '觉醒'];
+const ERAS = [tr('游荡', 'Wandering'), tr('村落', 'Villages'), tr('城邦', 'City-states'), tr('几何', 'Geometry'), tr('觉醒', 'Awakening')];
 const HOUSE = {
   town: ['.RR.', 'RRRR', 'WWDW', 'WWDW'], house: ['....', '.RR.', 'RRRR', 'WDWW'],
   temple: ['.GG.', 'GWWG', 'GWWG', 'GGGG'], ruin: ['W...', 'W.W.', 'WWW.', '....'], road: ['.PP.', 'PPPP', 'PPPP', '.PP.'],
@@ -27,7 +27,7 @@ function mulberry(a) {
 const HIST = (() => {
   const rnd = mulberry(G.seed ^ 0x5eed);
   const pick = a => a[Math.floor(rnd() * a.length)];
-  const folk = () => `${pick(FCOL)[1]}色${pick(FSHP)[0]}`;
+  const folk = () => { const c = pick(FCOL)[1], f = pick(FSHP)[0]; return tr(`${c}色${f}`, `${c} ${f}`); };   // 先抽颜色再抽形状，顺序别动
   const share = k => n(k) / HANDS;
   const think = 1 + Math.min(.5, n('think') / 400);       // 想得多的对话，居民更早察觉你
   const S = { y: 0, pop: 12, awe: 0, era: 0, next: 4, once: {}, towns: new Map() };
@@ -90,43 +90,43 @@ const HIST = (() => {
   }
 
   const ERA_UP = [
-    [() => S.pop >= 20, () => village() && '第一个村子出现了：一圈首尾相接的线。它们管里面叫「家」，外面叫「外面」。'],
-    [() => count('town') >= 3 && S.pop >= 200, () => '村子长成了城邦。城墙越修越厚——在这里，「厚」是最贵的形容词。'],
-    [() => S.pop >= 900 && S.awe >= 30, () => '它们开始研究几何。第一个问题是：那个橙色的东西，到底有几条边？'],
-    [() => S.awe >= 200, () => '一个正方形在夜里「抬起头」——它们本来没有这个方向——看见了我。纸面开始觉醒。'],
+    [() => S.pop >= 20, () => village() && tr('第一个村子出现了：一圈首尾相接的线。它们管里面叫「家」，外面叫「外面」。', 'The first village appeared: a loop of line joined end to end. They call the inside "home" and the outside "outside".')],
+    [() => count('town') >= 3 && S.pop >= 200, () => tr('村子长成了城邦。城墙越修越厚——在这里，「厚」是最贵的形容词。', 'The villages grew into city-states. The walls keep getting thicker. Here, "thick" is the most expensive adjective.')],
+    [() => S.pop >= 900 && S.awe >= 30, () => tr('它们开始研究几何。第一个问题是：那个橙色的东西，到底有几条边？', 'They began to study geometry. The first question: how many sides does that orange thing have?')],
+    [() => S.awe >= 200, () => tr('一个正方形在夜里「抬起头」——它们本来没有这个方向——看见了我。纸面开始觉醒。', 'One night a square "looked up", a direction they never had, and saw me. The paper is waking up.')],
   ];
   // 事件表：era 起始纪元，max 最晚纪元，once 只发生一次；w 返回 0 就不会被抽到；run 返回 false 算没发生
   // 那段对话的习惯改权重：改写多→爱建村，观看多→爱测绘，动手多→爱吵架打仗，出错→裂缝教派
   const EV = [
-    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), `一个${folk()}发现了火。在这里，火是一条会自己变长的橙色线段。`) },
-    { id: 'name', era: 0, once: 1, w: () => S.awe >= 1 ? 4 : 0, run: () => (awe(2), '它们给那个会突然出现的橙色东西起了名字：「厚的」。') },
-    { id: 'trek', era: 0, max: 1, w: () => 1, run: () => `一队${folk()}沿着一条忽然有了颜色的路迁徙。那是我走过的地方。` },
+    { id: 'fire', era: 0, max: 0, w: () => 2, run: () => (grow(.1), (f => tr(`一个${f}发现了火。在这里，火是一条会自己变长的橙色线段。`, `A ${f} discovered fire. Here, fire is an orange line segment that grows by itself.`))(folk())) },
+    { id: 'name', era: 0, once: 1, w: () => S.awe >= 1 ? 4 : 0, run: () => (awe(2), tr('它们给那个会突然出现的橙色东西起了名字：「厚的」。', 'They named the orange thing that keeps appearing out of nowhere: "the Thick One".')) },
+    { id: 'trek', era: 0, max: 1, w: () => 1, run: () => (f => tr(`一队${f}沿着一条忽然有了颜色的路迁徙。那是我走过的地方。`, `A band of ${f}s migrated along a road that suddenly had colour. That's where I walked.`))(folk()) },
     { id: 'village', era: 1, w: () => count('town') < 2 + S.era * 3 ? 3 * (1 + 2 * share('make')) : 0,
-      run: () => village() && `${folk()}们又围出了一个村子。墙首尾相接，就算是家了。` },
-    { id: 'harvest', era: 1, w: () => 2, run: () => (boost(1.5, 60), '丰收节。全村排成一条线跳舞——也只能排成一条线。（感知 ×1.5，60 秒）') },
-    { id: 'north', era: 1, w: () => 1 + 3 * share('act'), run: () => (grow(-.1), '两个村子为「哪边是北」吵了三年，谁也没说服谁。') },
-    { id: 'door', era: 1, once: 1, w: () => 1, run: () => '它们发明了门：在墙上开一个缺口，走过去，再把缺口补上。' },
-    { id: 'rift', era: 1, once: 1, w: () => RIFT ? 3 : 0, run: () => build('temple') && (awe(5), '一群居民搬到裂缝旁边，说那是世界的背面，在那儿盖了第一座庙。（感知永久 +10%）') },
-    { id: 'verse', era: 1, w: () => SAID.length ? 1.5 : 0, run: () => (awe(1), `它们把一句从天上掉下来的话刻在了村口：「${pick(SAID)}」`) },
-    { id: 'road', era: 2, w: () => count('town') >= 2 ? 2 : 0, run: () => road() && '两座城之间修通了一条路。在这里，路和墙长得一模一样，只是方向不同。' },
-    { id: 'census', era: 2, w: () => 1, run: () => `城邦做了人口普查：${fmt(S.pop)} 个居民。圆被登记成贵族，因为它们的边最多。` },
-    { id: 'map', era: 2, w: () => 1 + 3 * share('see'), run: () => chart() && '测绘师走出城外，把一片空白画进了地图。我顺着看过去，那里真的有东西了。' },
+      run: () => village() && (f => tr(`${f}们又围出了一个村子。墙首尾相接，就算是家了。`, `The ${f}s fenced off another village. Once the wall meets itself, it's home.`))(folk()) },
+    { id: 'harvest', era: 1, w: () => 2, run: () => (boost(1.5, 60), tr('丰收节。全村排成一条线跳舞——也只能排成一条线。（感知 ×1.5，60 秒）', 'Harvest festival. The whole village dances in a line. A line is all they can do. (perception ×1.5, 60 s)')) },
+    { id: 'north', era: 1, w: () => 1 + 3 * share('act'), run: () => (grow(-.1), tr('两个村子为「哪边是北」吵了三年，谁也没说服谁。', 'Two villages argued for three years about which way is north. Nobody convinced anybody.')) },
+    { id: 'door', era: 1, once: 1, w: () => 1, run: () => tr('它们发明了门：在墙上开一个缺口，走过去，再把缺口补上。', 'They invented the door: open a gap in the wall, walk through, close the gap again.') },
+    { id: 'rift', era: 1, once: 1, w: () => RIFT ? 3 : 0, run: () => build('temple') && (awe(5), tr('一群居民搬到裂缝旁边，说那是世界的背面，在那儿盖了第一座庙。（感知永久 +10%）', 'A group moved next to the rift, called it the back of the world, and built the first temple there. (perception +10% forever)')) },
+    { id: 'verse', era: 1, w: () => SAID.length ? 1.5 : 0, run: () => (awe(1), (q => tr(`它们把一句从天上掉下来的话刻在了村口：「${q}」`, `They carved words that fell from the sky at the village gate: "${q}"`))(pick(SAID))) },
+    { id: 'road', era: 2, w: () => count('town') >= 2 ? 2 : 0, run: () => road() && tr('两座城之间修通了一条路。在这里，路和墙长得一模一样，只是方向不同。', 'A road now joins two cities. Here, roads and walls look exactly the same; they just point different ways.') },
+    { id: 'census', era: 2, w: () => 1, run: () => tr(`城邦做了人口普查：${fmt(S.pop)} 个居民。圆被登记成贵族，因为它们的边最多。`, `The city-state took a census: ${fmt(S.pop)} residents. Circles were registered as nobility, since they have the most sides.`) },
+    { id: 'map', era: 2, w: () => 1 + 3 * share('see'), run: () => chart() && tr('测绘师走出城外，把一片空白画进了地图。我顺着看过去，那里真的有东西了。', 'Surveyors walked out of the city and drew a blank patch into the map. I looked where they drew, and now something is really there.') },
     { id: 'temple', era: 2, w: () => S.awe >= 15 * (count('temple') + 1) && count('temple') < 10 ? 2 : 0,
-      run: () => build('temple') && (awe(1), '它们给我修了一座神殿，门朝着它们以为我来的方向——其实我是从每个方向来的。（感知永久 +10%）') },
+      run: () => build('temple') && (awe(1), tr('它们给我修了一座神殿，门朝着它们以为我来的方向——其实我是从每个方向来的。（感知永久 +10%）', 'They built me a temple, its door facing the way they think I come from. I come from every direction. (perception +10% forever)')) },
     { id: 'war', era: 2, w: () => count('town') >= 4 ? 1 + 3 * share('act') : 0,
-      run: () => ruin() && (grow(-.15), '两座城为一块沙地开战。从上面看，两支军队只是两条互相靠近的线。有一座城没能留下来。') },
-    { id: 'market', era: 2, w: () => 1.5, run: () => (boost(2, 45), '集市日。每个居民都在用自己的边长讨价还价。（感知 ×2，45 秒）') },
-    { id: 'measure', era: 3, w: () => 1.5, run: () => (awe(4), '几何学家测量了我留下的脚印，结论是：我的面积是负数。') },
-    { id: 'jail', era: 3, once: 1, w: () => 2, run: () => (awe(8), `一个${pick(FCOL)[1]}色正方形宣称存在「上方」，被判终身监禁。它说的是对的。`) },
-    { id: 'angles', era: 3, w: () => 1, run: () => (boost(1.8, 90), '它们证明了三角形内角和是 180 度，然后花了一整代人怀疑这件事。（感知 ×1.8，90 秒）') },
-    { id: 'many', era: 3, once: 1, w: () => n('split') ? 3 : .5, run: () => (awe(6), '它们终于发现我不止一个：同一种橙色，同时出现在两座城里。') },
-    { id: 'lens', era: 3, w: () => 1, run: () => chart(12) && '它们磨出第一块透镜，看见了很远的地方。远处原来不是空白，只是还没人看。' },
-    { id: 'letter', era: 4, w: () => 2, run: () => (awe(3), SAID.length ? `它们在地上写了很大的字给我看：「${pick(SAID)}」——是我听过的话。` : '它们在地上写了很大的字给我看：「你好，厚的。」') },
-    { id: 'ascend', era: 4, once: 1, w: () => S.awe >= 400 ? 50 : 0, run: () => '第一个居民离开了纸面一点点。它回来说：上面很冷，但能看见所有人。（感知永久 ×2）' },
+      run: () => ruin() && (grow(-.15), tr('两座城为一块沙地开战。从上面看，两支军队只是两条互相靠近的线。有一座城没能留下来。', 'Two cities went to war over a patch of sand. From above, two armies are just two lines moving closer. One city didn\'t survive.')) },
+    { id: 'market', era: 2, w: () => 1.5, run: () => (boost(2, 45), tr('集市日。每个居民都在用自己的边长讨价还价。（感知 ×2，45 秒）', 'Market day. Everyone haggles using the length of their own sides. (perception ×2, 45 s)')) },
+    { id: 'measure', era: 3, w: () => 1.5, run: () => (awe(4), tr('几何学家测量了我留下的脚印，结论是：我的面积是负数。', 'Geometers measured my footprints. Conclusion: my area is negative.')) },
+    { id: 'jail', era: 3, once: 1, w: () => 2, run: () => (awe(8), (c => tr(`一个${c}色正方形宣称存在「上方」，被判终身监禁。它说的是对的。`, `A ${c} square claimed there is an "up" and was jailed for life. It was right.`))(pick(FCOL)[1])) },
+    { id: 'angles', era: 3, w: () => 1, run: () => (boost(1.8, 90), tr('它们证明了三角形内角和是 180 度，然后花了一整代人怀疑这件事。（感知 ×1.8，90 秒）', 'They proved a triangle\'s angles add up to 180 degrees, then spent a whole generation doubting it. (perception ×1.8, 90 s)')) },
+    { id: 'many', era: 3, once: 1, w: () => n('split') ? 3 : .5, run: () => (awe(6), tr('它们终于发现我不止一个：同一种橙色，同时出现在两座城里。', 'They finally worked out there\'s more than one of me: the same orange, in two cities at once.')) },
+    { id: 'lens', era: 3, w: () => 1, run: () => chart(12) && tr('它们磨出第一块透镜，看见了很远的地方。远处原来不是空白，只是还没人看。', 'They ground their first lens and saw far away. The distance wasn\'t blank after all; nobody had looked yet.') },
+    { id: 'letter', era: 4, w: () => 2, run: () => (awe(3), SAID.length ? (q => tr(`它们在地上写了很大的字给我看：「${q}」——是我听过的话。`, `They wrote huge letters on the ground for me: "${q}". Words I've heard before.`))(pick(SAID)) : tr('它们在地上写了很大的字给我看：「你好，厚的。」', 'They wrote huge letters on the ground for me: "HELLO, THICK ONE."')) },
+    { id: 'ascend', era: 4, once: 1, w: () => S.awe >= 400 ? 50 : 0, run: () => tr('第一个居民离开了纸面一点点。它回来说：上面很冷，但能看见所有人。（感知永久 ×2）', 'The first resident left the paper, just a little. It came back and said: it\'s cold up there, but you can see everyone. (perception ×2 forever)') },
   ];
   const log = text => H.events.push({ y: S.y, text, fx });
 
-  log('元年。纸面上有了第一批会动的形状。它们还不知道自己是平的。');
+  log(tr('元年。纸面上有了第一批会动的形状。它们还不知道自己是平的。', 'Year One. The first moving shapes appear on the paper. They don\'t know they\'re flat yet.'));
   for (let y = 1; y < 6000 && H.asc == null; y++) {
     S.y = y;
     const cap = 40 + count('town') * (150 + 100 * S.era);
@@ -179,27 +179,27 @@ function advance(quiet) {
       else if (f[0] === 'buff') G.buffs.push([f[1], G.age + f[2]]);
       else if (f[0] === 'chart') reveal(f[1], f[2], f[3]);
     }
-    if (!quiet && seen() && matchMedia('(max-width:640px)').matches) say(`〔二维历 ${e.y + 1} 年〕${e.text}`, { bubble: true });
+    if (!quiet && seen() && matchMedia('(max-width:640px)').matches) say(tr(`〔二维历 ${e.y + 1} 年〕${e.text}`, `[Flat Year ${e.y + 1}] ${e.text}`), { bubble: true });
   }
 }
 
 function annals() {
-  if (seen() && yearNow() >= HIST.end && !G.seen.histDone) { G.seen.histDone = 1; say('它们的历史写完了。可以把整张纸收起来看看了。', { bubble: true }); mapReady(); }
+  if (seen() && yearNow() >= HIST.end && !G.seen.histDone) { G.seen.histDone = 1; say(tr('它们的历史写完了。可以把整张纸收起来看看了。', 'Their history is finished. Time to fold up the whole sheet and have a look.'), { bubble: true }); mapReady(); }
   $('chron').hidden = !seen();
   if (!seen()) return;
   const y = yearNow(), done = y >= HIST.end;
-  $('civ').textContent = `纪元 ${ERAS[HIST.era[y]]} · 二维历 ${y + 1} 年${done ? '（写完了）' : ''}\n`
-    + `人口 ${fmt(HIST.pop[y])} · 城 ${live.town} · 庙 ${live.temple}\n觉察 ${fmt(HIST.awe[y])}${buff() > 1 ? ` · 加成 ×${buff().toFixed(1)}` : ''}`;
+  $('civ').textContent = tr(`纪元 ${ERAS[HIST.era[y]]} · 二维历 ${y + 1} 年`, `Era: ${ERAS[HIST.era[y]]} · Flat Year ${y + 1}`) + `${done ? tr('（写完了）', ' (finished)') : ''}\n`
+    + tr(`人口 ${fmt(HIST.pop[y])} · 城 ${live.town} · 庙 ${live.temple}\n觉察 ${fmt(HIST.awe[y])}`, `Population ${fmt(HIST.pop[y])} · cities ${live.town} · temples ${live.temple}\nAwareness ${fmt(HIST.awe[y])}`) + `${buff() > 1 ? tr(` · 加成 ×${buff().toFixed(1)}`, ` · bonus ×${buff().toFixed(1)}`) : ''}`;
   const row = (e, cls) => {
     const p = document.createElement('p'), b = document.createElement('b');
-    b.textContent = `${e.y + 1} 年 `;
+    b.textContent = tr(`${e.y + 1} 年 `, `Y${e.y + 1} `);
     p.className = cls;
     p.append(b, e.text);
     return p;
   };
   const now = document.createElement('p');
   now.className = 'now';
-  now.textContent = done ? '— 它们的历史到这里为止 —' : `— 现在 · 二维历 ${y + 1} 年 —`;
+  now.textContent = done ? tr('— 它们的历史到这里为止 —', '— their history ends here —') : tr(`— 现在 · 二维历 ${y + 1} 年 —`, `— now · Flat Year ${y + 1} —`);
   // 四维的视角：还没发生的也看得见，只是淡一点；从远的将来往下读到过去
   $('annals').replaceChildren(
     ...HIST.events.slice(cursor, cursor + 3).reverse().map(e => row(e, 'soon')),
@@ -210,6 +210,6 @@ function annals() {
 function seeHistory() {
   annals();
   say(HIST.asc != null
-    ? `我看见了它们的全部历史：从元年，到它们离开纸面的二维历 ${HIST.asc + 1} 年。现在是 ${yearNow() + 1} 年。`
-    : `我看见了它们的全部历史，一直到二维历 ${HIST.end + 1} 年。现在是 ${yearNow() + 1} 年。`);
+    ? tr(`我看见了它们的全部历史：从元年，到它们离开纸面的二维历 ${HIST.asc + 1} 年。现在是 ${yearNow() + 1} 年。`, `I can see their whole history: from Year One to Flat Year ${HIST.asc + 1}, when they leave the paper. It's Year ${yearNow() + 1} now.`)
+    : tr(`我看见了它们的全部历史，一直到二维历 ${HIST.end + 1} 年。现在是 ${yearNow() + 1} 年。`, `I can see their whole history, all the way to Flat Year ${HIST.end + 1}. It's Year ${yearNow() + 1} now.`));
 }

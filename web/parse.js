@@ -8,6 +8,8 @@ const NOISE = new Set([
 
 const EMPTY_USAGE = () => ({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
 
+const tr = globalThis.tr || (zh => zh);                    // 页面上由 i18n.js 提供；node 里跑测试时用中文
+
 export function parseJsonl(text) {
   const rows = [];
   for (const line of text.split('\n')) {
@@ -100,10 +102,10 @@ function fromCodex(rows, name) {
       (p.content || []).forEach((c, i) => {
         if (!c.text?.trim()) return;
         const injected = p.role === 'user' && (kinds?.length === p.content.length ? kinds[i] !== 'user.text' : /^(<|# AGENTS\.md)/.test(c.text));
-        a.push(p.role, injected ? { kind: 'fold', label: '系统提示', text: c.text } : { kind: 'text', text: c.text }, ts);
+        a.push(p.role, injected ? { kind: 'fold', label: tr('系统提示', 'System prompt'), text: c.text } : { kind: 'text', text: c.text }, ts);
       });
     } else if (p.type === 'reasoning') {
-      a.push('assistant', { kind: 'thinking', text: (p.summary || []).map(x => x.text).join('\n') || '[加密的推理]' }, ts);
+      a.push('assistant', { kind: 'thinking', text: (p.summary || []).map(x => x.text).join('\n') || tr('[加密的推理]', '[encrypted reasoning]') }, ts);
     } else if (/_call$/.test(p.type)) {
       calls.set(p.call_id, a.push('assistant', { kind: 'tool', name: p.name || p.type.replace(/_call$/, ''),
         input: args(p.arguments ?? p.input ?? p.action), result: null }, ts));
@@ -118,14 +120,14 @@ function fromCodex(rows, name) {
 // OpenAI chat 格式的 messages（Kimi Code 的 context.jsonl、各种兼容 CLI）
 function fromOpenAI(rows, name) {
   const sys = rows.find(m => /system/.test(m?.role || ''));
-  const a = acc(name, /Kimi/.test(asText(sys?.content)) ? 'Kimi Code' : 'OpenAI 格式'), calls = new Map();
+  const a = acc(name, /Kimi/.test(asText(sys?.content)) ? 'Kimi Code' : tr('OpenAI 格式', 'OpenAI format')), calls = new Map();
   for (const m of rows) {
     const ts = m?.timestamp || m?.created_at;
     a.time(ts);
     if (m?.role === 'user') {
       // Kimi 把压缩后的上文、当前焦点等塞成 <system> / <current_focus> 开头的用户消息
       for (const b of parts(m.content)) if (b.text?.trim())
-        a.push('user', /^\s*<[\w-]+[\s>]/.test(b.text) ?{ kind: 'fold', label: '系统提示', text: b.text } : { kind: 'text', text: b.text }, ts);
+        a.push('user', /^\s*<[\w-]+[\s>]/.test(b.text) ?{ kind: 'fold', label: tr('系统提示', 'System prompt'), text: b.text } : { kind: 'text', text: b.text }, ts);
     } else if (m?.role === 'assistant') {
       if (m.reasoning_content) a.push('assistant', { kind: 'thinking', text: m.reasoning_content }, ts);
       for (const b of parts(m.content)) {
@@ -163,7 +165,7 @@ function fromAntigravity(rows, name) {
       const b = pending.shift();                               // 输出按调用顺序一条条回来
       if (b) b.result = { text: c, isError: failed(c) };
     } else if (r.type === 'ERROR_MESSAGE') {
-      a.push('assistant', { kind: 'fold', label: '错误', text: c }, ts);
+      a.push('assistant', { kind: 'fold', label: tr('错误', 'Error'), text: c }, ts);
     }
   }
   return a.done();
@@ -171,7 +173,7 @@ function fromAntigravity(rows, name) {
 
 // ChatGPT 官方数据导出的 conversations.json：一棵树，只取 current_node 那条分支
 function fromChatGPT(c) {
-  const a = acc((c.title || '').trim() || '(未命名对话)', 'ChatGPT'), path = [];
+  const a = acc((c.title || '').trim() || tr('(未命名对话)', '(untitled conversation)'), 'ChatGPT'), path = [];
   a.s.sessionId = c.conversation_id || c.id;
   for (let id = c.current_node, n = 0; id && c.mapping?.[id] && n < 1e5; id = c.mapping[id].parent, n++) path.unshift(c.mapping[id]);
   let pending = null;
@@ -215,7 +217,7 @@ function fromClaudeAi(c) {
           const call = [...blocks].reverse().find(x => x.kind === 'tool' && !x.result);
           const r = { text: asText(b.content), isError: !!b.is_error };
           if (call) call.result = r;
-          else blocks.push({ kind: 'fold', label: '工具结果', text: r.text });
+          else blocks.push({ kind: 'fold', label: tr('工具结果', 'Tool result'), text: r.text });
         } else {
           const t = asText(b?.text ?? b);
           if (t.trim()) blocks.push({ kind: 'text', text: t });
@@ -226,15 +228,15 @@ function fromClaudeAi(c) {
     }
 
     for (const a of (m.attachments || []))
-      blocks.push({ kind: 'fold', label: ('附件 ' + (a.file_name || '')).trim(), text: a.extracted_content || JSON.stringify(a, null, 2) });
+      blocks.push({ kind: 'fold', label: (tr('附件 ', 'Attachment ') + (a.file_name || '')).trim(), text: a.extracted_content || JSON.stringify(a, null, 2) });
     for (const f of (m.files || []))
-      blocks.push({ kind: 'fold', label: ('文件 ' + (f.file_name || '')).trim(), text: JSON.stringify(f, null, 2) });
+      blocks.push({ kind: 'fold', label: (tr('文件 ', 'File ') + (f.file_name || '')).trim(), text: JSON.stringify(f, null, 2) });
 
     if (blocks.length) turns.push({ role: m.sender === 'assistant' ? 'assistant' : 'user', ts, blocks });
   }
 
   return {
-    name: (c.name || '').trim() || '(未命名对话)',
+    name: (c.name || '').trim() || tr('(未命名对话)', '(untitled conversation)'),
     source: 'claude.ai',
     account: c.account?.uuid,
     project: c.project_uuid || c.project?.uuid,
@@ -297,7 +299,7 @@ export function buildSession(rows, name = '') {
         if (r.type === 'user') {
           const { text, hidden } = splitReminders(t);
           if (text) blocks.push({ kind: 'text', text });
-          if (hidden.length) blocks.push({ kind: 'fold', label: '系统提示', text: hidden.join('\n\n') });
+          if (hidden.length) blocks.push({ kind: 'fold', label: tr('系统提示', 'System prompt'), text: hidden.join('\n\n') });
         } else {
           blocks.push({ kind: 'text', text: t });
         }
@@ -479,7 +481,7 @@ export function voicesOf(s) {
     if (turn.role !== 'assistant') return;
     for (const b of turn.blocks) {
       if (b.kind === 'thinking') {
-        const l = /^\[(redacted|加密的推理)\]$/.test(b.text?.trim() || '') ? null : best(linesOf(b.text || ''));
+        const l = /^\[(redacted|加密的推理|encrypted reasoning)\]$/.test(b.text?.trim() || '') ? null : best(linesOf(b.text || ''));
         if (l) thought.push([T(i), l]); else sealed++;
       } else if (b.kind === 'text') {
         const l = best(linesOf(b.text));
@@ -528,7 +530,7 @@ export function editsOf(session) {
       if (b.kind !== 'tool' || !EDIT_TOOLS.has(b.name)) continue;
       if (b.result?.isError) continue;                    // 失败的改动没落盘
       const i = b.input || {};
-      const at = { path: i.file_path || i.notebook_path || '(未知文件)', turn: ti, ts: t.ts };
+      const at = { path: i.file_path || i.notebook_path || tr('(未知文件)', '(unknown file)'), turn: ti, ts: t.ts };
       if (b.name === 'Write') out.push({ ...at, whole: i.content ?? '' });
       else if (b.name === 'NotebookEdit') out.push({ ...at, whole: i.new_source ?? '' });
       else if (Array.isArray(i.edits)) for (const e of i.edits) out.push({ ...at, old: e.old_string ?? '', new: e.new_string ?? '' });
@@ -550,14 +552,14 @@ export function exportEdits(session, cap = 20000) {
     byFile.get(it.path).push(it);
   }
 
-  const clip = s => s.length > cap ? s.slice(0, cap) + `\n… 截断，共 ${s.length} 字` : s;
-  const L = [`# 会话改动：${session.name || '未命名'}`];
+  const clip = s => s.length > cap ? s.slice(0, cap) + tr(`\n… 截断，共 ${s.length} 字`, `\n… truncated, ${s.length} chars in total`) : s;
+  const L = [tr(`# 会话改动：${session.name || '未命名'}`, `# Session changes: ${session.name || 'untitled'}`)];
   L.push([session.cwd, session.start && new Date(session.start).toLocaleString(),
-          `${byFile.size} 个文件`, `${items.length} 次改动`].filter(Boolean).join(' · '), '');
+          tr(`${byFile.size} 个文件`, `${byFile.size} files`), tr(`${items.length} 次改动`, `${items.length} changes`)].filter(Boolean).join(' · '), '');
 
-  if (!items.length) return L.concat('（这个会话没有落盘的改动）').join('\n');
+  if (!items.length) return L.concat(tr('（这个会话没有落盘的改动）', '(No file changes were written in this session)')).join('\n');
 
-  L.push('| 文件 | 改动次数 |', '| --- | ---: |');
+  L.push(tr('| 文件 | 改动次数 |', '| File | Changes |'), '| --- | ---: |');
   for (const [p, list] of byFile) L.push(`| \`${p}\` | ${list.length} |`);
   L.push('');
 
@@ -567,7 +569,7 @@ export function exportEdits(session, cap = 20000) {
       const body = it.whole != null ? prefix(clip(it.whole), '+')
                  : [it.old && prefix(clip(it.old), '-'), it.new && prefix(clip(it.new), '+')].filter(Boolean).join('\n');
       const f = fence(body);
-      L.push(`### 第 ${it.turn + 1} 轮${it.ts ? ' · ' + new Date(it.ts).toLocaleTimeString() : ''}${it.whole != null ? ' · 整文件写入' : ''}`);
+      L.push(`${tr(`### 第 ${it.turn + 1} 轮`, `### Turn ${it.turn + 1}`)}${it.ts ? ' · ' + new Date(it.ts).toLocaleTimeString() : ''}${it.whole != null ? tr(' · 整文件写入', ' · whole-file write') : ''}`);
       L.push(f + 'diff', body, f, '');
     }
   }
