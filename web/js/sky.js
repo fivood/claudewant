@@ -482,12 +482,36 @@ const SKY = G.theme === 'sky' && (() => {
   const METEOR = [255, 214, 150], clock = performance.now();
   let meteor = null, sat = null, nextM = clock + 90000 + Math.random() * 60000, nextS = clock + 120000;   // 刚开局全是白纸，流星一来准烧在远处孤零零一格，先等纸展开一点
   const onSky = (ax, ay) => rev.has(key(Math.floor(ax / TP), Math.floor(ay / TP)));   // 美术像素坐标上是不是已经展开的天
+  // 流星烧的洞：从穿过的那一点往外烧，前沿不规则、越烧越慢；贴着前沿一圈跳动的火光，外面一圈焦痕，还会蹦出火星。
+  // 烧完火光三秒内冷下去，焦痕记进存档（G.burns）一直留在纸上，直到那片纸被展开。
+  const fires = [], sparks = [];
+  G.burns ??= [];
+  const front = (f, a) => .7 + .6 * vn(Math.cos(a) * 1.6 + 20, Math.sin(a) * 1.6 + 20, f.seed);   // 这个方向上烧得多远（相对半径）
+  const EMBER = ['#fff0a0', '#ffc24a', '#ff8a2a', '#e0521a', '#a8300e'];
+  // 洞周围还没展开的纸：离前沿 e 个美术像素以内是焦痕，贴着前沿的是火光。heat：1 正在烧，0 只剩焦痕
+  function rim(px, f, F, heat, now) {
+    const cx = f.x * TP + 2, cy = f.y * TP + 2, B = Math.ceil(f.R * TP * 1.3 + 8), flick = Math.floor(now / 90);
+    for (let ay = cy - B; ay <= cy + B; ay++) for (let ax = cx - B; ax <= cx + B; ax++) {
+      if (onSky(ax, ay)) continue;
+      const dx = ax + .5 - cx, dy = ay + .5 - cy, e = Math.hypot(dx, dy) - F * front(f, Math.atan2(dy, dx));
+      if (e > 7 || e < -5) continue;
+      const n = h(ax, ay, f.seed), out = Math.max(0, e);
+      px(ax, ay, out < 2 ? '#2a1a10' : '#7a5a36', .8 * (1 - out / 7) * (.55 + .45 * n));   // 焦痕：里面发黑，外面焦黄
+      if (heat > 0 && e < 2.5) px(ax, ay, EMBER[Math.min(4, (h(ax, ay, f.seed + flick) * 3 + (1 - heat) * 2 + out) | 0)], heat * (.6 + .4 * n));
+    }
+  }
   function spot(ox, oy, s, W, H, want) {                    // 屏幕上随便找一个美术像素，want：要天（true）还是要白纸（false）
     for (let n = 0; n < 40; n++) {
       const ax = Math.floor((Math.random() * W - ox) / s), ay = Math.floor((Math.random() * H - oy) / s);
       if (onSky(ax, ay) === want) return [ax, ay];
     }
     return null;
+  }
+  function ignite(m, now) {                                   // 流星把纸点着了：从穿过的那一格开始往外烧
+    m.burnt = true;
+    const R = 2 + Math.random() * 2;
+    fires.push({ x: Math.floor(m.p[0] / TP), y: Math.floor(m.p[1] / TP), R, seed: (Math.random() * 1e6) | 0, t0: now, dur: 5000 + R * 1200 });
+    if (!G.seen.burn) { G.seen.burn = 1; bubbleAt = -1e9; say(tr('一颗流星垂直穿过了纸，把纸点着了。烧开的地方，能看见后面的天。', 'A meteor went straight through the paper and set it alight. Where it burns away, you can see the sky behind.'), { bubble: true }); }
   }
   function fx(ox, oy, tp, s, W, H) {
     const now = performance.now(), t = now / 1000, g = ctx;
@@ -524,6 +548,7 @@ const SKY = G.theme === 'sky' && (() => {
     }
     if (meteor) {
       const m = meteor, q = (now - m.t0) / m.dur, bump = Math.sqrt(Math.max(0, 1 - (2 * q - 1) ** 2));   // 一个球斜着穿过一张纸：截面从一个点长大再缩回去
+      if (q > .5 && m.pierce && !m.burnt) ignite(m, now);       // 帧隔得再久（后台标签页）也要点着
       if (q >= 1) { meteor = null; nextM = now + 15000 + Math.random() * 30000; }
       else if (m.pierce) {
         const [ax, ay] = m.p, r = 2.6 * bump;
@@ -532,11 +557,6 @@ const SKY = G.theme === 'sky' && (() => {
           if (d <= r) px(ax + dx, ay + dy, d < r * .5 ? '#fff6e0' : css(METEOR), 1);
           else if (d <= r + 1.2) px(ax + dx, ay + dy, '#ff7a3a', .8 * bump);   // 纸边烧焦的一圈
         }
-        if (q > .5 && !m.burnt) {
-          m.burnt = true;
-          reveal(Math.floor(ax / TP), Math.floor(ay / TP), Math.random() < .4 ? 2 : 1);
-          if (!G.seen.burn) { G.seen.burn = 1; bubbleAt = -1e9; say(tr('一颗流星垂直穿过了纸，在上面烧了个洞。现在那儿能看见后面的天了。', 'A meteor went straight through the paper and burned a hole in it. You can see the sky behind it now.'), { bubble: true }); }
-        }
       } else {
         const len = m.v * q * m.dur / 1000, c = Math.cos(m.a), sn = Math.sin(m.a), [sx, sy] = m.p, hx = sx + c * len, hy = sy + sn * len;
         for (let k = 0; k < len; k++) { const ax = Math.round(sx + c * k), ay = Math.round(sy + sn * k); if (onSky(ax, ay)) px(ax, ay, css(METEOR), (.1 + .6 * k / len) * (1 - q * .5)); }
@@ -544,6 +564,31 @@ const SKY = G.theme === 'sky' && (() => {
         for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (Math.hypot(dx, dy) <= r && onSky(Math.round(hx) + dx, Math.round(hy) + dy)) px(Math.round(hx) + dx, Math.round(hy) + dy, '#fff6e0', 1);
         if (!G.seen.meteor && q > .5 && onSky(hx, hy)) { G.seen.meteor = 1; say(tr('一颗流星从纸里冒出来，滑了一小段就不见了。它不是划过去的，是从纸面穿过去的，纸只切到了它经过的那一截。', 'A meteor surfaced in the paper, slid a little way and vanished. It didn\'t streak across; it passed through, and the paper only caught the stretch where it crossed.')); }
       }
+    }
+
+    // 流星烧的洞
+    for (let i = fires.length - 1; i >= 0; i--) {
+      const f = fires[i], u = Math.min(1, (now - f.t0) / f.dur), F = f.R * (1 - (1 - u) ** 2.2) * TP, B = Math.ceil(f.R * 1.3) + 1;
+      for (let y = f.y - B; y <= f.y + B; y++) for (let x = f.x - B; x <= f.x + B; x++) {   // 前沿扫过的格子展开
+        const dx = (x - f.x) * TP, dy = (y - f.y) * TP;
+        if (!rev.has(key(x, y)) && Math.hypot(dx, dy) <= F * front(f, Math.atan2(dy, dx))) reveal(x, y, 0);
+      }
+      const heat = u < 1 ? 1 : 1 - (now - f.t0 - f.dur) / 3000;   // 烧完以后三秒冷下去
+      rim(px, f, F, Math.max(0, heat), now);
+      if (u < 1 && Math.random() < .4) {                        // 往外蹦的火星
+        const a = Math.random() * TAU, d = F * front(f, a), v = 6 + Math.random() * 12;
+        sparks.push({ x: f.x * TP + 2 + Math.cos(a) * d, y: f.y * TP + 2 + Math.sin(a) * d, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: now, life: 500 + Math.random() * 700 });
+      }
+      if (heat <= 0) { fires.splice(i, 1); G.burns.push([f.x, f.y, f.R, f.seed]); if (G.burns.length > 40) G.burns.shift(); }
+    }
+    for (const [x, y, R, seed] of G.burns) {                   // 以前烧的洞：只剩焦痕，还没被展开的纸上才看得见
+      const B = (R * 1.3 + 3) * tp;
+      if (x * tp + ox + B > 0 && x * tp + ox - B < W && y * tp + oy + B > 0 && y * tp + oy - B < H) rim(px, { x, y, R, seed }, R * TP, 0, now);
+    }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const sp = sparks[i], k = (now - sp.t0) / sp.life, tt = Math.sqrt(k) * sp.life / 1000;   // 飞出去越来越慢
+      if (k >= 1) { sparks.splice(i, 1); continue; }
+      px(Math.round(sp.x + sp.vx * tt), Math.round(sp.y + sp.vy * tt), k < .4 ? '#ffe08a' : '#ff7a2a', 1 - k);
     }
 
     // 卫星
