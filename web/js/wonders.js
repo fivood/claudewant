@@ -287,7 +287,7 @@ function renderPoster() {
   g.fillStyle = BODY; g.fillRect(ox + .5 * px - 3, oy + .5 * px - 3, 6, 6);   // 落点
   g.imageSmoothingEnabled = false;
   drawWonders(ox, oy, px, px / TP, g, W, H, { x: 0, y: -.5 });
-  drawClawd(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
+  drawClawd3D(ox + ws[0].x * px, oy + ws[0].y * px, 3, { x: 0, y: 0, tx: 0, ty: 0, anim: 0 }, g);
   g.fillStyle = INK; g.font = `24px ${font}`;
   g.fillText(`${tr('四维来客', 'A Visitor from the Fourth Dimension')} · ${TH.name}`, M, 44);
   g.fillStyle = '#7d7780'; g.font = `12px ${font}`;

@@ -38,6 +38,56 @@ function drawClawd(sx, sy, s, w, g = ctx) {
   g.fillRect(x0 + 9 * s, y0 + s, s, 2 * s);
 }
 
+// 纸面上的 Clawd 是立体的（它本来就不止两维）；缩成桌宠、塌进线国以后才用上面那张平面图。
+// 画法是分层叠片：把一个小体素模型按高度切成一层层横截面，从下往上叠，每层往上错一个美术像素。
+// 模型的「前」是 +y，eyes 长在前面；w.face 是它面朝的方向，走路时转向前进方向，停下来慢慢转回来看着你。
+//   z 0–1 腿（四条一排，走路时两两交替抬起、往前迈半步）  z 2–6 身体  z 3–4 两只手（前后摆）  z 4–5 眼睛
+const CLAWD_BODY = [...BODY.match(/\w\w/g)].map(v => parseInt(v, 16));
+const LEGS = [-5, -3, 2, 4];
+function clawdVoxel(i, j, z, step, swing) {
+  if (z <= 1) {
+    const n = LEGS.indexOf(i);
+    if (n < 0) return 0;
+    const lift = step < 2 && n % 2 === step;
+    const f = j >= 0 ? j - 1 : j + 3;                                                   // 前后各一排腿，从身体正面、背面的下沿露出来
+    return (lift ? z === 1 && (f === 1 || f === 2) : f === 0 || f === 1) ? 2 : 0;      // 抬起的腿往前迈一格
+  }
+  if (z > 6) return 0;
+  if (i >= -5 && i <= 4 && j >= -3 && j <= 2) return j === 2 && (z === 4 || z === 5) && (i === -3 || i === 2) ? 3 : 1;
+  if ((z === 3 || z === 4) && (i === -7 || i === -6 || i === 5 || i === 6)) { const sw = i < 0 ? swing : -swing; return j === -1 + sw || j === sw ? 1 : 0; }
+  return 0;
+}
+function drawClawd3D(sx, sy, s, w, g = ctx) {
+  const moving = Math.hypot(w.tx - w.x, w.ty - w.y) > .05, step = moving ? Math.floor(w.anim / .14) % 2 : 2;
+  // 朝哪转：从上往下看，完全侧过去的 Clawd 只是一块板，看不见眼睛，所以身子最多转 35°——
+  // 往下、往左右走是侧着身子朝你这边迈，往上走就转过去露出背影。停下来慢慢转回来面对屏幕外的你。
+  const dir = Math.atan2(w.hy ?? 1, w.hx ?? 0), rel = (((dir - Math.PI / 2 + Math.PI) % TAU) + TAU) % TAU - Math.PI, MAXT = .6;
+  const want = !moving ? Math.PI / 2 : Math.abs(rel) <= Math.PI / 2 ? Math.PI / 2 + Math.max(-MAXT, Math.min(MAXT, rel))
+    : -Math.PI / 2 + Math.max(-MAXT, Math.min(MAXT, (((rel + TAU) % TAU) - Math.PI)));
+  w.face ??= Math.PI / 2;
+  w.face += (((want - w.face + Math.PI) % TAU + TAU) % TAU - Math.PI) * (moving ? .25 : .06);
+  const th = w.face - Math.PI / 2, c = Math.cos(th), sn = Math.sin(th);
+  const bob = moving ? (step === 0 ? 1 : 0) : Math.floor(performance.now() / 1300) % 2 * .5;   // 走路一起一伏，站着轻轻呼吸
+  const lean = moving ? .16 : 0, fx = Math.cos(dir), fy = Math.sin(dir), swing = moving ? (step === 0 ? 1 : -1) : 0;
+  const x0 = Math.round(sx), y0 = Math.round(sy - 2 * s);
+  g.fillStyle = 'rgba(31,29,27,.16)';                      // 影子：身体的底面贴在纸上
+  for (let Y = -8; Y <= 8; Y++) for (let X = -8; X <= 8; X++) {
+    const mi = Math.floor((X + .5) * c + (Y + .5) * sn), mj = Math.floor(-(X + .5) * sn + (Y + .5) * c);
+    if (clawdVoxel(mi, mj, 2, 2, 0) === 1) g.fillRect(x0 + X * s, y0 + (Y + 1) * s, s, s);
+  }
+  for (let z = 0; z <= 6; z++) {
+    const up = z + (z >= 2 ? bob : 0), ox = Math.round(fx * z * lean), oy = Math.round(fy * z * lean - up);
+    const k = z <= 1 ? .55 : z === 6 ? 1.06 : .68 + .06 * z;                            // 越往上越亮，顶面最亮
+    const body = w.body ? w.body : `rgb(${CLAWD_BODY.map(v => Math.min(255, Math.round(v * k)))})`;
+    for (let Y = -9; Y <= 9; Y++) for (let X = -9; X <= 9; X++) {
+      const mi = Math.floor((X + .5) * c + (Y + .5) * sn), mj = Math.floor(-(X + .5) * sn + (Y + .5) * c), v = clawdVoxel(mi, mj, z, step, swing);
+      if (!v) continue;
+      g.fillStyle = v === 3 ? INK : body;
+      g.fillRect(x0 + (X + ox) * s, y0 + (Y + oy) * s, s, s);
+    }
+  }
+}
+
 // 昼夜：纸是被你房间里的光照亮的——光从一个二维居民不存在的方向来，所以跟着你那边的真实时间走。
 // 5–7 点天亮，17–19 点天黑。感知窗口里的时间条可以手动拨到某个钟点（记在本机）；?hour=22 也行，调画面用。
 const FORCE_HOUR = new URLSearchParams(location.search).get('hour');
@@ -118,7 +168,7 @@ function draw() {
   shade(W, H, dl, ox, oy, tp, s);
   if (s >= 3) drawLabels(ox, oy, tp, s, ctx, vis);
   if (SKY && s >= 2) SKY.labels(ox, oy, tp, s, W, H);
-  for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
+  for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd3D(w.x * tp + ox, w.y * tp + oy, s, w);
 }
 
 cv.addEventListener('wheel', e => {
