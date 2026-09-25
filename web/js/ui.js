@@ -19,6 +19,7 @@ function hud() {
   $('rate').textContent = tr(`感知 +${fmt(G.rate)}/秒`, `Perception +${fmt(G.rate)}/s`);
   $('area').textContent = tr(`已展开 ${fmt(rev.size)} 格`, `Unfolded ${fmt(rev.size)} tiles`);
   $('flat').hidden = !L('life');
+  $('fillBtn').hidden = !L('fill');
   $('flat').textContent = tr(`遇见居民 ${fmt(G.flat)}`, `Residents met ${fmt(G.flat)}`);
   $('paper').hidden = false;
   $('paper').textContent = `${SEED ? tr(`纸面 #${SEED} · `, `Sheet #${SEED} · `) : tr('地貌 ', 'Terrain: ')}${TH.name}${ROUTE.size ? tr(` · 读到 ${readPct()}%`, ` · read ${readPct()}%`) : ''}${WONDERS.length ? tr(` · 奇观 ${foundCount()}/${WONDERS.length}`, ` · wonders ${foundCount()}/${WONDERS.length}`) : ''}`;
@@ -45,12 +46,15 @@ $('hour').oninput = e => { UIP.hour = +e.target.value; saveUI(); };
 if (SKY) { $('hour').hidden = $('clockBtn').hidden = true; $('clockT').style.flex = 1; }   // 深空不分昼夜，钟只是个钟
 $('clockBtn').onclick = () => { delete UIP.hour; saveUI(); };
 
+// 清除记录：这台机器上每张纸的存档、读过的会话都删掉，从一张新纸重新掉下来；电台、语言、窗口这些设置留着
 $('reset').onclick = () => {
-  if (!confirm(tr('从一片空白重新开始？现在的纸面会全部消失。', 'Start over from a blank sheet? Everything on this paper will be gone.'))) return;
+  if (!confirm(tr('清除所有记录？每张纸的进度和读过的会话都会删掉（电台、语言这些设置保留）。', 'Clear all records? Progress on every sheet and every loaded session will be deleted (radio and language settings stay).'))) return;
+  if (!confirm(tr('再确认一次：删掉就找不回来了。', 'Once more: this can\'t be undone.'))) return;
   wiped = true;
-  try { localStorage.removeItem(SAVE); } catch { /* 无痕模式 */ }
-  location.reload();
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('clawd-4d-') || k === 'clawd-seed') localStorage.removeItem(k); } catch { /* 无痕模式 */ }
+  location.href = 'game.html';
 };
+$('fillBtn').onclick = fillHoles;
 
 // --- 收起 / 精简：每个窗口标题栏上的 – 收成一条；「精简」只留最要紧的一行 --------------
 // 手机屏幕小，窗口会挡住纸面，所以要能收；状态记在本机，下次打开还是那样。

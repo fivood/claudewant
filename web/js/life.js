@@ -20,6 +20,8 @@ const UPS = [
   { id: 'clone', name: tr('投影', 'Projection'), max: 5, cost: l => 6000 * 10 ** l, info: l => tr(`同时落在纸面上的截面 ${1 + l} 个`, `${1 + l} cross-sections on the paper at once`),
     say: tr('我又放下了自己的另一截。在这里，它们看起来毫无关系。', 'I set down another slice of myself. Down here they look completely unrelated.') },
   { id: 'life', name: tr('居民', 'Residents'), max: 1, need: 'color', cost: () => 2000, info: () => tr('看见生活在纸面上的东西', 'See the things that live on the paper'), say: '' },
+  { id: 'fill', name: tr('补白', 'Fill-in'), max: 1, need: 'life', cost: () => 15000, info: () => tr('一键补上走漏的空格', 'Fill the gaps I missed in one go'),
+    say: tr('我能同时看见纸上每一个漏掉的空格。现在也能一下子把它们补上了。', 'I can see every gap I left on the paper at once. Now I can fill them all in one go.') },
   { id: 'fold', name: tr('折纸', 'Folding'), max: 6, cost: l => 60000 * 4 ** l, info: l => tr(`每 ${48 - 6 * l} 秒把纸对折一次，跳去远处`, `Fold the paper every ${48 - 6 * l} s and jump somewhere far`),
     say: tr('纸是可以折的。住在纸上的人不知道。', 'Paper can be folded. The people who live on it don\'t know that.') },
 ];
@@ -40,7 +42,7 @@ for (const u of UPS) {
 const WANT = {
   speed: 1 + 3 * n('act') / HANDS, radius: 1 + 3 * n('see') / HANDS, color: 4,
   life: 2 + Math.min(4, n('talk') / 10), mult: 1 + Math.min(3, n('think') / 20),
-  clone: 1 + Math.min(3, n('split') / 2), fold: 1 + Math.min(3, n('min') / 60),
+  clone: 1 + Math.min(3, n('split') / 2), fill: 1.5, fold: 1 + Math.min(3, n('min') / 60),
 };
 let goal = null;
 function decide() {
@@ -121,6 +123,45 @@ function reveal(cx, cy, r) {
   }
   if (gain) earn(gain * mult() * buff());
   for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }
+}
+
+// 补白：走过的地方围起来、却没踩到的空格。从有东西的块往外连得到空白的都不算，剩下连不出去的就是漏掉的。
+// 只在有展开格子的块里找（加上一圈边），八十万格的存档也就两百多万格，点一下几百毫秒。
+function holes() {
+  const cid = (cx, cy) => (cx + 2048) * 4096 + cy + 2048, D = new Set(), vis = new Map(), q = [], out = [];
+  const cs = [...hasChunk].map(s => s.split(',').map(Number));
+  for (const [cx, cy] of cs) D.add(cid(cx, cy));
+  const mark = (x, y) => {                                  // 在范围里、没展开、没来过，才进队
+    const cx = Math.floor(x / CH), cy = Math.floor(y / CH), id = cid(cx, cy);
+    if (!D.has(id) || rev.has(key(x, y))) return;
+    let v = vis.get(id);
+    if (!v) vis.set(id, v = new Uint8Array(CH * CH));
+    const i = (y - cy * CH) * CH + x - cx * CH;
+    if (!v[i]) { v[i] = 1; q.push(x, y); }
+  };
+  for (const [cx, cy] of cs) for (let t = 0; t < CH; t++) {  // 从挨着「一格都没展开的块」的边开始，那边就是外面
+    const x0 = cx * CH, y0 = cy * CH, x1 = x0 + CH - 1, y1 = y0 + CH - 1;
+    if (!D.has(cid(cx - 1, cy))) mark(x0, y0 + t);
+    if (!D.has(cid(cx + 1, cy))) mark(x1, y0 + t);
+    if (!D.has(cid(cx, cy - 1))) mark(x0 + t, y0);
+    if (!D.has(cid(cx, cy + 1))) mark(x0 + t, y1);
+  }
+  for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1]; mark(x + 1, y); mark(x - 1, y); mark(x, y + 1); mark(x, y - 1); }
+  for (const [cx, cy] of cs) {
+    const v = vis.get(cid(cx, cy));
+    for (let i = 0; i < CH * CH; i++) {
+      const x = cx * CH + i % CH, y = cy * CH + Math.floor(i / CH);
+      if (!(v && v[i]) && !rev.has(key(x, y))) out.push([x, y]);
+    }
+  }
+  return out;
+}
+function fillHoles() {
+  const hs = holes(), p0 = G.pts;
+  for (const [x, y] of hs) reveal(x, y, 0);
+  bubbleAt = -1e9;
+  say(hs.length ? tr(`把 ${fmt(hs.length)} 个漏掉的空格补上了，带回 ${fmt(G.pts - p0)} 感知。`, `Filled ${fmt(hs.length)} missed gaps and brought back ${fmt(G.pts - p0)} perception.`)
+    : tr('没有漏掉的空格。走过的地方都是满的。', 'No gaps. Everywhere I\'ve been is filled in.'), { bubble: true });
 }
 
 let secGain = 0;

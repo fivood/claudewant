@@ -44,7 +44,7 @@
   </div>
   <footer class="status"><span class="field" data-en="4D → 2D">四维 → 二维</span><span class="field" data-en="idling">挂机中</span></footer>
 </main>
-<footer><button class="btn lang"></button> <a class="btn" href="viewer.html" data-en="Session viewer">会话查看器</a></footer>
+<footer><button class="btn lang"></button> <a class="btn" id="dl" href="https://github.com/fivood/claudewant/releases/latest" target="_blank" rel="noopener" title="Windows 桌宠版，之后自动更新" data-en-title="Windows desktop pet, updates itself" data-en="Desktop app">桌面版</a> <a class="btn" href="viewer.html" data-en="Session viewer">会话查看器</a></footer>
 
 <dialog id="dlg" class="win beige">
   <header class="bar"><b data-en="import.dlg">导入.dlg</b><i class="knob" aria-hidden="true"></i></header>
@@ -88,6 +88,7 @@
 </dialog>
 
 <script src="i18n.js"></script>
+<script>if (window.__TAURI__) document.getElementById('dl').hidden = true;   // 已经在桌面版里了</script>
 <script type="module">
 import { loadFile, worldOf } from './parse.js';
 
