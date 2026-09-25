@@ -8,11 +8,15 @@
 // 同一个会话文件永远是同一部历史；唯一的随机是「直接开始」那张纸自己的种子。Clawd 走哪条路不算历史。
 const YEAR = 8;                                            // 现实 8 秒 = 二维历一年
 const ERAS = CIV.eras;                                     // 纪元叫什么看住的是什么，见 civ.js
-const HOUSE = {
+// R 是屋顶色（每座城随机一种居民色）
+const HOUSE = G.theme === 'sky' ? {                          // 深空：城是行星（比一格大，sky.js 的 planet 画），房子是卫星，庙是方碑，路是航道上的航标灯
+  town: ['....', '....', '....', '....'], house: ['....', '.WW.', '.WD.', '....'],
+  temple: ['.KG.', '.KG.', '.KG.', '.KG.'], ruin: ['....', '....', '....', '....'], road: ['....', '.P..', '....', '....'],
+} : {
   town: ['.RR.', 'RRRR', 'WWDW', 'WWDW'], house: ['....', '.RR.', 'RRRR', 'WDWW'],
   temple: ['.GG.', 'GWWG', 'GWWG', 'GGGG'], ruin: ['W...', 'W.W.', 'WWW.', '....'], road: ['.PP.', 'PPPP', 'PPPP', '.PP.'],
 };
-const HCOL = { W: [239, 228, 207], D: [91, 70, 54], G: [227, 181, 59], P: [205, 184, 142] };
+const HCOL = { W: [239, 228, 207], D: [91, 70, 54], G: [227, 181, 59], P: G.theme === 'sky' ? [140, 180, 245] : [205, 184, 142], K: [14, 14, 18] };
 const LAND = t => t === 'grass' || t === 'sand' || t === 'forest';
 
 function mulberry(a) {
@@ -187,7 +191,8 @@ function put(x, y, kind) {
   if (was) live[was]--;
   TOWN.set(k, kind);
   live[kind]++;
-  if (rev.has(k)) paint(x, y);
+  if (SKY && (kind === 'town' || kind === 'ruin')) { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (rev.has(key(x + dx, y + dy))) paint(x + dx, y + dy); }   // 深空的行星占 5×5 格
+  else if (rev.has(k)) paint(x, y);
 }
 // quiet：载入和离线补算时只落建筑，不发加成、不替你测绘、不念出来
 function advance(quiet) {

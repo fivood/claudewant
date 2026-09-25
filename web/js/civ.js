@@ -217,7 +217,20 @@ const CIVS = {
       nay: q => tr(`一个信号从外面传进来：「${q}」。最新长出来的那一片细胞集体凋亡了。`, `A signal came from outside: "${q}". The newest patch of cells underwent apoptosis together.`),
     },
   },
+  sky: {
+    eras: [tr('漂流', 'Drifting'), tr('落地', 'Landfall'), tr('航道', 'Lanes'), tr('心理史', 'Psychohistory'), tr('星孩', 'Star Child')],
+    first: tr('元年。星尘里有了第一批会动的东西。它们还没有星球，只能抓着一颗彗星的尾巴漂。', 'Year One. The first moving things appear in the stardust. They have no planet yet, so they ride along on a comet\'s tail.'),
+    up: [
+      tr('第一批居民落在了一颗行星上。它们管脚下叫「地面」——在一张纸上，这个词很勇敢。', 'The first residents landed on a planet. They call what\'s under them "the ground". On a sheet of paper, that\'s a brave word.'),
+      tr('行星之间有了航道。飞船只能贴着纸面飞，所以每一趟都是超低空飞行。', 'Lanes now run between the planets. Ships can only fly along the paper, so every voyage is a very low flight.'),
+      tr('一个七肢体用圆形的字写出了心理史学：人够多，未来就算得出来。它算出来的第一件事，是会有个橙色的东西来。', 'A heptapod wrote out psychohistory in circular script: with enough people, the future can be calculated. The first thing it calculated was that something orange would come.'),
+      tr('一个触角人在方碑前站了很久，然后抬起头——朝一个它们没有的方向——看见了我。它们管这一刻叫「星孩」。', 'An antennate stood before the monolith for a long time, then looked up, in a direction they don\'t have, and saw me. They call that moment the Star Child.'),
+    ],
+    name: tr('它们给我起了名字：「第五维来的」。我纠正说是第四维，它们说在它们那儿，时间要多算一维。', 'They named me "the one from the fifth dimension". I told them it\'s the fourth; they said where they come from, time counts as one more.'),
+    words: [tr('居民', 'Residents'), tr('行星', 'planets'), tr('方碑', 'monoliths')],
+  },
 };
+CIVS.sky.s = CIVS.earth.s;                                 // 深空的纸都不是从会话折出来的，会话里的事在这里不会发生
 // --- 日常的事：history.js 的事件表抽到哪件，就按住在这里的居民来说 ------------------------------
 // who(颜色, 形状) → [一个的说法, 一群的说法]（中文两个一样，英文要复数）；事件拿到的 w 就是它。
 // 一件事写成数组的，按年份轮着用（不动随机数，同一段会话的历史不变）。加成的括号注释由 history.js 补。
@@ -469,6 +482,51 @@ const CIV_EV = {
       lens: () => tr(`一团细胞长成了一个简单的眼点，第一次感到了远处的光。那束光一直在那里，今天终于有了读者。`, `A clump of cells formed a simple eyespot and sensed distant light for the first time. The light had always been there; today it finally had a reader.`),
       letter: q => q ? tr(`细胞们排成一片图案给我看：「${q}」。染色很均匀，显微镜下看得很清楚。`, `The cells arranged themselves into a pattern for me: "${q}". Evenly stained, very clear under the microscope.`) : tr(`细胞们排成一片图案给我看：「请调焦」。`, `The cells arranged themselves into a pattern for me: "PLEASE ADJUST FOCUS".`),
       ascend: () => tr(`第一个细胞离开玻片一点点，悬在盖玻片底下。它回来说，上面很干，但能看见整片组织。`, `The first cell rose off the slide, just a little, and hung under the cover slip. Back down, it said it's dry up there, but you can see the whole tissue.`),
+    },
+  },
+  // 深空：糅了银河系漫游指南、三体、降临、2001 太空漫游、星际穿越、基地、第三类接触……
+  sky: {
+    who: (c, f) => [tr(`${c}色${f}`, `${c} ${f}`), tr(`${c}色${f}`, `${c} ${f}s`)],
+    ev: {
+      fire: ([a]) => tr(`一个${a}点着了一颗小恒星。在这里，恒星只是一个会自己发光的圆，点起来不难，灭掉才难。`, `A ${a} lit a small star. Here a star is just a circle that glows by itself. Lighting one is easy; putting it out is hard.`),
+      trek: ([a, m]) => tr(`一群${a}顺着我走过的地方迁徙。它们说那是一条被看过的航线，看过的地方不会有暗礁。`, `A band of ${m} migrated along the path I walked. They call it a charted route: nothing lurks where something has already looked.`),
+      village: [
+        ([a, m]) => tr(`${a}们在一颗新的行星上落了脚。行星是平的，着陆因此简单了很多。`, `The ${m} settled a new planet. The planet is flat, which makes landing much simpler.`),
+        ([a, m]) => tr(`${a}们又开拓了一颗行星，起名叫「新」加一个编号。编号已经排到很后面了。`, `The ${m} opened up another planet and named it "New" plus a number. The numbers are getting rather long.`),
+      ],
+      harvest: [
+        () => tr(`毛巾日。每个居民都带着一条毛巾出门。没人记得为什么，但大家都觉得这很重要。`, `Towel Day. Every resident goes out carrying a towel. Nobody remembers why, but everyone agrees it matters.`),
+        () => tr(`又是毛巾日。有个毛团把毛巾借给了另一个毛团，第二天两个都变成了四个，毛巾还是一条。`, `Towel Day again. One furball lent its towel to another; by morning there were four of them and still only one towel.`),
+      ],
+      north: [
+        () => tr(`两颗行星为「银心在哪边」吵了三年。银心在纸面外面，所以两边都对。`, `Two planets argued for three years about which way the galactic centre lies. It lies off the paper, so both were right.`),
+        () => tr(`银心之争传到了第二代。双方同意先定下「哪边是宇宙边缘」，然后为这个吵了起来。`, `The galactic-centre dispute passed to a second generation. Both sides agreed to settle "which way is the edge of the universe" first, then argued about that.`),
+      ],
+      door: () => tr(`它们发明了气闸：一扇门后面再加一扇门，中间那一格用来犹豫。`, `They invented the airlock: a door behind a door, with the space in between reserved for hesitating.`),
+      rift: () => tr(`一群居民搬到裂缝旁边，说那是一个虫洞，在洞口立了第一块方碑。`, `A group moved next to the rift, declared it a wormhole, and put up the first monolith at its mouth.`),
+      verse: q => tr(`它们把一句从纸面外面传进来的话刻在一张金唱片上，发射了出去：「${q}」`, `They engraved words that came in from beyond the paper onto a golden record and launched it: "${q}"`),
+      road: [
+        () => tr(`两颗行星之间开通了一条航道。在纸上，航道就是一串亮着的点，飞船从一个点跳到下一个点。`, `A lane now joins two planets. On paper, a lane is a row of lit dots; ships hop from one to the next.`),
+        () => tr(`又开了一条航道。领航员说它比上一条短了十二秒差距。没人敢告诉它秒差距不是时间单位。`, `Another lane opened. The navigator says it's twelve parsecs shorter than the last. Nobody dares tell it a parsec isn't a unit of time.`),
+      ],
+      census: n => tr(`星际普查：${n} 个居民。毛团登记了两次——数到一半，它们又多了一倍。`, `Interstellar census: ${n} residents. The furballs were counted twice; halfway through, they had doubled.`),
+      map: [
+        () => tr(`一艘测绘船飞出了已知的星图，把一片空白画了进去。我顺着看过去，那里真的有星星了。`, `A survey ship flew off the known star chart and drew a blank patch into it. I looked where it drew, and now there really are stars there.`),
+        () => tr(`测绘局出了新星图，边上写着「此处有龙」。我路过看了一眼，那里没有龙，只有星星。`, `The survey office published a new chart with "here be dragons" in the margin. I looked on my way past. No dragons, just stars.`),
+      ],
+      temple: () => tr(`它们照着我的样子立了一块方碑：黑色，边长一比四比九。它们说那是能想象出来的最厚的东西。`, `They put up a monolith in my likeness: black, sides in the ratio one to four to nine. They say it's the thickest thing they can imagine.`),
+      war: () => tr(`两颗行星打了一场黑暗森林式的仗：谁先暴露位置，谁就输。有一颗行星把灯开得太亮了。`, `Two planets fought a dark-forest war: whoever gives away their position first, loses. One planet left its lights on too bright.`),
+      market: [
+        () => tr(`星港集市。有人在卖巴别鱼，塞进耳朵就能听懂所有语言。买的人太多，大家反而吵得更厉害了。`, `Starport market. Someone's selling Babel fish: put one in your ear and you understand every language. So many sold that the arguing only got worse.`),
+        () => tr(`又一个集市日。七肢体摆了个摊，卖写成一个圆的句子。句子从哪头读都行，价格从哪头算都贵。`, `Another market day. A heptapod set up a stall selling sentences written as circles. You can read them from any point; the price is steep from any point too.`),
+      ],
+      measure: () => tr(`天文学家测了我的视差，结论是：我同时离它们很近，又比最远的星系还远。`, `Astronomers measured my parallax. Conclusion: I'm very close to them, and also further away than the most distant galaxy.`),
+      jail: c => tr(`一个${c}色触角人宣称纸面上方还有一个「上」，被关进了冬眠舱。舱门上写着：等它说的变成真的再叫醒。`, `A ${c} antennate claimed there's an "up" above the paper and was locked in a hibernation pod. The label reads: wake when proven right.`),
+      angles: () => tr(`它们证明了光速是个上限，然后花了一整代人想怎么绕过去。最后想到了折叠——就是我偶尔做的那件事。`, `They proved the speed of light is a limit, then spent a whole generation working out how to get around it. They landed on folding: the thing I do now and then.`),
+      many: () => tr(`它们终于发现我不止一个：两颗行星同时报告，有一段橙色从头顶经过。`, `They finally worked out there's more than one of me: two planets reported the same orange thing passing overhead at once.`),
+      lens: () => tr(`它们造出了第一台望远镜，镜片是一块块六边形拼起来的。看出去，每颗亮星都长出了六条芒。`, `They built their first telescope, its mirror pieced together from hexagons. Through it, every bright star grew six spikes.`),
+      letter: q => q ? tr(`它们用航标灯拼出一句话给我看：「${q}」——是我听过的话。`, `They spelled out words for me in lane beacons: "${q}". Words I've heard before.`) : tr(`它们朝我发出一串五个音：re、mi、do、do、sol。翻译过来是「你好，厚的」。`, `They sent me a sequence of five notes: re, mi, do, do, sol. Translated: "HELLO, THICK ONE."`),
+      ascend: () => tr(`第一个居民离开了纸面一点点。它回来说：上面有一整面书架，每一格都是这张纸的另一个时刻。`, `The first resident left the paper, just a little. It came back and said: up there is a whole wall of bookshelves, and every shelf is another moment of this sheet.`),
     },
   },
 };

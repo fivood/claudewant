@@ -300,7 +300,11 @@ function tile(x, y) {
 // 平面国居民
 const FLATV = 40;
 const FCOL = [[[214, 72, 72], tr('红', 'red')], [[58, 108, 214], tr('蓝', 'blue')], [[232, 178, 36], tr('黄', 'yellow')], [[150, 80, 196], tr('紫', 'purple')]];
-const FSHP = [
+const FSHP = G.theme === 'sky' ? [                         // 深空的居民：几部科幻里的外星生物糅在一起，还是三种（抽签顺序跟平面国一样）
+  [tr('七肢体', 'heptapod'), ['.##.', '####', '#.#.', '#..#']],     // 《降临》里那种，站在几条腿上
+  [tr('毛团', 'furball'), ['.#..', '####', '####', '.##.']],        // 一不留神就翻一倍的那种
+  [tr('触角人', 'antennate'), ['#..#', '.##.', '.##.', '.#.#']],    // 头上两根天线的小绿人
+] : [
   [tr('三角形', 'triangle'), ['....', '.#..', '###.', '....']],
   [tr('正方形', 'square'), ['....', '.##.', '.##.', '....']],
   [tr('圆', 'circle'), ['.##.', '####', '####', '.##.']],
@@ -326,13 +330,14 @@ const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed 
 function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
-  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0], sp = SKY && SKY.paint(x, y);
+  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0], sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const pv = pat(i, j, r0, x, y);
     let c = sp ? sp[j * TP + i] : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
     if (fl && fl[1][1][j][i] === '#') c = fl[0][0];
     if (rk && i > 0 && i < 3 && j > 0 && j < 3) c = RC[rk];
     const hc = house && house[j][i];
+    if (pl) c = pl(i, j) || c;
     if (hc && hc !== '.') c = hc === 'R' ? roof : hk === 'ruin' ? RUIN_C : HCOL[hc];
     const n = GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];
     let r = c[0] + n, g = c[1] + n, b = c[2] + n;
