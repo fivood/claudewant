@@ -309,6 +309,23 @@ const SKY = G.theme === 'sky' && (() => {
     },
   };
 
+  // 把一个天体叠到 A 上。tex：放大的天体补一层细纹理，不然只是一团糊的光（星表的缩略图不要）
+  function blob(b, dx, dy, px, py, tex) {
+    if (b.k === 'st') return star(b.c1, b.L, dx, dy);
+    const [u, v, p] = loc(b, dx, dy);
+    if (p > 1.4) return;
+    const a0 = A[0], a1 = A[1], a2 = A[2];
+    DRAW[b.k](b, u, v, p, dx, dy, px, py);
+    if (tex) {
+      const t = Math.max(.45, 1 + cl((b.R - 25) / 80) * ((vn(dx / 1.6, dy / 1.6, b.s + 7) - .5) * 1.3 + (vn(dx / .6, dy / .6, b.s + 8) - .5) * .7));
+      A[0] = a0 + (A[0] - a0) * t; A[1] = a1 + (A[1] - a1) * t; A[2] = a2 + (A[2] - a2) * t;
+    }
+    if (b.f === 'lane') {                                                        // 横穿的尘埃带：只挡住这个天体自己的光
+      const k = 1 - .85 * ex(-(((v * b.q - .02) / .045) ** 2)) * cl(1.1 - Math.abs(u));
+      A[0] = a0 + (A[0] - a0) * k; A[1] = a1 + (A[1] - a1) * k; A[2] = a2 + (A[2] - a2) * k;
+    }
+  }
+
   const SP = Array.from({ length: TP * TP }, () => [0, 0, 0]), DST = [0, 0, 0, 0], MOT = [0, 0, 0, 0], CIR = [0, 0, 0, 0];
   function paint(x, y) {
     const B = base(x, y), nb = near(x + .5, y + .5), fs = fieldStar(x, y, B), fc = STARC[(h(x, y, sd + 71) * 5) | 0];
@@ -330,20 +347,7 @@ const SKY = G.theme === 'sky' && (() => {
       if (gal) { const du = (i - 1.5) * Math.cos(ga) + (j - 1.5) * Math.sin(ga), dv = (j - 1.5) * Math.cos(ga) - (i - 1.5) * Math.sin(ga); add(gc, ex(-(du * du / 2 + dv * dv / .5)) * .6); }
       for (const b of nb) {
         const dx = X - b.x, dy = Y - b.y;
-        if (dx * dx + dy * dy > b.reach * b.reach) continue;
-        if (b.k === 'st') { star(b.c1, b.L, dx, dy); continue; }
-        const [u, v, p] = loc(b, dx, dy);
-        if (p > 1.4) continue;
-        const a0 = A[0], a1 = A[1], a2 = A[2];
-        DRAW[b.k](b, u, v, p, dx, dy, px, py);
-        if (b.R > 25) {                                                            // 放大的天体补一层细纹理，不然只是一团糊的光
-          const t = Math.max(.45, 1 + cl((b.R - 25) / 80) * ((vn(dx / 1.6, dy / 1.6, b.s + 7) - .5) * 1.3 + (vn(dx / .6, dy / .6, b.s + 8) - .5) * .7));
-          A[0] = a0 + (A[0] - a0) * t; A[1] = a1 + (A[1] - a1) * t; A[2] = a2 + (A[2] - a2) * t;
-        }
-        if (b.f === 'lane') {                                                      // 横穿的尘埃带：只挡住这个天体自己的光
-          const k = 1 - .85 * ex(-(((v * b.q - .02) / .045) ** 2)) * cl(1.1 - Math.abs(u));
-          A[0] = a0 + (A[0] - a0) * k; A[1] = a1 + (A[1] - a1) * k; A[2] = a2 + (A[2] - a2) * k;
-        }
+        if (dx * dx + dy * dy <= b.reach * b.reach) blob(b, dx, dy, px, py, b.R > 25);
       }
       const c = SP[j * TP + i];
       c[0] = A[0]; c[1] = A[1]; c[2] = A[2];
@@ -374,5 +378,59 @@ const SKY = G.theme === 'sky' && (() => {
     }
     g.textAlign = 'left';
   }
-  return { tile, paint, reveal, labels };
+  // --- 星表：全图页里代替「四维」的那一页，看过的天体一张卡片，没看过的只露出是什么类型 --------------
+  const KIND = { sp: ['旋涡星系', 'spiral galaxy'], el: ['椭圆星系', 'elliptical galaxy'], irr: ['不规则星系', 'irregular galaxy'], grp: ['星系群', 'galaxy group'],
+    rg: ['环状星系', 'ring galaxy'], df: ['深场', 'deep field'], neb: ['发射星云', 'emission nebula'], cf: ['发射星云', 'emission nebula'], hh: ['暗星云', 'dark nebula'],
+    dk: ['暗星云', 'dark nebula'], pn: ['行星状星云', 'planetary nebula'], snr: ['超新星遗迹', 'supernova remnant'], gc: ['球状星团', 'globular cluster'],
+    oc: ['疏散星团', 'open cluster'], bh: ['黑洞', 'black hole'], st: ['恒星', 'star'] };
+  const arc = d => d >= 1 / 60 ? `${+(d * 60).toFixed(1)}′` : `${+(d * 3600).toFixed(1)}″`;
+  const TN = 48;                                                                  // 缩略图 48×48 个美术像素，放大两倍贴上去
+  function thumb(b) {
+    const im = new ImageData(TN, TN), span = b.k === 'st' ? TN * .25 : b.R * 2.2;   // 恒星按一个美术像素 1/4 格取景，星芒才画得出来
+    for (let j = 0; j < TN; j++) for (let i = 0; i < TN; i++) {
+      A[0] = 5; A[1] = 7; A[2] = 16;
+      blob(b, ((i + .5) / TN - .5) * span, ((j + .5) / TN - .5) * span, i + b.i * 97, j, false);
+      const o = (j * TN + i) * 4;
+      im.data[o] = A[0]; im.data[o + 1] = A[1]; im.data[o + 2] = A[2]; im.data[o + 3] = 255;
+    }
+    const c = document.createElement('canvas');
+    c.width = c.height = TN; c.getContext('2d').putImageData(im, 0, 0);
+    return c;
+  }
+  function catalog(c) {
+    const font = getComputedStyle(document.documentElement).getPropertyValue('--px'), M = 24, CW = 360, CHt = 124, TOP = 92;
+    const cols = Math.max(1, Math.floor((Math.min(innerWidth * .88, 1500) - M * 2) / CW)), rows = Math.ceil(CAT.length / cols);
+    const W = cols * CW + M * 2, H = TOP + rows * CHt + M, k = Math.min(2, devicePixelRatio || 1), g = c.getContext('2d');
+    c.width = W * k; c.height = H * k; c.style.width = W + 'px';
+    g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false;
+    g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
+    const found = CAT.filter((_, i) => G.seen['sky' + i]).length;
+    g.fillStyle = INK; g.font = `24px ${font}`; g.fillText(tr(`星表 · 看见了 ${found} / ${CAT.length}`, `Catalogue · ${found} / ${CAT.length} seen`), M, 44);
+    g.fillStyle = '#7d7780'; g.font = `12px ${font}`;
+    g.fillText(wide ? tr(`广角星图 · 一格 ${arc(SDEG)}`, `Wide star map · ${arc(SDEG)} per tile`) : tr(`望远镜对准${pick[0]} · 一格 ${arc(SDEG)}`, `Telescope on the ${pick[1]} · ${arc(SDEG)} per tile`), M, 66);
+    const wrap = (s, w) => {                                                      // 中文按字断，英文按词断
+      const out = [];
+      let line = '';
+      for (const t of LANG === 'en' ? s.split(/(?<= )/) : [...s]) {
+        if (line && g.measureText(line + t).width > w) { out.push(line.trimEnd()); line = t.trimStart(); } else line += t;
+      }
+      return line ? [...out, line] : out;
+    };
+    CAT.forEach((o, i) => {
+      const x = M + (i % cols) * CW, y = TOP + Math.floor(i / cols) * CHt, seen = G.seen['sky' + i], kind = tr(...KIND[o[5]]);
+      g.strokeStyle = '#e3ded4'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, CW - 10, CHt - 10);
+      g.fillStyle = '#05070f'; g.fillRect(x + 10, y + 10, TN * 2, TN * 2);
+      if (seen) {
+        const b = IMG.filter(m => m.i === i).sort((p, q) => Math.hypot(p.x, p.y) - Math.hypot(q.x, q.y))[0];
+        g.drawImage(thumb(b), x + 10, y + 10, TN * 2, TN * 2);
+      } else { g.fillStyle = '#3a3848'; g.font = `24px ${font}`; g.fillText('?', x + 10 + TN - 6, y + 10 + TN + 8); }
+      const tx = x + TN * 2 + 22, tw = CW - TN * 2 - 42;
+      g.fillStyle = seen ? INK : '#b8b2bb'; g.font = `16px ${font}`; g.fillText(seen ? tr(o[0], o[1]) : tr('？？？', '???'), tx, y + 28);
+      g.fillStyle = seen ? BODY : '#b8b2bb'; g.font = `12px ${font}`; g.fillText(kind, tx, y + 46);
+      g.fillStyle = seen ? '#5a5560' : '#b8b2bb';
+      wrap(seen ? tr(o[11], o[12]) : tr('还没走到它跟前。', 'Not reached yet.'), tw).slice(0, 4).forEach((l, n) => g.fillText(l, tx, y + 66 + n * 15));
+    });
+    g.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  return { tile, paint, reveal, labels, catalog };
 })();

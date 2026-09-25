@@ -336,11 +336,14 @@ function posterView(mode) {
   posterMode = mode;
   cancelAnimationFrame(spin);
   $('pmap').classList.toggle('on', mode === 'map'); $('p4d').classList.toggle('on', mode === '4d');
+  $('pcv').classList.toggle('tall', SKY && mode === '4d'); $('pcv').style.width = '';
   if (mode === 'map') return renderPoster();
+  if (SKY) return SKY.catalog($('pcv'));                  // 深空没有对话，这个位置放星表
   const loop = now => { shapeView(now); spin = requestAnimationFrame(loop); };
   spin = requestAnimationFrame(loop);
 }
-$('p4d').hidden = !Array.isArray(SRC.shape);
+$('p4d').hidden = !SKY && !Array.isArray(SRC.shape);
+if (SKY) $('p4d').textContent = tr('星表', 'Catalogue');
 $('mapBtn').onclick = () => {
   $('poster').hidden = false; $('mapBtn').classList.remove('ready');
   const c = $('pcv'), g = c.getContext('2d');                // 大地图要画一两秒，先说一声再画
@@ -354,7 +357,7 @@ $('pclose').onclick = () => { cancelAnimationFrame(spin); $('poster').hidden = t
 $('pdl').onclick = () => $('pcv').toBlob(b => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
-  a.download = `${tr('四维来客', 'visitor4d')}-${posterMode === '4d' ? tr('四维投影', '4d-projection') : TH.name}-${SEED || G.seed}.png`;
+  a.download = `${tr('四维来客', 'visitor4d')}-${posterMode === '4d' ? (SKY ? tr('星表', 'catalogue') : tr('四维投影', '4d-projection')) : TH.name}-${SEED || G.seed}.png`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });

@@ -78,6 +78,7 @@ html:lang(en) #origin::before{content:"Where this sheet came from"}
 #poster .win{max-width:94vw;max-height:94vh;display:flex;flex-direction:column}
 #poster .pv{overflow:auto;min-height:0}
 #pcv{display:block;max-width:88vw;max-height:76vh}
+#pcv.tall{max-height:none}                /* 星表很长，在窗口里往下滚 */
 .prow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .prow .sp{flex:1}
 .prow .on{color:var(--clay)}
