@@ -117,6 +117,7 @@ function reveal(cx, cy, r) {
     if (L('life') && isFlat(x, y, t)) { gain += FLATV; meet(x, y); }
     if (ROUTE.has(k)) routeStep();
     if (WKEY.has(k)) discover(WKEY.get(k));
+    if (SKY) SKY.reveal(k);
   }
   if (gain) earn(gain * mult() * buff());
   for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }

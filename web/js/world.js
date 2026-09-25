@@ -244,9 +244,25 @@ const THEMES = {
     peak: tr('软骨。在三维里它很硬，切成一片以后就只剩下颜色。', 'Cartilage. Hard in three dimensions; sliced, it\'s only colour.'),
     snow: tr('脂滴。圆圆的，空空的，染料没染上它们。', 'Lipid droplets. Round and empty; the stain didn\'t take.'),
     rift: tr('一道划痕。切片的时候刀在这里抖了一下——那段对话也在这里出过错。', 'A knife mark. The blade shook here when the slice was cut, and the conversation went wrong here too.') } },
+  // 只给没载入会话的纸：画的是它背后的真实天空，见 sky.js
+  sky: { name: tr('深空', 'Deep Sky'), intro: tr('这张纸是透明的。展开的地方，能看见它背后的天空——朝着一个随便挑的方向。', 'This sheet is transparent. Wherever it unfolds, I can see the sky behind it, facing some direction picked at random.'), t: {
+    deep: [tr('暗星云', 'dark nebula'), [14, 11, 14], 'none'], water: [tr('星际卷云', 'galactic cirrus'), [24, 28, 42], 'none'],
+    sand: [tr('银河', 'Milky Way'), [70, 74, 96], 'none'], grass: [tr('星场', 'starfield'), [10, 12, 26], 'none'],
+    forest: [tr('星云', 'nebula'), [120, 70, 110], 'none'], rock: [tr('银心的星云', 'galactic-core star clouds'), [140, 120, 100], 'none'],
+    peak: [tr('天体的亮核', 'bright core'), [220, 190, 160], 'none'], snow: [tr('亮星', 'bright star'), [240, 244, 255], 'none'],
+    rift: [tr('引力透镜', 'gravitational lens'), [30, 20, 50], 'none'] }, first: {
+    grass: tr('星场。每一个亮点都是一颗太阳，隔得太远，远到在纸上只剩一个像素。', 'A starfield. Every dot is a sun, so far away it\'s only one pixel on the paper.'),
+    sand: tr('银河。从侧面看它是一条带子。它们住在带子里面，看不见带子。', 'The Milky Way. From the side it\'s a band. Whoever lives inside it can\'t see the band.'),
+    deep: tr('暗星云。不是没有东西，是东西太多，把后面的光挡住了。', 'A dark nebula. Not empty: too full, so full it blocks the light behind.'),
+    water: tr('星际卷云，很淡的尘埃。只有盯得足够久才看得出来。', 'Galactic cirrus, very faint dust. You only see it if you stare long enough.'),
+    forest: tr('星云。恒星在里面出生，也在里面死。', 'A nebula. Stars are born in here, and die in here.'),
+    rock: tr('银心那边的星云，星星挤得分不开。', 'Star clouds towards the galactic centre, too crowded to tell apart.'),
+    peak: tr('一个天体的亮核。离得再远，也亮得晃眼。', 'The bright core of something. However far away, it still dazzles.'),
+    snow: tr('一颗亮星。那六条芒不是它的，是望远镜的镜片拼出来的。', 'A bright star. Those six spikes aren\'t its own; they come from the telescope\'s mirror segments.'),
+    rift: tr('引力透镜。后面的光被前面的质量掰弯了。', 'A gravitational lens. Light from behind, bent by the mass in front.') } },
 };
-const THEME_KEYS = Object.keys(THEMES);
-G.theme = THEMES[G.theme] ? G.theme : SAVED ? 'earth' : THEME_KEYS[Math.floor(h(G.seed, 7, 0x7e11) * THEME_KEYS.length)];
+const THEME_KEYS = Object.keys(THEMES).filter(k => k !== 'sky');
+G.theme = THEMES[G.theme] ? G.theme : SAVED ? 'earth' : SEED ? THEME_KEYS[Math.floor(h(G.seed, 7, 0x7e11) * THEME_KEYS.length)] : 'sky';
 const TH = THEMES[G.theme];
 const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3, snow: 5, rift: 4 };
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
@@ -271,6 +287,7 @@ const PAT = {
 };
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
+  if (SKY) return SKY.tile(x, y);
   const e = fbm(x, y, G.seed);
   if (e < .33 + WET / 2) return 'deep';
   if (e < .395 + WET) return 'water';
@@ -296,7 +313,7 @@ const flatOf = (x, y) => [FCOL[Math.floor(h(x, y, G.seed + 5) * 4)], FSHP[Math.f
 // 每帧最多新画 CHUNK_BUDGET 块（缩小视野时地图一块块铺开，不会卡一下）。
 // 缓存最多留 CHUNK_CAP 块（至少比屏幕上能看见的多一点），久没看的扔掉，下次看到再画。
 // 八十万格的存档打开时不用先把整张地图画一遍，内存也不会跟着地图一直长。
-const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = 10;   // 一块约 1 ms
+const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = G.theme === 'sky' ? 3 : 10;   // 一块约 1 ms，深空 3–10 ms
 const ckey = (x, y) => Math.floor(x / CH) + ',' + Math.floor(y / CH);
 if (unpackRev.chunks) for (const ck of unpackRev.chunks) hasChunk.add(ck);
 else for (const k of rev) hasChunk.add(ckey(kx(k), ky(k)));   // 旧格式存档才需要扫一遍
@@ -309,10 +326,10 @@ const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed 
 function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
-  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0];
+  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0], sp = SKY && SKY.paint(x, y);
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const pv = pat(i, j, r0, x, y);
-    let c = pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
+    let c = sp ? sp[j * TP + i] : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
     if (fl && fl[1][1][j][i] === '#') c = fl[0][0];
     if (rk && i > 0 && i < 3 && j > 0 && j < 3) c = RC[rk];
     const hc = house && house[j][i];

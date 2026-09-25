@@ -42,6 +42,7 @@ function hud() {
   $('clockBtn').setAttribute('aria-pressed', String(UIP.hour == null));
 }
 $('hour').oninput = e => { UIP.hour = +e.target.value; saveUI(); };
+if (SKY) { $('hour').hidden = $('clockBtn').hidden = true; $('clockT').style.flex = 1; }   // 深空不分昼夜，钟只是个钟
 $('clockBtn').onclick = () => { delete UIP.hour; saveUI(); };
 
 $('reset').onclick = () => {

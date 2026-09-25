@@ -1,4 +1,4 @@
-// 电台：WebAudio 现场合成的九个台，每种地貌一个，默认放这张纸的那个；» 换下一个，「随」每隔几分钟随机换
+// 电台：WebAudio 现场合成的十个台，每种地貌一个，默认放这张纸的那个；» 换下一个，「随」每隔几分钟随机换
 // 这些文件是按顺序加载的普通脚本，共享同一个全局作用域：顺序见 game.html 底部。
 
 // --- 电台：没有音频文件，全是现场合成，一直放也不会有接缝；每张纸按种子移个调 --------------------
@@ -12,6 +12,8 @@
 //   水墨   FM 5.1 宫商角徵羽 60 BPM 只用五声，古筝和箫一句一句问答，磬和木鱼
 //   蓝图   FM 2.5 草图       96 BPM 极简：一个八音的音型，第二声部每 8 小节错开一拍，慢慢相位
 //   切片   FM 6.0 培养液     66 BPM 心跳，温暖的铺底，气泡，每 8 小节一次分裂
+//   深空   FM 13.8 深空      60 BPM 管风琴长音和钟摆似的滴答，两个音来回的固定音型进回声，32 小节慢慢堆起来：
+//                              琶音、脉搏似的底鼓、结巴似的故障音，到顶再落回只剩风琴（星际穿越 / 群星 / 无人深空的路数，旋律都是自己的）
 (() => {
   const KEY = (G.seed % 7) - 3;
   const TRACKS = {
@@ -24,6 +26,7 @@
     ink: { name: tr('FM 5.1 · 宫商角徵羽', 'FM 5.1 · Five Tones'), bpm: 60, play: playPenta, vinyl: 1 },
     blueprint: { name: tr('FM 2.5 · 草图', 'FM 2.5 · Draft'), bpm: 96, play: playDraft },
     slide: { name: tr('FM 6.0 · 培养液', 'FM 6.0 · Culture Medium'), bpm: 66, play: playSlide },
+    sky: { name: tr('FM 13.8 · 深空', 'FM 13.8 · Deep Sky'), bpm: 60, play: playSky },
   };
   const LIST = Object.values(TRACKS), HOME = LIST.indexOf(TRACKS[G.theme] || TRACKS.earth);
   const saved = k => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -329,6 +332,42 @@
     if (s === 3) drum(t, 70, 45, .13, .18);                  //       咚
     if (R() < .08) blip(pickOf(BUB), t, .03);
     if (bar % 8 === 7 && s === 8) { const m = pickOf(BUB); blip(m, t, .035); blip(m + 7, t + S16 * 2, .025); blip(m - 5, t + S16 * 2, .025); }   // 一个分成两个
+  }
+
+  // ---- 深空 · FM 13.8：Am(add9) → Fmaj7 → C → G(add9)，各四小节；隔一轮最后一个换成 Em7 ----
+  const VOID = [[45, [57, 64, 67, 71]], [41, [57, 60, 64, 69]], [48, [55, 60, 64, 67]], [43, [55, 62, 67, 69]], [40, [55, 59, 62, 67]]];
+  function organ(ms, t, dur, peak, bright) {                 // 管风琴：每个音叠 8′、4′、2′ 三组音管，慢慢起、慢慢收
+    const f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = 1200 + bright * 1800;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + 1.5);
+    g.gain.setValueAtTime(peak, t + dur - 1); g.gain.linearRampToValueAtTime(0, t + dur + 1.5);
+    f.connect(g).connect(B.dry); send(g, .8);
+    for (const m of ms) for (const [r, a] of [[1, 1], [2, .25 + .35 * bright], [4, .2 * bright]]) {
+      if (!a) continue;
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = hz(m) * r; o.detune.value = (R() - .5) * 6; og.gain.value = a;
+      o.connect(og).connect(f); o.start(t); o.stop(t + dur + 1.6);
+    }
+  }
+  function playSky(i, t) {
+    const s = i % 16, bar = Math.floor(i / 16), sec = Math.floor(bar % 32 / 8), round = Math.floor(bar / 16);
+    const ci = Math.floor(i / 64) % 4, [root, v] = VOID[ci === 3 && round % 2 ? 4 : ci];
+    if (i % 64 === 0) {
+      organ(v, t, S16 * 64, .02 + sec * .004, sec / 3);
+      tone('sine', hz(root - 12), t, .08, 3, 6, .05, 8, B.dry, .2);
+      if (sec === 3) swell(t, S16 * 64, 900, .025, 'bandpass');                  // 最后一段：像有风从很远的地方吹过来
+    }
+    if (s % 4 === 0) hiss(t, 'highpass', 5200, s ? .007 : .011, .015);          // 钟摆
+    if (sec >= 1 && s % 2 === 0) {                                              // 两个音来回，进附点八分的回声
+      const m = (s / 2) % 2 ? v[3] + 12 : v[2] + 12;
+      tone('triangle', hz(m), t, .02 + sec * .006, .003, .22, .0001, .3, B.echo, .3);
+    }
+    if (sec >= 2 && R() < .5) bell(v[s % 4] + (Math.floor(s / 4) % 2 ? 24 : 12), t, .012 + (sec - 2) * .008);   // 往上爬的琶音
+    if (sec === 3) {
+      if (s === 0 || s === 8) drum(t, 70, 38, .24, .35);                        // 很低的脉搏
+      if (R() < .02) { const m = pickOf(v) + 24, n = 4 + Math.floor(R() * 4); for (let k = 0; k < n; k++) blip(m, t + k * S16 * .5, .025 * (1 - k / n)); }   // 故障：一个音结巴几下
+    }
+    if (R() < .012) bell(pickOf(v) + 24, t, .01);                              // 偶尔一颗远处的星
   }
 
   // 每个台自己一套总线，换台时旧的整条淡出，已经排好的音符也跟着消失

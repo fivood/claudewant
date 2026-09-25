@@ -48,6 +48,7 @@ function hourNow() {
   return d.getHours() + d.getMinutes() / 60;
 }
 function daylight() {
+  if (SKY) return 1;                                       // 深空没有白天黑夜：光不是从你房间来的
   const hr = hourNow();
   if (hr < 5 || hr >= 19) return 0;
   if (hr >= 7 && hr < 17) return 1;
@@ -115,6 +116,7 @@ function draw() {
   const vis = drawWonders(ox, oy, tp, s, ctx, W, H, sunVec());
   shade(W, H, dl, ox, oy, tp, s);
   if (s >= 3) drawLabels(ox, oy, tp, s, ctx, vis);
+  if (SKY && s >= 2) SKY.labels(ox, oy, tp, s, W, H);
   for (const w of [...ws].sort((a, b) => a.y - b.y)) drawClawd(w.x * tp + ox, w.y * tp + oy, s, w);
 }
 
