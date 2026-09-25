@@ -192,10 +192,11 @@ const SKY = G.theme === 'sky' && (() => {
   const MWD = [150, 162, 205], MWB = [240, 205, 155], DUSTC = [70, 44, 30], CIRC = [30, 34, 50];
   // JWST 的星芒：六条主芒（上下、斜 ±60°），加两条暗一点的横芒
   const SPK = [[90, 1], [270, 1], [30, 1], [150, 1], [210, 1], [330, 1], [0, .35], [180, .35]].map(([a, k]) => [Math.cos(a * D2R), Math.sin(a * D2R), k]);
-  function star(c, L, dx, dy) {
+  const BAKE = .4;                                           // 亮星烤进地图块的那部分，见下面的 fx
+  function star(c, L, dx, dy, a = 1) {                       // a：亮度，地图块里的亮星只烤一部分，剩下的由 fx 按截面大小叠上去
     const d = Math.hypot(dx, dy);
-    add(WHITE, ex(-((d / .3) ** 2)) * 1.6); add(c, ex(-d / (.35 + L * .04)) * .9);
-    for (const [cx, sy, k] of SPK) { const t = dx * cx + dy * sy; if (t > 0 && t < L && Math.abs(dy * cx - dx * sy) < .13) add(c, ex(-t / L * 3) * k); }
+    add(WHITE, ex(-((d / .3) ** 2)) * 1.6 * a); add(c, ex(-d / (.35 + L * .04)) * .9 * a);
+    for (const [cx, sy, k] of SPK) { const t = dx * cx + dy * sy; if (t > 0 && t < L && Math.abs(dy * cx - dx * sy) < .13) add(c, ex(-t / L * 3) * k * a); }
   }
   // 一个点亮的像素，带一点十字
   const pt = (dx, dy) => { const ax = Math.abs(dx), ay = Math.abs(dy); return ax < .13 && ay < .13 ? 1.3 : (ax < .13 && ay < .63) || (ay < .13 && ax < .63) ? .4 : 0; };
@@ -343,11 +344,12 @@ const SKY = G.theme === 'sky' && (() => {
       add(MWD, m * .3 * MWK * (1 - B.bul)); add(MWB, m * .32 * MWK * B.bul); add(DUSTC, d * B.mw * .35 * MWK); add(CIRC, CIR[q]);
       const hv = h(px, py, sd + 90), sp = .005 + .018 * m;
       if (hv < sp) add(STARC[(h(px, py, sd + 91) * 5) | 0], ((1 - hv / sp) ** 2 * 220 + 35) / 255);
-      if (fs) add(i === 1 && j === 1 ? WHITE : fc, i === 1 && j === 1 ? 1 : (i === 1 && j < 3) || (j === 1 && i < 3) ? .5 : 0);
+      if (fs) add(i === 1 && j === 1 ? WHITE : fc, (i === 1 && j === 1 ? 1 : (i === 1 && j < 3) || (j === 1 && i < 3) ? .5 : 0) * BAKE);
       if (gal) { const du = (i - 1.5) * Math.cos(ga) + (j - 1.5) * Math.sin(ga), dv = (j - 1.5) * Math.cos(ga) - (i - 1.5) * Math.sin(ga); add(gc, ex(-(du * du / 2 + dv * dv / .5)) * .6); }
       for (const b of nb) {
         const dx = X - b.x, dy = Y - b.y;
-        if (dx * dx + dy * dy <= b.reach * b.reach) blob(b, dx, dy, px, py, b.R > 25);
+        if (dx * dx + dy * dy > b.reach * b.reach) continue;
+        if (b.k === 'st') star(b.c1, b.L, dx, dy, BAKE); else blob(b, dx, dy, px, py, b.R > 25);
       }
       const c = SP[j * TP + i];
       c[0] = A[0]; c[1] = A[1]; c[2] = A[2];
@@ -355,8 +357,30 @@ const SKY = G.theme === 'sky' && (() => {
     return SP;
   }
 
+  // 居民的城在深空里是行星：以城那一格为中心，画一个直径约 3 格的球，光从左上来，背光面暗下去；
+  // 一半带条纹（气态巨行星），三分之一带环（环的前半截挡在球前面）。毁掉的城碎成一圈石头。
+  // 返回这一格每个美术像素的颜色（没被行星盖住的给 null）；附近没有行星就返回 null。
+  const RINGC = [205, 192, 168];
+  function planet(x, y) {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const tx = x + dx, ty = y + dy, t = TOWN.get(key(tx, ty));
+      if (t !== 'town' && t !== 'ruin') continue;
+      const r0 = h(tx, ty, sd + 11), col = FCOL[Math.floor(r0 * 4)][0], ring = h(tx, ty, sd + 12) < .35, band = h(tx, ty, sd + 13) < .5;
+      return (i, j) => {
+        const px = -dx * TP + i - 1.5, py = -dy * TP + j - 1.5, d = Math.hypot(px, py);   // 相对城那一格的中心，单位是美术像素
+        if (t === 'ruin') return d < 6.5 && h(x * TP + i, y * TP + j, sd + 14) < .2 ? RUIN_C : null;
+        const e = ring ? Math.hypot(px, py * 2.6) : 0;
+        if (e > 7 && e < 8.6 && (py > 0 || d >= 5.2)) return RINGC;
+        if (d >= 5.2) return null;
+        const l = .45 + .55 * cl(.65 - (px + py) / 9), b = band ? .85 + .15 * Math.sin(py * 1.7 + r0 * 9) : 1;
+        return col.map(v => v * l * b);
+      };
+    }
+    return null;
+  }
+
   // 走到天体中心附近：说一句，名字从此标在图上
-  function reveal(k) {
+  function discover(k) {
     const b = KEY.get(k);
     if (!b || G.seen['sky' + b.i]) return;
     G.seen['sky' + b.i] = 1;
@@ -432,5 +456,114 @@ const SKY = G.theme === 'sky' && (() => {
     });
     g.setTransform(1, 0, 0, 1, 0, 0);
   }
-  return { tile, paint, reveal, labels, catalog };
+
+  // --- 动起来的天：都画在屏幕那一层，不进地图块 ---------------------------------------------------
+  // 纸是天空的一片截面，天上的东西是在第四个方向上穿过它：
+  //   亮星是超球，纸只切到一片。它在 w 上慢慢漂，截面就从一个点长大、再缩回去，偶尔整颗离开纸面。
+  //     地图块里只烤了 BAKE 那么亮，剩下的在这里按截面大小叠上去。
+  //   流星只看得见穿过纸的那一段：凭空冒出来，边滑边长大再缩小，半路消失，拖尾只到它出现的地方。
+  //     垂直穿过纸的那种停在原地亮一下；落在还没展开的白纸上，就烧出一个洞。
+  //   卫星的轨道侧对着纸，只剩一个点沿一条线段来回摆，转到纸这一侧时亮，那一侧时暗。
+  const css = c => `rgb(${c.map(Math.round)})`, FS = new Map(), STARS = IMG.filter(b => b.k === 'st');
+  for (const b of STARS) { b.sp = .2 + h(b.i, 1, sd + 77) * .3; b.ph = h(b.i, 2, sd + 77) * TAU; b.css = css(b.c1); }
+  const breathe = (sp, ph, t) => Math.sqrt(Math.max(0, 1 - (1.1 * Math.sin(t * sp + ph)) ** 2));   // 截面半径：超球心离纸面 w，r = √(R² − w²)
+  function fieldIn(cx, cy) {                                  // 一块地图里的亮星格子，第一次上屏时找一遍
+    const ck = cx + ',' + cy;
+    let a = FS.get(ck);
+    if (!a) {
+      FS.set(ck, a = []);
+      for (let j = 0; j < CH; j++) for (let i = 0; i < CH; i++) {
+        const x = cx * CH + i, y = cy * CH + j;
+        if (h(x, y, sd + 70) < .009 && fieldStar(x, y, base(x, y))) a.push([x, y, css(STARC[(h(x, y, sd + 71) * 5) | 0]), .15 + h(x, y, sd + 75) * .35, h(x, y, sd + 76) * TAU]);
+      }
+    }
+    return a;
+  }
+  const METEOR = [255, 214, 150], clock = performance.now();
+  let meteor = null, sat = null, nextM = clock + 10000, nextS = clock + 40000;
+  const onSky = (ax, ay) => rev.has(key(Math.floor(ax / TP), Math.floor(ay / TP)));   // 美术像素坐标上是不是已经展开的天
+  function spot(ox, oy, s, W, H, want) {                    // 屏幕上随便找一个美术像素，want：要天（true）还是要白纸（false）
+    for (let n = 0; n < 40; n++) {
+      const ax = Math.floor((Math.random() * W - ox) / s), ay = Math.floor((Math.random() * H - oy) / s);
+      if (onSky(ax, ay) === want) return [ax, ay];
+    }
+    return null;
+  }
+  function fx(ox, oy, tp, s, W, H) {
+    const now = performance.now(), t = now / 1000, g = ctx;
+    const px = (ax, ay, c, a) => { if (a <= .01) return; g.globalAlpha = Math.min(1, a); g.fillStyle = c; g.fillRect(ax * s + ox, ay * s + oy, s, s); };
+    // 亮星的呼吸
+    g.globalCompositeOperation = 'lighter';
+    const x0 = Math.floor(-ox / tp) - 1, y0 = Math.floor(-oy / tp) - 1, x1 = Math.ceil((W - ox) / tp), y1 = Math.ceil((H - oy) / tp);
+    for (let cy = Math.floor(y0 / CH); cy <= Math.floor(y1 / CH); cy++) for (let cx = Math.floor(x0 / CH); cx <= Math.floor(x1 / CH); cx++) {
+      if (!hasChunk.has(cx + ',' + cy)) continue;
+      for (const [x, y, c, sp, ph] of fieldIn(cx, cy)) {
+        if (x < x0 || x > x1 || y < y0 || y > y1 || !rev.has(key(x, y))) continue;
+        const r = breathe(sp, ph, t), ax = x * TP + 1, ay = y * TP + 1;
+        px(ax, ay, '#fff', .6 * r);
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) px(ax + dx, ay + dy, c, .45 * r);
+      }
+    }
+    for (const b of STARS) {
+      const cx = b.x * TP - .5, cy = b.y * TP - .5, Ls = b.L * TP;
+      if ((cx + Ls) * s + ox < 0 || (cx - Ls) * s + ox > W || (cy + Ls) * s + oy < 0 || (cy - Ls) * s + oy > H || !onSky(cx, cy)) continue;
+      const r = breathe(b.sp, b.ph, t), L = Ls * r;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const d = Math.hypot(dx, dy); if (d <= 1.8 * r) px(cx + dx, cy + dy, '#fff', .9 * r * (1 - d / 2.5)); }
+      for (const [c, sn, k] of SPK) for (let tt = 1; tt < L; tt++) {
+        const ax = Math.round(cx + c * tt), ay = Math.round(cy + sn * tt);
+        if (onSky(ax, ay)) px(ax, ay, b.css, .55 * k * ex(-tt / L * 3));
+      }
+    }
+    g.globalCompositeOperation = 'source-over';
+
+    // 流星
+    if (!meteor && now > nextM) {
+      const pierce = Math.random() < .35, p = pierce && spot(ox, oy, s, W, H, false) || spot(ox, oy, s, W, H, true);
+      if (p) meteor = { p, t0: now, pierce: pierce && !onSky(...p), a: Math.random() * TAU, v: 30 + Math.random() * 30, dur: 800 + Math.random() * 700, R: 1.5 + Math.random() * .8 };
+      else nextM = now + 5000;
+    }
+    if (meteor) {
+      const m = meteor, q = (now - m.t0) / m.dur, bump = Math.sqrt(Math.max(0, 1 - (2 * q - 1) ** 2));   // 一个球斜着穿过一张纸：截面从一个点长大再缩回去
+      if (q >= 1) { meteor = null; nextM = now + 15000 + Math.random() * 30000; }
+      else if (m.pierce) {
+        const [ax, ay] = m.p, r = 2.6 * bump;
+        for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+          const d = Math.hypot(dx, dy);
+          if (d <= r) px(ax + dx, ay + dy, d < r * .5 ? '#fff6e0' : css(METEOR), 1);
+          else if (d <= r + 1.2) px(ax + dx, ay + dy, '#ff7a3a', .8 * bump);   // 纸边烧焦的一圈
+        }
+        if (q > .5 && !m.burnt) {
+          m.burnt = true;
+          reveal(Math.floor(ax / TP), Math.floor(ay / TP), Math.random() < .4 ? 2 : 1);
+          if (!G.seen.burn) { G.seen.burn = 1; bubbleAt = -1e9; say(tr('一颗流星垂直穿过了纸，在上面烧了个洞。现在那儿能看见后面的天了。', 'A meteor went straight through the paper and burned a hole in it. You can see the sky behind it now.'), { bubble: true }); }
+        }
+      } else {
+        const len = m.v * q * m.dur / 1000, c = Math.cos(m.a), sn = Math.sin(m.a), [sx, sy] = m.p, hx = sx + c * len, hy = sy + sn * len;
+        for (let k = 0; k < len; k++) { const ax = Math.round(sx + c * k), ay = Math.round(sy + sn * k); if (onSky(ax, ay)) px(ax, ay, css(METEOR), (.1 + .6 * k / len) * (1 - q * .5)); }
+        const r = m.R * bump;
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (Math.hypot(dx, dy) <= r && onSky(Math.round(hx) + dx, Math.round(hy) + dy)) px(Math.round(hx) + dx, Math.round(hy) + dy, '#fff6e0', 1);
+        if (!G.seen.meteor && q > .5 && onSky(hx, hy)) { G.seen.meteor = 1; say(tr('一颗流星从纸里冒出来，滑了一小段就不见了。它不是划过去的，是从纸面穿过去的，纸只切到了它经过的那一截。', 'A meteor surfaced in the paper, slid a little way and vanished. It didn\'t streak across; it passed through, and the paper only caught the stretch where it crossed.')); }
+      }
+    }
+
+    // 卫星
+    if (!sat && now > nextS) {
+      const p = spot(ox, oy, s, W, H, true), a = Math.random() * TAU;
+      if (p) sat = { p, t0: now, dx: Math.cos(a), dy: Math.sin(a), A: 24 + Math.random() * 32, per: 8000 + Math.random() * 6000, life: 40000 + Math.random() * 30000 };
+      else nextS = now + 10000;
+    }
+    if (sat) {
+      const q = (now - sat.t0) / sat.life;
+      if (q >= 1) { sat = null; nextS = now + 40000 + Math.random() * 60000; }
+      else {
+        const f = Math.min(1, q * 8, (1 - q) * 8), ph = (now - sat.t0) / sat.per * TAU, u = Math.cos(ph) * sat.A, near = Math.sin(ph) > 0;
+        const ax = Math.round(sat.p[0] + sat.dx * u), ay = Math.round(sat.p[1] + sat.dy * u);
+        if (onSky(ax, ay)) { px(ax, ay, near ? '#e8f0ff' : '#7f8aa8', f); if (near && Math.floor(now / 500) % 2) px(ax + 1, ay, '#ff6a5a', f); }
+      }
+    }
+    g.globalAlpha = 1;
+
+    if (!G.seen.twinkle && (now - clock) > 90000) { G.seen.twinkle = 1; say(tr('那颗星又小下去了。它没在闪，是在第四个方向上离开了纸面一点点。', 'That star has shrunk again. It isn\'t twinkling; it has drifted a little way off the paper, in the fourth direction.')); }
+  }
+  return { tile, paint, planet, reveal: discover, labels, catalog, fx };
 })();

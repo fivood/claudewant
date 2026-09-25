@@ -114,6 +114,7 @@ function draw() {
   trimChunks(visible);
 
   const vis = drawWonders(ox, oy, tp, s, ctx, W, H, sunVec());
+  if (SKY) SKY.fx(ox, oy, tp, s, W, H);
   shade(W, H, dl, ox, oy, tp, s);
   if (s >= 3) drawLabels(ox, oy, tp, s, ctx, vis);
   if (SKY && s >= 2) SKY.labels(ox, oy, tp, s, W, H);
