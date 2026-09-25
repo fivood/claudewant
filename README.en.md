@@ -18,7 +18,7 @@ A four-dimensional creature (Clawd) falls into an endlessly unfolding two-dimens
 - **The residents' history** is played out from the seed the moment the world loads: population, eras (Wandering → Villages → City-states → Geometry → Awakening), towns, wars and temples, until they leave the paper. The same session always gives the same history. A four-dimensional being sees the whole timeline, so the faded entries in the annals are things that haven't happened yet.
 - **Day and night** follow your real clock, or drag the time slider in the sense.exe window.
 - **Full map** lays out the whole sheet as a downloadable PNG, and shows the conversation's 4D projection; on a Deep Sky sheet that page is a catalogue card for every object you've seen.
-- Once the **Fill-in** upgrade is bought, a button fills every gap enclosed by where Clawd has walked. **Clear data** deletes every sheet's progress and loaded session on this machine, after two confirmations.
+- Once the **Fill-in** upgrade is bought, a button fills every gap enclosed by where Clawd has walked. **Clear all** deletes every sheet's progress and loaded session on this machine, after two confirmations.
 - **Pet = Lineland**: as a desktop pet, Clawd is flat too and the world collapses into a line. Wonders in the way get climbed, launched over, walked through (the forge), or stepped around through the fourth dimension.
 - The radio in the corner is synthesized live with WebAudio: ten stations, one per terrain (Deep Sky gets organ, a ticking pulse and slowly building arpeggios), each in its own style and made to loop for hours. It starts on the current sheet's station; » switches, and RND shuffles every few minutes.
 - Switch between English and Chinese any time (the button next to the time slider).

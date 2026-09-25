@@ -28,7 +28,8 @@ body>.win{position:fixed}
 #log.sized .scroll{display:none}
 #pts{font-size:24px;line-height:30px;color:var(--clay);padding:0 2px}
 #hud .field{margin:2px 0 6px}
-.acts{display:grid;grid-template-columns:1fr 1fr;gap:4px}   /* 全图占一整行，下面两两一排 */
+.acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}   /* 全图占一整行，下面两两一排 */
+.acts .btn{padding:0 3px;white-space:normal}   /* 英文按钮比中文长：不撑出窗口，放不下就换行 */
 .acts .wide{grid-column:1 / -1}
 .clock{display:flex;align-items:center;gap:6px;margin:0 0 6px}
 #clockT{width:5ch;color:var(--dim)}

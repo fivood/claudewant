@@ -480,7 +480,7 @@ const SKY = G.theme === 'sky' && (() => {
     return a;
   }
   const METEOR = [255, 214, 150], clock = performance.now();
-  let meteor = null, sat = null, nextM = clock + 10000, nextS = clock + 40000;
+  let meteor = null, sat = null, nextM = clock + 90000 + Math.random() * 60000, nextS = clock + 120000;   // 刚开局全是白纸，流星一来准烧在远处孤零零一格，先等纸展开一点
   const onSky = (ax, ay) => rev.has(key(Math.floor(ax / TP), Math.floor(ay / TP)));   // 美术像素坐标上是不是已经展开的天
   function spot(ox, oy, s, W, H, want) {                    // 屏幕上随便找一个美术像素，want：要天（true）还是要白纸（false）
     for (let n = 0; n < 40; n++) {
