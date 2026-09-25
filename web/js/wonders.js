@@ -353,7 +353,10 @@ $('mapBtn').onclick = () => {
 };
 $('pmap').onclick = () => posterView('map');
 $('p4d').onclick = () => posterView('4d');
-$('pclose').onclick = () => { cancelAnimationFrame(spin); $('poster').hidden = true; };
+const closePoster = () => { cancelAnimationFrame(spin); $('poster').hidden = true; };
+$('pclose').onclick = $('px').onclick = closePoster;
+$('poster').onclick = e => { if (e.target === $('poster')) closePoster(); };   // 点窗口外面的暗处也能关
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('poster').hidden) closePoster(); });
 $('pdl').onclick = () => $('pcv').toBlob(b => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);

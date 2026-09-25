@@ -75,10 +75,14 @@ html:lang(en) #origin::before{content:"Where this sheet came from"}
 #tune.hint{color:var(--clay);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.35}}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .7s}
-#poster{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:rgba(40,34,44,.45)}
-#poster .win{max-width:94vw;max-height:94vh;display:flex;flex-direction:column}
+/* 手机浏览器的 vh 按收起地址栏的高度算，窗口会比看得见的高、底下那排按钮被工具栏盖住：
+   用 dvh（旧浏览器退回 vh），居中用 margin:auto——放不下时贴顶、整层可以滚，标题栏的 × 总看得见 */
+#poster{position:fixed;inset:0;z-index:1000;display:grid;overflow:auto;background:rgba(40,34,44,.45)}
+#poster .win{margin:auto;max-width:94vw;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column}
 #poster .pv{overflow:auto;min-height:0}
-#pcv{display:block;max-width:88vw;max-height:76vh}
+#pcv{display:block;max-width:88vw;max-height:76vh;max-height:calc(94dvh - 100px)}
+#px{position:relative;width:20px}
+#px::after{content:"";position:absolute;inset:-8px}   /* 手指点的范围比画出来的大一圈 */
 #pcv.tall{max-height:none}                /* 星表很长，在窗口里往下滚 */
 .prow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .prow .sp{flex:1}
