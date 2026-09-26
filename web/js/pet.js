@@ -165,6 +165,53 @@ function petTick(dt) {
   }
 }
 
+// --- 远景：线国的人只看得见这一条线，可 Clawd 是四维的，它看得见这一行后面的纸。把线后面几行的地形侧过来看：
+// 山是一道道剪影（附近几格地形高度的平均，连成山脊），高的戴雪；林子是一排锯齿的树梢；越远越淡、挪得越慢，层和层之间飘着雾。
+// 只在有山有林的自然地貌上画
+const VISTA = ['earth', 'dune', 'solaris', 'ink'].includes(G.theme);
+const VH = { rock: .45, peak: .75, snow: 1, forest: .16 }, vistaCache = new Map();
+function vistaH(x, y) {
+  const k = x + ',' + y;
+  let v = vistaCache.get(k);
+  if (v !== undefined) return v;
+  v = 0;
+  for (let d = -3; d <= 3; d++) v += (VH[tile(x + d, y)] || 0) * (1 - Math.abs(d) / 4);
+  v /= 4;
+  if (vistaCache.size > 6000) vistaCache.clear();
+  vistaCache.set(k, v);
+  return v;
+}
+const VLAYERS = [[40, .25, .55], [18, .45, .35], [7, .7, .14]];   // 在线后面第几行、视差、和天色混多少（远的先画）
+function drawVista(g, W, ly, k, cx, T, fade) {
+  const L1 = G.line, t = performance.now() / 1000, haze = INKY ? [244, 242, 236] : [214, 224, 236], step = Math.max(1, Math.round(k));
+  const col = (kd, m) => { const c = T_COL(kd); return `rgb(${c.map((v, i) => Math.round(v + (haze[i] - v) * m))})`; };
+  for (const [d, p, m] of VLAYERS) {
+    const y = L1.y - d, tp = T * p, cols = [col('forest', m), col('rock', m), col('peak', m), col('snow', m * .6)];
+    for (let sx = 0; sx < W; sx += step) {
+      const a = fade(sx);
+      if (a <= .02) continue;
+      const wx = L1.x + (sx - cx) / tp, x0 = Math.floor(wx), f = wx - x0;
+      let hh = vistaH(x0, y) * (1 - f) + vistaH(x0 + 1, y) * f;
+      if (hh < .04) continue;
+      const tree = tile(x0, y) === 'forest';
+      if (tree) hh += (1 - Math.abs((wx * 3 % 1) * 2 - 1)) * .07;   // 树梢一个个尖
+      const hp = Math.round(hh ** .8 * (24 + 30 * p) * k);
+      g.globalAlpha = a * .9;
+      g.fillStyle = cols[hh > .62 ? 2 : hh > .3 ? 1 : 0];
+      g.fillRect(sx, ly - hp, step, hp);
+      if (hh > .78) { g.fillStyle = cols[3]; g.fillRect(sx, ly - hp, step, Math.round(hp * .18)); }   // 雪顶
+    }
+    g.fillStyle = INKY ? '#f4f2ec' : '#f0f4f8';               // 这一层脚下的雾，慢慢飘
+    for (let sx = 0; sx < W; sx += step * 2) {
+      const a = fade(sx), wx = L1.x + (sx - cx) / tp, mist = vn(wx * .12 + t * .04, d, G.seed + 77);
+      if (a <= .02 || mist < .35 || vistaH(Math.floor(wx), L1.y - d) < .08) continue;   // 雾只绕着山和林子
+      g.globalAlpha = a * (mist - .35) * .9;
+      g.fillRect(sx, ly - Math.round((5 + mist * 6) * k), step * 2, Math.round((5 + mist * 6) * k));
+    }
+  }
+  g.globalAlpha = 1;
+}
+
 // 画 Clawd 身边那一段线：展开过的格子是地形的颜色，没展开的是空白纸上的虚线，两头渐隐——一维里只看得见近处。
 // 线上的奇观画成侧面剖面，坑画在线下面。
 function drawLine() {
@@ -174,6 +221,7 @@ function drawLine() {
   const T = TILE * k, cx = W / 2, ly = H - Math.round(UNDER * k), lh = Math.round(4 * k), u = Math.round(4 * k), a1 = ART * k;
   const fade = sx => { const d = Math.abs(sx - cx) / (W / 2); return Math.max(0, 1 - d * d); };
   g.clearRect(0, 0, W, H);
+  if (VISTA) drawVista(g, W, ly, k, cx, T, fade);
   for (let x = Math.floor(L1.x - cx / T) - 1; x <= Math.ceil(L1.x + cx / T) + 1; x++) {
     const sx = Math.round(cx + (x - L1.x) * T), a = fade(sx + T / 2);
     if (a <= .02) continue;
