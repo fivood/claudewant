@@ -54,11 +54,15 @@ const FX = (() => {
         }
         if (any && v.age > 45000) said('fxcloud', '一片影子从纸上慢慢滑过去。那是一朵云——它在纸面上方的第三维，居民只看得到它的影子。', 'A shadow slides slowly across the paper. It\'s a cloud, up in the third dimension above the sheet; the residents only ever see its shadow.');
       }
-      const bucket = Math.floor(v.now / 320), px = v.px, a = .3 + .5 * dl;   // 波光：水面上一闪一闪的小亮点
+      // 波光：每格水按自己的节奏，每 3–7 秒闪一下，一道横向亮线，渐亮再渐暗；深水暗一点。每一闪的长短（1–4 像素）和位置都重新抽
+      const px = v.px, a = .45 + .55 * dl;
       eachChunk(v, (cx, cy) => {
-        for (const [x, y] of perChunk('water', cx, cy, (X, Y) => { const o = []; for (let j = 0; j < CH; j++) for (let i = 0; i < CH; i++) { const t2 = tile(X + i, Y + j); if (t2 === 'water' || t2 === 'deep') o.push([X + i, Y + j]); } return o; })) {
-          if (!rev.has(key(x, y)) || h(x, y, G.seed + bucket) > .035) continue;
-          px(x * TP + ((h(x, y, bucket + 7) * TP) | 0), y * TP + ((h(x, y, bucket + 9) * TP) | 0), '#f4f8ff', a);
+        for (const [x, y, deep, per, ph] of perChunk('water', cx, cy, (X, Y) => { const o = []; for (let j = 0; j < CH; j++) for (let i = 0; i < CH; i++) { const t2 = tile(X + i, Y + j); if (t2 === 'water' || t2 === 'deep') o.push([X + i, Y + j, t2 === 'deep', 3 + h(X + i, Y + j, G.seed + 310) * 4, h(X + i, Y + j, G.seed + 311)]); } return o; })) {
+          const k = ((t / per + ph) % 1) * per / .6;             // 这一闪进行到哪了（0–1），过了就等下一轮
+          if (k >= 1 || !rev.has(key(x, y))) continue;
+          const n = Math.floor(t / per + ph), len = 1 + ((h(x, y, n) * 4) | 0), ax = x * TP + ((h(x, y, n + 1) * (TP - len + 1)) | 0), ay = y * TP + ((h(x, y, n + 2) * TP) | 0);
+          const f = Math.sin(k * Math.PI) * a * (deep ? .7 : 1);
+          for (let i = 0; i < len; i++) px(ax + i, ay, '#ffffff', len > 2 && (i === 0 || i === len - 1) ? f * .6 : f);   // 长的那几道两头淡一点
         }
       });
     },
@@ -67,7 +71,9 @@ const FX = (() => {
   // --- 沙丘：风卷着细沙掠过沙面；沙虫在纸面下面游，纸上只看得到它顶起来的那道脊 ----------------------
   const SANDY = t => t === 'sand' || t === 'grass' || t === 'forest';   // 流沙、沙丘、香料田；盐壳太白，沙脊在上面看不出来
   const grains = [];
-  let worm = null, nextWorm = T0 + 30000 + Math.random() * 30000;
+  let worm = null, nextWorm = T0 + 45000 + Math.random() * 45000;
+  const LIGHT = [-Math.SQRT1_2, -Math.SQRT1_2];               // 光从左上来
+  const SKIN = [190, 146, 102];                                // 浮出来的那截沙虫的皮
   const dune = {
     under(v) {
       const { now, t, px } = v, wind = h(G.seed, 1, 500) * TAU + .4 * Math.sin(t * .05), wx = Math.cos(wind), wy = Math.sin(wind);
@@ -84,35 +90,59 @@ const FX = (() => {
           if (open(ax, ay) && SANDY(tileAt(ax, ay))) px(ax, ay, rgb([255, 236, 190]), a * (1 - s / 5));
         }
       }
-      if (!worm && now > nextWorm) {                         // 沙虫：半分钟到一分半来一条，慢慢游十几二十秒
+      // 沙虫：一两分钟来一条，慢慢游二十来秒。小的只在沙底下顶起一道脊；大的（四成）会浮出半截：
+      // 从纸上看是一段管子的上半边，中间亮两侧暗，一圈圈环节，背光那侧的沙面上有影子。它先慢慢钻出来，快走完时再沉回去。
+      if (!worm && now > nextWorm) {
         let p = null;
         for (let n = 0; n < 12 && !p; n++) { const q = spot(v.ox, v.oy, v.s, v.W, v.H); if (q && SANDY(tileAt(...q))) p = q; }   // 沙少的地方多找几次
-        if (p) worm = { x: p[0], y: p[1], h0: Math.random() * TAU, ph: Math.random() * TAU, t0: now, life: 18000 + Math.random() * 8000, trail: [] };
+        const big = Math.random() < .4;
+        if (p) worm = { x: p[0], y: p[1], h0: Math.random() * TAU, ph: Math.random() * TAU, t0: now, life: 18000 + Math.random() * 10000, trail: [], big,
+          R: big ? 5 + Math.random() * 2 : 3.5 + Math.random(), len: big ? 60 + Math.random() * 50 : 0, v: big ? 6 : 8 };
         else nextWorm = now + 5000;
       }
       if (worm) {
-        const w = worm, age = now - w.t0, hd = w.h0 + .7 * Math.sin(age / 1000 * .35 + w.ph);
+        const w = worm, age = now - w.t0, hd = w.h0 + .7 * Math.sin(age / 1000 * .35 + w.ph), R = w.R;
         if (age < w.life) {
-          w.x += Math.cos(hd) * 8 * v.dt; w.y += Math.sin(hd) * 8 * v.dt;
+          w.x += Math.cos(hd) * w.v * v.dt; w.y += Math.sin(hd) * w.v * v.dt;
           const last = w.trail[w.trail.length - 1];
           if (!last || Math.hypot(last[0] - w.x, last[1] - w.y) >= 1) w.trail.push([w.x, w.y, now, hd]);
         }
-        while (w.trail.length && now - w.trail[0][2] > 9000) w.trail.shift();
-        if (age >= w.life && !w.trail.length) { worm = null; nextWorm = now + 40000 + Math.random() * 50000; }
+        while (w.trail.length && now - w.trail[0][2] > 10000) w.trail.shift();
+        if (age >= w.life && !w.trail.length) { worm = null; nextWorm = now + 60000 + Math.random() * 90000; }
         const sand = (ax, ay) => open(ax, ay) && SANDY(tileAt(ax, ay));
-        for (const [x, y, t0, a] of w.trail) {                 // 身后的沙脊：一边亮一边暗，慢慢塌平
-          const f = .7 * (1 - (now - t0) / 9000), nx = -Math.sin(a), ny = Math.cos(a);
-          for (const [k, c] of [[-1.5, [255, 234, 186]], [-.5, [240, 205, 150]], [.5, [150, 96, 54]], [1.5, [118, 72, 38]]]) {   // 四道：亮、偏亮、偏暗、暗
-            const ax = Math.round(x + nx * k), ay = Math.round(y + ny * k);
-            if (sand(ax, ay)) px(ax, ay, rgb(c), f * (Math.abs(k) > 1 ? .7 : 1));
+        // 一个截面：偏离中线 k 个像素，法线往那一侧歪；朝着光的一侧亮，背着的暗
+        const side = a => (-Math.sin(a)) * LIGHT[0] + Math.cos(a) * LIGHT[1];
+        for (const [x, y, t0, a] of w.trail) {                 // 身后的沙脊：慢慢塌平
+          const f = .75 * (1 - (now - t0) / 10000), nx = -Math.sin(a), ny = Math.cos(a), sd = side(a), W2 = Math.ceil(R + 1);
+          for (let k = -W2; k <= W2; k++) {
+            const sh = k / W2 * sd, ax = Math.round(x + nx * k), ay = Math.round(y + ny * k);
+            if (Math.abs(sh) > .12 && sand(ax, ay)) px(ax, ay, rgb(sh > 0 ? [255, 234, 186] : [118, 72, 38]), f * Math.min(1, Math.abs(sh) * 1.3));
           }
         }
-        if (age < w.life) {                                   // 头顶起来的那个包：左上亮、右下暗
-          for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) {
+        const up = w.big ? Math.max(0, Math.min(1, age / 2500, (w.life - age) / 2500)) : 0;   // 浮出来多少
+        if (up > 0) {                                          // 浮出来的那截：沿身后的路往回数，数到露出来的长度为止
+          const L = w.len * up, body = [];
+          for (let i = w.trail.length - 1, d = 0; i > 0 && d < L; i--) { body.push([...w.trail[i], d]); d += Math.hypot(w.trail[i][0] - w.trail[i - 1][0], w.trail[i][1] - w.trail[i - 1][1]); }
+          for (const [x, y, , a, d] of body.reverse()) {       // 从尾巴往头画，头压在上面
+            const nx = -Math.sin(a), ny = Math.cos(a), sd = side(a), r = R * Math.min(1, (L - d) / 12 + .35, d / 6 + .7);   // 尾巴那头细下去钻进沙里
+            const ring = Math.floor(d / 6) % 2 ? .86 : 1;
+            const sx = Math.round(x + nx * (r + 1) * -Math.sign(sd || 1)), sy = Math.round(y + ny * (r + 1) * -Math.sign(sd || 1));
+            if (sand(sx, sy)) px(sx, sy, 'rgb(60,36,20)', .35 * up);   // 背光那侧的影子
+            for (let k = -Math.floor(r); k <= Math.floor(r); k++) {
+              const ax = Math.round(x + nx * k), ay = Math.round(y + ny * k);
+              if (!open(ax, ay)) continue;
+              const u = k / r, lum = (.5 + .5 * Math.sqrt(Math.max(0, 1 - u * u)) + .18 * u * sd) * ring;   // 管子：中间亮两侧暗，再朝光的那侧偏亮一点
+              px(ax, ay, rgb(SKIN.map(c => c * lum)), up);
+            }
+          }
+          if (open(w.x, w.y)) said('fxwormbig', '一条大沙虫浮出了半截。在纸上它只是一根管子的上半边——下半边还埋在沙子里，在纸的另一面。', 'A big sandworm has surfaced halfway. On paper it\'s only the top half of a tube; the bottom half is still under the sand, on the other side of the sheet.');
+        } else if (age < w.life) {                             // 还在沙底下：头顶起来的那个包
+          const B = Math.ceil(R + 2);
+          for (let dy = -B; dy <= B; dy++) for (let dx = -B; dx <= B; dx++) {
             const d = Math.hypot(dx, dy), ax = Math.round(w.x) + dx, ay = Math.round(w.y) + dy;
-            if (d > 4.5 || !sand(ax, ay)) continue;
-            const lit = -(dx + dy) / 5;
-            px(ax, ay, lit > 0 ? rgb([255, 234, 186]) : rgb([118, 72, 38]), (1 - d / 5) * Math.min(.85, Math.abs(lit) + .35));
+            if (d > R + 1 || !sand(ax, ay)) continue;
+            const lit = (dx * LIGHT[0] + dy * LIGHT[1]) / (R + 1);
+            px(ax, ay, rgb(lit > 0 ? [255, 234, 186] : [118, 72, 38]), (1 - d / (R + 1.5)) * Math.min(.85, Math.abs(lit) + .35));
           }
           if (open(w.x, w.y)) said('fxworm', '沙面鼓起一道，往前游了一段又平下去。沙虫在下面游，纸上只看得到它顶起来的那道脊。', 'The sand swells into a ridge, travels a little way and sinks flat again. A sandworm is swimming underneath; the paper only shows the ridge it pushes up.');
         }
