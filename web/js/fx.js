@@ -345,62 +345,62 @@ const FX = (() => {
     },
   };
 
-  // --- 晶化：地上零零散散长着晶体（按格子撒点，大约 6 格一颗），每种矿物有自己的晶形——石英、紫水晶是带尖的六方柱，常常几根一簇；
-  //     电气石是细长的柱；黄铁矿是立方体；萤石、磁铁矿是八面体；方解石是菱面体；冰是六角片；硅锌矿是放射状的针；欧泊没有晶形，是一团。
-  //     每颗晶体沿着轮廓按矿物的脾气发光，晶面上的棱淡一点。还有一块光斑慢慢在晶体之间挪——光是从 Clawd 那边、第四个方向照进来的；
-  //     磷光的硅锌矿被它扫过才亮。每块地图的晶体轮廓第一次上屏时算好（每颗一组 Path2D），再拿这块地图自己的图当遮罩，只亮在展开了的地方
+  // --- 晶化：地面铺满了晶体，一颗挨一颗、没有缝。地面先分成一片片晶畴（大约 14 格一片），一片里是同一种矿物、同一个朝向，
+  //     按这种矿物的晶形排成能铺满平面的格子——石英、紫水晶、电气石、硅锌矿是两头尖的六方柱（越细长越像针），黄铁矿是一个个立方体斜着看，
+  //     萤石、磁铁矿是八面体（菱形分四个面），方解石是菱面体，冰是压扁的六角片，欧泊没有晶形、是不规则的一团团。
+  //     每个面按左上来光分深浅（算好存成一张图），晶体的轮廓按矿物的脾气发光，面和面之间的棱淡一半。
+  //     还有一块光斑慢慢在晶体之间挪——光是从 Clawd 那边、第四个方向照进来的；磷光的硅锌矿被它扫过才亮
   const GEM = ['forest', 'peak', 'grass', 'water', 'deep'];
-  const GR = 24;                                              // 晶体的间距，美术像素
   const MIN = {                                               // 每种矿物：颜色，和一句它是什么
     quartz: [232, 246, 255],                                  // 石英：平时淡淡的，偶尔沿轮廓闪一下
     amethyst: [196, 128, 255],                                // 紫水晶：慢慢地一明一暗
     fluorite: [120, 170, 255],                                // 萤石：荧光，天越暗越亮，颜色在蓝紫绿之间变
     pyrite: [255, 214, 96],                                   // 黄铁矿：金属的反光，一闪一闪，很快
     calcite: [255, 240, 214],                                 // 方解石：双折射，轮廓边上一道错开一个像素的重影
-    tourmaline: [255, 128, 176],                              // 电气石：根上粉、梢上绿，光在两头之间来回
+    tourmaline: [255, 128, 176],                              // 电气石：一排粉一排绿，光在两色之间来回
     willemite: [120, 255, 150],                               // 硅锌矿：磷光，光斑扫过以后亮起来，很久才暗
-    opal: [255, 255, 255],                                    // 欧泊：变彩，四个方向的颜色跟着时间转
+    opal: [255, 255, 255],                                    // 欧泊：变彩，颜色跟着时间转
     ice: [168, 232, 255],                                     // 冰：冷冷的，很淡
     magnetite: [200, 208, 224],                               // 磁铁矿：黑的，只有转到某个角度时晶面上掠过一道金属光
   };
   const BY_KIND = { peak: ['amethyst', 'amethyst', 'fluorite', 'pyrite', 'tourmaline'], forest: ['quartz', 'tourmaline', 'opal', 'willemite'], grass: ['quartz', 'calcite', 'willemite', 'fluorite'],
-    water: ['ice', 'calcite'], deep: ['ice'], sand: ['quartz', 'pyrite'], snow: ['ice', 'quartz'], rock: ['magnetite'] };
-  const site = (gi, gj) => [gi * GR + GR / 2 + (h(gi, gj, G.seed + 900) - .5) * GR * .7, gj * GR + GR / 2 + (h(gi, gj, G.seed + 901) - .5) * GR * .7];
-  // 一颗晶体的样子：几条折线，{ pts, facet（晶面上的棱，画淡一点）, close, body（围起来的地方是晶体本身，淡淡地填上） }
-  function shape(m, sx, sy, r) {
-    const L = [], up = -Math.PI / 2;
-    const poly = (a, pts, facet, close, body = close) => L.push({ facet, close, body, pts: pts.map(([u, v]) => [sx + Math.cos(a) * u - Math.sin(a) * v, sy + Math.sin(a) * u + Math.cos(a) * v]) });
-    const prism = (a, len, w, tip) => {                       // 柱从根上长出来：根部不封口，顶上一个锥，柱面中间一道棱
-      poly(a, [[0, -w], [len - tip, -w], [len, 0], [len - tip, w], [0, w]], false, false, true);
-      poly(a, [[1, w * .3], [len - tip, w * .3], [len, 0]], true, false);
-    };
-    const a = (r(1) - .5) * .5, s = 4.5 + r(2) * 2.5;
-    switch (m) {
-      case 'quartz': case 'amethyst': {
-        const n = m === 'amethyst' ? 2 + Math.floor(r(3) * 3) : 1 + Math.floor(r(3) * 2);
-        for (let k = 0; k < n; k++) prism(up + (r(10 + k) - .5) * 1.8, (m === 'amethyst' ? 9 : 7) + r(20 + k) * 7, m === 'amethyst' ? 3 : 2.5, 3.5);
-        break;
-      }
-      case 'tourmaline': for (let k = 0, n = 1 + (r(3) < .4); k < n; k++) prism(up + (r(10 + k) - .5) * 1.2, 14 + r(20 + k) * 7, 1.8, 2.5); break;
-      case 'willemite': for (let k = 0, n = 5 + Math.floor(r(3) * 4), a0 = r(4) * TAU; k < n; k++) poly(a0 + k / n * TAU + (r(10 + k) - .5) * .5, [[1.5, 0], [4 + r(20 + k) * 5, 0]], false, false); break;
-      case 'pyrite': {                                        // 立方体斜着看：六边形外框，里面一个 Y 分出三个面
-        const V = k => [Math.cos(up + k * TAU / 6) * s, Math.sin(up + k * TAU / 6) * s];
-        poly(a, [0, 1, 2, 3, 4, 5].map(V), false, true);
-        poly(a, [V(1), [0, 0], V(5)], true, false); poly(a, [[0, 0], V(3)], true, false);
-        break;
-      }
-      case 'fluorite': case 'magnetite': {                    // 八面体：菱形外框，前面一个顶点连出四条棱
-        const f = [s * .3, s * .1];
-        poly(a, [[0, -s * 1.25], [s, 0], [0, s * 1.25], [-s, 0]], false, true);
-        poly(a, [[0, -s * 1.25], f, [0, s * 1.25]], true, false); poly(a, [[-s, 0], f, [s, 0]], true, false);
-        break;
-      }
-      case 'calcite': poly(a, [[-s, -s * .55], [s * .35, -s * .55], [s, s * .55], [-s * .35, s * .55]], false, true); poly(a, [[-s * .35, s * .55], [s * .35, -s * .55]], true, false); break;
-      case 'ice': poly(r(4) * TAU, [0, 1, 2, 3, 4, 5].map(k => [Math.cos(k * TAU / 6) * s, Math.sin(k * TAU / 6) * s * .55]), false, true); break;
-      default: poly(0, [...Array(9)].map((_, k) => [Math.cos(k * TAU / 9) * s * (.75 + .35 * r(10 + k)), Math.sin(k * TAU / 9) * s * (.75 + .35 * r(10 + k))]), false, true);   // 欧泊：一团
-    }
-    return L;
+    water: ['ice', 'calcite'], deep: ['ice'], sand: ['quartz', 'pyrite'], snow: ['ice', 'quartz'], rock: ['magnetite', '', ''] };   // 玄武岩大多是光板，三分之一长磁铁矿
+  const S3 = Math.sqrt(3);
+  function hexCell(u, v, R) {                                 // 尖顶六边形格子：回 [q, r, 离格心 du, dv]
+    const qf = (S3 / 3 * u - v / 3) / R, rf = 2 / 3 * v / R, sf = -qf - rf;
+    let q = Math.round(qf), r = Math.round(rf);
+    const s = Math.round(sf), dq = Math.abs(q - qf), dr = Math.abs(r - rf), ds = Math.abs(s - sf);
+    if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s;
+    return [q, r, u - R * S3 * (q + r / 2), v - R * 1.5 * r];
   }
+  // 每种晶形的格子：给晶畴里的坐标 (u, v)，回 [格 i, 格 j, 第几个面, 这个面的明暗 -1..1]
+  const prism = (R, st) => (u, v) => { const [q, r, du] = hexCell(u, v / st, R); return [q, r, du < 0 ? 0 : 1, du < 0 ? .5 : -.4]; };
+  const LAT = {
+    quartz: prism(5, 1.8), amethyst: prism(6, 1.9), tourmaline: prism(2.6, 3.4), willemite: prism(2.4, 2.6),
+    pyrite: (u, v) => {                                       // 立方体斜着看：六边形分成顶、右、左三个面
+      const [q, r, du, dv] = hexCell(u, v, 6), a = Math.atan2(dv, du) * 180 / Math.PI, f = a > -150 && a <= -30 ? 0 : a > -30 && a <= 90 ? 1 : 2;
+      return [q, r, f, [.8, -.6, .1][f]];
+    },
+    fluorite: (u, v) => octa(u, v / 1.2, 6), magnetite: (u, v) => octa(u, v / 1.25, 5),
+    calcite: (u, v) => { const j = Math.floor(v / 7), x = u - v * .55, i = Math.floor(x / 11), f = x / 11 - i + v / 7 - j > 1 ? 1 : 0; return [i, j, f, f ? -.3 : .5]; },
+    ice: (u, v) => { const [q, r, , dv] = hexCell(u, v / .6, 7); return [q, r, 0, dv < 0 ? .3 : 0]; },
+    opal: (u, v) => {                                         // 不规则的一团团：撒点分块
+      const i0 = Math.floor(u / 9), j0 = Math.floor(v / 9);
+      let best = 1e9, bi = 0, bj = 0;
+      for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) {
+        const d = ((i + .5 + (h(i, j, G.seed + 920) - .5) * .8) * 9 - u) ** 2 + ((j + .5 + (h(i, j, G.seed + 921) - .5) * .8) * 9 - v) ** 2;
+        if (d < best) { best = d; bi = i; bj = j; }
+      }
+      return [bi, bj, 0, 0];
+    },
+  };
+  function octa(u, w, R) {                                    // 八面体从上往下看：菱形，两条对角线分出四个面
+    const i = Math.floor((u + w) / (2 * R)), j = Math.floor((w - u) / (2 * R)), f = (u < R * (i - j) ? 0 : 1) + (w < R * (i + j + 1) ? 0 : 2);
+    return [i, j, f, [.7, .2, -.1, -.6][f]];
+  }
+  const SPREAD = { quartz: .5, amethyst: .5, tourmaline: .4, willemite: 1.2, pyrite: .3, fluorite: .6, magnetite: .6, calcite: 1, ice: 1.5, opal: 0 };   // 晶畴的朝向能歪多少
+  const MI = Object.keys(MIN), DOM = 56;
+  const dsite = (i, j) => [i * DOM + DOM / 2 + (h(i, j, G.seed + 930) - .5) * DOM * .7, j * DOM + DOM / 2 + (h(i, j, G.seed + 931) - .5) * DOM * .7];
   const grainCache = new Map(), charge = new Map();
   let grainBudget = 0;
   function grainsIn(cx, cy) {
@@ -408,48 +408,68 @@ const FX = (() => {
     let gs = grainCache.get(key2);
     if (gs || grainBudget <= 0) return gs;
     grainBudget--;
-    const S = CH * TP, X0 = cx * S, Y0 = cy * S, M = 20;       // 邻块里长出来、伸进这块的晶体也要算
-    gs = [];
-    for (let gj = Math.floor((Y0 - M) / GR); gj <= Math.floor((Y0 + S + M) / GR); gj++) for (let gi = Math.floor((X0 - M) / GR); gi <= Math.floor((X0 + S + M) / GR); gi++) {
-      const [sx, sy] = site(gi, gj), list = BY_KIND[kind(Math.floor(sx / TP), Math.floor(sy / TP))];
-      if (!list || sx < X0 - M || sx >= X0 + S + M || sy < Y0 - M || sy >= Y0 + S + M || h(gi, gj, G.seed + 905) < (list === BY_KIND.rock ? .6 : .3)) continue;   // 空一些，玄武岩上更少
-      const r = k => h(gi * 31 + k, gj, G.seed + 910), m = list[Math.floor(h(gi, gj, G.seed + 902) * list.length)];
-      const g = { id: gi * 65536 + gj, sx: sx - X0, sy: sy - Y0, m, ph: h(gi, gj, G.seed + 903), paths: [], facet: null, body: null }, px = [new Set(), new Set(), new Set(), new Set()], fx = new Set();
-      const dot = (x, y, facet) => {
-        const lx = x - X0, ly = y - Y0;
-        if (lx < 0 || ly < 0 || lx >= S || ly >= S || !BY_KIND[kind(Math.floor(x / TP), Math.floor(y / TP))]) return;
-        const part = m === 'tourmaline' ? (Math.hypot(lx - g.sx, ly - g.sy) < 8 ? 1 : 0)   // 电气石根梢两色，欧泊按方向分四份
-          : m === 'opal' ? Math.floor((Math.atan2(ly - g.sy, lx - g.sx) + Math.PI) / (Math.PI / 2)) % 4 : 0;
-        (facet ? fx : px[part]).add(ly * S + lx);
-      };
-      for (const { pts, facet, close, body } of shape(m, sx, sy, r)) {
-        if (body) { const b = g.body ||= new Path2D(); pts.forEach(([x, y], i) => b[i ? 'lineTo' : 'moveTo'](x - X0, y - Y0)); b.closePath(); }
-        for (let i = 0; i < pts.length - (close ? 0 : 1); i++) {   // 一条条边按像素描出来
-        let [x0, y0] = pts[i].map(Math.round);
-        const [x1, y1] = pts[(i + 1) % pts.length].map(Math.round), dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), ix = x0 < x1 ? 1 : -1, iy = y0 < y1 ? 1 : -1;
-        for (let e = dx + dy; ; ) {
-          dot(x0, y0, facet);
-          if (x0 === x1 && y0 === y1) break;
-          const e2 = 2 * e;
-          if (e2 >= dy) { e += dy; x0 += ix; }
-          if (e2 <= dx) { e += dx; y0 += iy; }
+    const S = CH * TP, X0 = cx * S, Y0 = cy * S, N = CH + 2, doms = new Map(), tin = [];
+    for (let ty = -1; ty <= CH; ty++) for (let tx = -1; tx <= CH; tx++) {   // 每格归哪片晶畴（多算一圈边）；按格子分，晶畴的边界跟着地形的格子走
+      const x = cx * CH + tx, y = cy * CH + ty, list = BY_KIND[kind(x, y)];
+      let t = null;
+      if (list) {
+        const ax = x * TP + 2, ay = y * TP + 2, i0 = Math.floor(ax / DOM), j0 = Math.floor(ay / DOM);
+        let best = 1e9, bi = 0, bj = 0;
+        for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const [sx, sy] = dsite(i, j), d = (sx - ax) ** 2 + (sy - ay) ** 2; if (d < best) { best = d; bi = i; bj = j; } }
+        const m = list[Math.floor(h(bi, bj, G.seed + 932) * list.length)], dk = bi + ',' + bj + ',' + m;
+        if (m) {
+          t = doms.get(dk);
+          if (!t) {
+            const [sx, sy] = dsite(bi, bj), a = (h(bi, bj, G.seed + 933) - .5) * SPREAD[m];
+            doms.set(dk, t = { m, sx, sy, c: Math.cos(a), s: Math.sin(a), n: doms.size + 1, ph: h(bi, bj, G.seed + 934), groups: [] });
+          }
         }
       }
-      }
-      const toPath = set => {                                 // 一行里挨着的像素并成一条
-        if (!set.size) return null;
-        const p = new Path2D(), a = [...set].sort((u, w) => u - w);
-        for (let i = 0; i < a.length; ) { let n = 1; while (a[i + n] === a[i] + n && (a[i] + n) % S) n++; p.rect(a[i] % S, Math.floor(a[i] / S), n, 1); i += n; }
-        return p;
-      };
-      g.paths = px.map(toPath); g.facet = toPath(fx);
-      if (g.paths.some(Boolean) || g.facet) gs.push(g);
+      tin.push(t);
     }
-    if (grainCache.size > 400) grainCache.clear();
+    const W2 = S + 2, id = new Int32Array(W2 * W2).fill(-1), face = new Int8Array(W2 * W2), who = new Array(W2 * W2);
+    const img = new ImageData(S, S), px = img.data;
+    for (let y = -1; y <= S; y++) for (let x = -1; x <= S; x++) {   // 每个像素属于哪颗晶体的哪个面
+      const t = tin[(Math.floor(y / TP) + 1) * N + Math.floor(x / TP) + 1];
+      if (!t) continue;
+      const dx = X0 + x + .5 - t.sx, dy = Y0 + y + .5 - t.sy, [ci, cj, f, sh] = LAT[t.m](dx * t.c + dy * t.s, -dx * t.s + dy * t.c);
+      let k = Math.imul(t.n ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(ci, 0xc2b2ae35) ^ Math.imul(cj, 0x27d4eb2f);
+      k = Math.imul(k ^ k >>> 15, 0x2c1b3c6d);
+      const i = (y + 1) * W2 + x + 1;
+      id[i] = (k ^ k >>> 12) & 0x3fffffff; face[i] = f; who[i] = t;
+      if (x < 0 || y < 0 || x >= S || y >= S) continue;
+      const o = (y * S + x) * 4, c = MIN[t.m];                  // 面的深浅：磁铁矿是黑的，亮面发灰；别的是矿物色，淡淡一层
+      if (t.m === 'magnetite') { const l = Math.max(0, sh); px[o] = 26 + 64 * l; px[o + 1] = 26 + 66 * l; px[o + 2] = 34 + 76 * l; px[o + 3] = 166; }
+      else { const l = 1 + .35 * sh; px[o] = Math.min(255, c[0] * l); px[o + 1] = Math.min(255, c[1] * l); px[o + 2] = Math.min(255, c[2] * l); px[o + 3] = 30 + 12 * sh; }
+    }
+    const body = document.createElement('canvas');
+    body.width = body.height = S;
+    body.getContext('2d').putImageData(img, 0, 0);
+    gs = [];
+    const group = (t, k) => {                                 // 一片晶畴里的晶体按编号分四拨，同一拨一起亮，省得每颗单画
+      let g = t.groups[k];
+      if (!g) { g = t.groups[k] = { id: t.n * 4 + k + ',' + key2, m: t.m, k, ph: (t.ph + k * .27) % 1, sx: t.sx - X0, sy: t.sy - Y0, paths: [new Path2D()], facet: null }; gs.push(g); }
+      return g;
+    };
+    for (let y = 0; y < S; y++) {                             // 轮廓：跟右边、下边不是同一颗，或者左边、上边是空的；同一颗里换了面就是棱。一行里挨着的并成一条
+      let run = null;
+      const flush = () => { if (run) { const g = run.g; (run.edge ? g.paths[0] : (g.facet ||= new Path2D())).rect(run.x, y, run.n, 1); run = null; } };
+      for (let x = 0; x < S; x++) {
+        const i = (y + 1) * W2 + x + 1, me = id[i];
+        if (me < 0) { flush(); continue; }
+        const edge = id[i + 1] !== me || id[i + W2] !== me || id[i - 1] < 0 || id[i - W2] < 0;
+        if (!edge && face[i + 1] === face[i] && face[i + W2] === face[i]) { flush(); continue; }
+        const g = group(who[i], me & 3);
+        if (run && run.g === g && run.edge === edge && run.x + run.n === x) run.n++; else { flush(); run = { g, edge, x, n: 1 }; }
+      }
+      flush();
+    }
+    gs.body = body;
+    if (grainCache.size > 160) grainCache.clear();
     grainCache.set(key2, gs);
     return gs;
   }
-  // 每块地图的发光层画好存起来（最多 120 块），每帧只重画最久没更新的五块：屏幕上块多的时候（缩小看）也不会拖慢
+  // 每块地图的发光层画好存起来（最多 120 块），每帧只重画最久没更新的两块：屏幕上块多的时候（缩小看）也不会拖慢
   const glowCv = new Map();
   const hsl = (hh, l) => { const a = .6 * Math.min(l, 1 - l), f = n => { const k = (n + hh / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
   const crystal = {
@@ -466,7 +486,7 @@ const FX = (() => {
         const ch = chunks.get(ck), gs = ch && grainsIn(cx, cy);
         if (!gs || !gs.length) return;
         let gc = glowCv.get(ck);
-        if (gc && n >= 5) { ctx.globalAlpha = 1; ctx.drawImage(gc.cvs, cx * cp + v.ox, cy * cp + v.oy, cp, cp); glowing = true; return; }   // 这帧轮不到，用存着的
+        if (gc && n >= 2) { ctx.globalAlpha = 1; ctx.drawImage(gc.cvs, cx * cp + v.ox, cy * cp + v.oy, cp, cp); glowing = true; return; }   // 这帧轮不到，用存着的
         if (!gc) {
           if (glowCv.size >= 120) glowCv.delete(glowCv.keys().next().value);
           const cvs = document.createElement('canvas');
@@ -476,11 +496,11 @@ const FX = (() => {
         gc.t = now;
         const sg = gc.g, scratch = gc.cvs;
         sg.clearRect(0, 0, scratch.width, scratch.height);
+        sg.globalAlpha = 1; sg.drawImage(gs.body, 0, 0);            // 先铺上分好深浅的晶面
         const X0 = cx * CH * TP, Y0 = cy * CH * TP;
         for (const g of gs) {
           let lc = null, la = 0;
           const p = g.ph, fill = (path, c, a) => { lc = c; la = a; if (!path || a <= .01) return; sg.globalAlpha = Math.min(1, a); sg.fillStyle = rgb(c); sg.fill(path); };
-          if (g.body) { sg.globalAlpha = g.m === 'magnetite' ? .6 : .13; sg.fillStyle = g.m === 'magnetite' ? '#18181f' : rgb(MIN[g.m]); sg.fill(g.body); }   // 先淡淡填上晶体本身，磁铁矿是黑的
           switch (g.m) {
             case 'quartz': fill(g.paths[0], MIN.quartz, .3 + (((t / (3 + p * 3) + p) % 1) < .06 ? .7 : 0)); break;
             case 'amethyst': fill(g.paths[0], MIN.amethyst, .3 + .4 * (.5 + .5 * Math.sin(t * 1.4 + p * 6))); break;
@@ -493,13 +513,13 @@ const FX = (() => {
               fill(g.paths[0], MIN.calcite, .38);
               break;
             }
-            case 'tourmaline': { const s2 = .5 + .5 * Math.sin(t * .8 + p * 6); fill(g.paths[1], MIN.tourmaline, .18 + .55 * s2); fill(g.paths[0], [128, 232, 148], .18 + .55 * (1 - s2)); break; }
+            case 'tourmaline': { const s2 = .5 + .5 * Math.sin(t * .8 + p * 6), pink = g.k % 2; fill(g.paths[0], pink ? MIN.tourmaline : [128, 232, 148], .18 + .55 * (pink ? s2 : 1 - s2)); break; }
             case 'willemite': {
-              if (Math.hypot(g.sx + X0 - lx, g.sy + Y0 - ly) < 16) { charge.set(g.id, now); phos = true; }
+              if (Math.hypot(g.sx + X0 - lx, g.sy + Y0 - ly) < 28) { charge.set(g.id, now); phos = true; }
               fill(g.paths[0], MIN.willemite, .12 + .8 * Math.exp(-(now - (charge.get(g.id) ?? -1e9)) / 6000));
               break;
             }
-            case 'opal': for (let k = 0; k < 4; k++) fill(g.paths[k], hsl((t * 40 + k * 90 + p * 360) % 360, .72), .5); break;
+            case 'opal': fill(g.paths[0], hsl((t * 40 + p * 360) % 360, .72), .5); break;
             default: fill(g.paths[0], MIN.ice, .22 + .1 * Math.sin(t * .6 + p * 6));
           }
           if (g.facet && lc) { sg.globalAlpha = Math.min(1, la * .5); sg.fillStyle = rgb(lc); sg.fill(g.facet); }   // 晶面上的棱淡一半
@@ -524,7 +544,7 @@ const FX = (() => {
       }
       ctx.globalCompositeOperation = 'source-over';
       if (lit && v.age > 30000) said('fxlight', '有一块光斑在晶体之间慢慢挪。光是从我这边照进来的，从第四个方向。', 'A patch of light drifts slowly between the crystals. It comes in from my side, from the fourth direction.');
-      if (glowing && v.age > 15000) said('fxgrain', '每种晶体长得不一样，亮法也不一样：紫水晶一簇簇尖柱慢慢呼吸，黄铁矿的小方块一闪一闪，萤石的八面体越暗越亮。', 'Every crystal grows its own shape and glows its own way: clusters of amethyst points breathe slowly, little pyrite cubes flicker, fluorite octahedra brighten in the dark.');
+      if (glowing && v.age > 15000) said('fxgrain', '地面是一颗挨一颗的晶体拼起来的，一片一种。紫水晶的尖柱慢慢呼吸，黄铁矿的小方块一闪一闪，萤石的八面体越暗越亮。', 'The ground is pieced together from crystals, one kind to a patch. Amethyst points breathe slowly, pyrite cubes flicker, fluorite octahedra brighten in the dark.');
       if (phos && v.age > 20000) said('fxphos', '光斑扫过去以后，那几块绿色的晶体过了好一会儿才暗下去。它们把光存起来了。', 'After the light passed, those green crystals took a long while to fade. They stored the light.');
     },
   };
