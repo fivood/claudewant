@@ -268,7 +268,7 @@ const FX = (() => {
       }
     },
   };
-  // --- 二向箔：压平还没结束，每隔一阵一圈余波从远处扫过，经过的地方条纹抖一下；被压进纸里的太阳边缘还在闪 ----------
+  // --- 二向箔：压平还没结束，每隔一阵一圈余波从远处扫过，经过的地方笔触被推了一下（前沿亮、后沿暗）；被压进纸里的太阳边缘还在闪 ----------
   let wave = null, nextWave = T0 + 20000 + Math.random() * 20000;
   const foil = {
     under(v) {
@@ -283,16 +283,16 @@ const FX = (() => {
         const e = (Math.hypot(x + .5 - wave.x, y + .5 - wave.y) - r) / band;
         if (Math.abs(e) >= 1 || !rev.has(key(x, y))) continue;
         any = true;
-        const f = 1 - Math.abs(e), sh = e > 0 ? 1 : 0;            // 前半截和后半截的条纹错开一行，像被推了一下
-        for (let j = 0; j < TP; j++) {                           // 一行一笔
-          const lit = (j + sh) % 2;
-          ctx.globalAlpha = (lit ? .3 : .18) * f; ctx.fillStyle = lit ? '#ffffff' : '#101828';
-          ctx.fillRect(x * v.tp + v.ox, (y * TP + j) * v.s + v.oy, v.tp, v.s);
-        }
+        const f = 1 - Math.abs(e);                              // 前沿一道亮、后沿一道暗，像颜料被推起来一道棱
+        ctx.globalAlpha = (e > 0 ? .28 : .2) * f; ctx.fillStyle = e > 0 ? '#fff6dc' : '#101828';
+        ctx.fillRect(x * v.tp + v.ox, y * v.tp + v.oy, v.tp, v.tp);
       }
-      if (any) said('fxfoil', '一圈余波从远处扫过来，经过的地方条纹抖了一下。压平还没结束。', 'An aftershock ring swept in from far off, and the stripes shivered as it passed. The flattening isn\'t over yet.');
+      if (any) said('fxfoil', '一圈余波从远处扫过来，经过的地方笔触被推了一下。压平还没结束。', 'An aftershock ring swept in from far off, nudging the brushstrokes as it passed. The flattening isn\'t over yet.');
     },
     over(v) {                                                  // 太阳的边缘：各自按一个慢节奏忽明忽暗
+      if (v.age > 20000) said('fxvangogh', '这张纸看上去像梵高画的，一笔一笔都在打旋。也可能反过来：是梵高见过被压平的世界。', 'This sheet looks as if Van Gogh painted it, every stroke swirling. Or the other way round: Van Gogh had seen a flattened world.');
+      const p = v.age > 10000 && spot(v.ox, v.oy, v.s, v.W, v.H);
+      if (p && FOIL.planetAt(G.seed, p[0], p[1])) said('fxplanet', '一颗行星被压平了。地核、地幔、地壳、海、大气，一圈套一圈全摊在纸上，像切开的洋葱，只是没有一层被挡住。', 'A planet, flattened. Core, mantle, crust, ocean, air, ring inside ring, all laid out on the sheet like a sliced onion, except no layer hides another.');
       eachChunk(v, (cx, cy) => {
         for (const [x, y, sp, ph] of perChunk('sun', cx, cy, (X, Y) => { const o = []; for (let j = 0; j < CH; j++) for (let i = 0; i < CH; i++) if (kind(X + i, Y + j) === 'snow') o.push([X + i, Y + j, 1.5 + h(X + i, Y + j, G.seed + 320) * 2, h(X + i, Y + j, G.seed + 321) * TAU]); return o; }))
           if (rev.has(key(x, y))) fillTiles(v, x, y, 1, '#fff2c0', .1 + .14 * Math.sin(v.t * sp + ph));

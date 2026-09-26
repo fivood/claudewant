@@ -274,7 +274,8 @@ const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3,
 const INKY = G.theme === 'ink', INK_KINDS = ['deep', 'water', 'sand', 'grass', 'forest', 'rock', 'peak', 'snow', 'rift'];
 if (INKY) SHANSHUI.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const MAZY = G.theme === 'blueprint';                   // 蓝图画的是一座迷宫，见 maze.js
-const PIXSRC = INKY ? SHANSHUI : MAZY ? MAZE : G.theme === 'pcb' ? BOARD : G.theme === 'slide' ? HISTO : null;   // 按美术像素画的地貌：整块从这里取
+const PIXSRC = INKY ? SHANSHUI : MAZY ? MAZE : G.theme === 'pcb' ? BOARD : G.theme === 'slide' ? HISTO : G.theme === 'foil' ? FOIL : null;   // 按美术像素画的地貌：整块从这里取
+if (G.theme === 'foil') FOIL.use(tile);                  // 二向箔的地形还是原来那套噪声，只是画成笔触
 if (G.theme === 'slide') HISTO.bias({ water: WET, mountain: HARD, forest: GREEN });
 if (MAZY) MAZE.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
@@ -300,7 +301,7 @@ const PAT = {
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
   if (SKY) return SKY.tile(x, y);
-  if (PIXSRC) {
+  if (PIXSRC && PIXSRC.kindAt) {
     const k = INKY ? INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)] : PIXSRC === HISTO ? HISTO.kindAt(G.seed, x, y) : PIXSRC.kindAt(G.seed, x * TP + 2, y * TP + 2);
     return RIFT && (k === 'grass' || k === 'sand') && Math.abs(vn(x / 19, y / 19, G.seed + 40) - .5) < RIFT ? 'rift' : k;
   }
