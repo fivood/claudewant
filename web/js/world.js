@@ -346,10 +346,15 @@ const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed 
 // 把一格画进像素缓冲区 d（每行 stride 个像素，从 ox, oy 开始）。每格要查的东西在循环外查一次。
 // 地球的地貌晕渲：光从左上来，朝光的坡亮、背光的坡暗，山势一眼看得出来；水面是平的不打光
 const RELIEF = G.theme === 'earth';
+// 山里另加一层尖的山脊线和尖的谷底线（|2n-1| 在 n=0.5 处是个尖），明暗就在最高、最低那条线上一刀切开，像卫星图
+const ridgeH = (x, y) => {
+  const e = fbm(x, y, G.seed), m = Math.min(1, Math.max(0, (e - .46) / .16));
+  return e + (m ? m * (.1 * (1 - Math.abs(2 * vn(x / 11, y / 11, G.seed + 60) - 1)) + .04 * (1 - Math.abs(2 * vn(x / 5, y / 5, G.seed + 61) - 1)) - .06 * (1 - Math.abs(2 * vn(x / 9, y / 9, G.seed + 62) - 1))) : 0);
+};
 const relief = (x, y, t) => {
   if (!RELIEF || t === 'deep' || t === 'water') return 0;
-  const gx = fbm(x + 1, y, G.seed) - fbm(x - 1, y, G.seed), gy = fbm(x, y + 1, G.seed) - fbm(x, y - 1, G.seed);
-  return Math.max(-34, Math.min(34, -(gx + gy) * 900));
+  const gx = ridgeH(x + 1, y) - ridgeH(x - 1, y), gy = ridgeH(x, y + 1) - ridgeH(x, y - 1);
+  return Math.max(-40, Math.min(34, -(gx + gy) * 700));
 };
 function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], sh = relief(x, y, t), pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
@@ -364,8 +369,9 @@ function paintTile(x, y, d, stride, ox, oy) {
     const hc = house && house[j][i];
     if (pl) c = pl(i, j) || c;
     if (hc && hc !== '.') c = hc === 'R' ? roof : hk === 'ruin' ? RUIN_C : HCOL[hc];
-    const n = (ip ? 0 : GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)]) + (c === q.c || c === q.a || c === q.a2 ? sh : 0);   // 水墨的纸自己带纹理；晕渲只打在地面上，房子和居民不打
-    let r = c[0] + n, g = c[1] + n, b = c[2] + n;
+    const n = ip ? 0 : GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];   // 水墨的纸自己带纹理
+    const sd = c === q.c || c === q.a || c === q.a2 ? sh : 0;   // 晕渲：背光的一面偏蓝一点
+    let r = c[0] + n + sd, g = c[1] + n + sd, b = c[2] + n + (sd < 0 ? sd * .6 : sd);
     if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
     const o = ((oy + j) * stride + ox + i) * 4;
     d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
