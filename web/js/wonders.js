@@ -294,6 +294,18 @@ function renderPoster() {
   g.fillText(`${SEED ? tr(`纸面 #${SEED} · 从一段对话里折出来`, `Sheet #${SEED} · folded out of a conversation`) : tr(`纸面 #${G.seed} · 直接开始的一张`, `Sheet #${G.seed} · started from scratch`)} · ${new Date().toLocaleDateString(LANG === 'en' ? 'en' : 'zh-CN')}`, M, 66);
   const y = yearNow();
   g.fillText([tr(`已展开 ${fmt(rev.size)} 格`, `${fmt(rev.size)} tiles unfolded`), tr(`遇见居民 ${fmt(G.flat)}`, `${fmt(G.flat)} residents met`), seen() ? tr(`二维历 ${y + 1} 年 · ${ERAS[HIST.era[y]]}`, `Flat Year ${y + 1} · ${ERAS[HIST.era[y]]}`) : '', ROUTE.size ? tr(`对话读到 ${readPct()}%`, `conversation read ${readPct()}%`) : ''].filter(Boolean).join(' · '), M, H - 20);
+  if (INKY) mountPoster(c, g, M, HEAD, FOOT);                // 水墨：整幅裱成一幅立轴
+}
+// 水墨的全图：把地图那一块裱成一幅立轴（ink.js 的 frame），上面的标题、下面的脚注留在原处
+function mountPoster(c, g, M, HEAD, FOOT) {
+  const W = c.width, H = c.height, mw = W - M * 2, mh = H - M * 2 - HEAD - FOOT;
+  const head = g.getImageData(0, 0, W, M + HEAD), foot = g.getImageData(0, H - M - FOOT, W, M + FOOT), map = g.getImageData(M, M + HEAD, mw, mh);
+  const f = SHANSHUI.frame(map.data, mw, mh, G.seed);
+  c.width = Math.max(W, f.w + M * 2); c.height = f.h + M * 2 + HEAD + FOOT;
+  g.fillStyle = PAPER; g.fillRect(0, 0, c.width, c.height);
+  g.putImageData(head, 0, 0);
+  g.putImageData(new ImageData(f.rgba, f.w, f.h), M, M + HEAD);
+  g.putImageData(foot, 0, c.height - M - FOOT);
 }
 
 // 全图有两个视图：「纸面」是展开过的地图；「四维」是这段对话本来的样子——

@@ -318,28 +318,33 @@ const FX = (() => {
     },
   };
 
-  // --- 水墨：墨还没干，有人还在画。留白处横着飘雾；时不时一滴墨落下洇开、再慢慢干淡；偶尔一只一笔画成的鸟掠过 ----------
-  const blots = [];
-  let bird = null, nextBird = T0 + 15000 + Math.random() * 20000, nextBlot = T0 + 4000;
+  // --- 水墨：画里的水在动。瀑布一直往下流、潭口溅起水花；江面的水纹慢慢往一边漂；偶尔一只一笔画成的鸟掠过。
+  //     画是两个美术像素一个墨点，动画也按 2×2 画，和画一样粗
+  let bird = null, nextBird = T0 + 15000 + Math.random() * 20000;
   const INK_C = [34, 32, 34];
   const ink = {
     under(v) {
-      const { now, t, px } = v;
-      wash(v, (x, y) => { const m = vn((x - t * .8) / 30, y / 7, G.seed + 600); return m > .6 && ['#ffffff', (m - .6) * 1.1]; });   // 雾：横着拉长、慢慢飘
-      if (now > nextBlot) {
-        nextBlot = now + 6000 + Math.random() * 8000;
-        const p = blots.length < 3 && spot(v.ox, v.oy, v.s, v.W, v.H);
-        if (p) blots.push({ x: p[0], y: p[1], t0: now, R: 3 + Math.random() * 3, seed: (Math.random() * 1e6) | 0 });
-      }
-      for (let i = blots.length - 1; i >= 0; i--) {             // 三秒洇开，十一秒干淡
-        const b = blots[i], age = (now - b.t0) / 1000;
-        if (age > 14) { blots.splice(i, 1); continue; }
-        const r = b.R * (1 - (1 - Math.min(1, age / 3)) ** 2), dry = Math.max(0, (age - 3) / 11), B = Math.ceil(b.R * 1.3) + 1;
-        for (let dy = -B; dy <= B; dy++) for (let dx = -B; dx <= B; dx++) {
-          const d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), edge = r * (.75 + .5 * vn(Math.cos(a) * 1.8 + 5, Math.sin(a) * 1.8 + 5, b.seed));
-          if (d <= edge && open(b.x + dx, b.y + dy)) px(b.x + dx, b.y + dy, rgb(INK_C), (.6 - dry * .55) * (d < edge - 1 ? 1 : .45));
+      const { now, t } = v, grey = rgb([112, 112, 110]);
+      const dot2 = (ax, ay, c, a) => {                          // 对齐到墨点的 2×2
+        ax = Math.floor(ax / 2) * 2; ay = Math.floor(ay / 2) * 2;
+        if (a <= .01 || !open(ax, ay)) return;
+        ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = c; ctx.fillRect(ax * v.s + v.ox, ay * v.s + v.oy, v.s * 2, v.s * 2);
+      };
+      twinkle(v, 'inkflow', ['water'], 2, 4.5, 1.4, (x, y, k, n) => {   // 江面：一小道水纹出现、往右漂两三个墨点、再淡掉
+        const ax = x * TP + Math.round(k * 3) * 2, ay = y * TP + ((h(x, y, n) * 2) | 0) * 2, a = Math.sin(k * Math.PI) * .5;
+        dot2(ax, ay, grey, a); dot2(ax + 2, ay, grey, a * .7);
+      }, .5);
+      let fell = false;
+      for (const [fx, fy0, fy1, hw] of SHANSHUI.falls(G.seed, -v.ox / v.s, -v.oy / v.s, v.W / v.s, v.H / v.s)) {
+        for (let y = fy0; y < fy1; y += 2) for (let dx = -hw + 1; dx < hw; dx += 2) {   // 一道道往下流的水：亮的一截、暗的一截，一直往下走
+          const ph = ((y - t * 30 + h(fx + dx, 0, G.seed + 800) * 40) % 12 + 12) % 12, sway = Math.sin(y / 18) * 1.2;
+          if (ph < 3) { dot2(fx + dx + sway, y, '#ffffff', .8); fell ||= open(fx + dx, y); }
+          else if (ph > 7 && ph < 9) dot2(fx + dx + sway, y, grey, .3);
         }
+        const b = Math.floor(now / 160);                        // 潭口的水花：一闪一闪的白点
+        for (let k = 0; k < 6; k++) dot2(fx + (h(k, b, fx) - .5) * hw * 5, fy1 - 2 - h(k, b + 1, fx) * 8, '#ffffff', .85);
       }
+      if (fell && v.age > 20000) said('fxfall', '瀑布一直在往下流。画里的水，原来是会动的。', 'The waterfall keeps pouring down. So the water in a painting moves after all.');
       if (!bird && now > nextBird) {                            // 从屏幕一边飞进来
         const left = Math.random() < .5, ax0 = Math.floor(((left ? 0 : v.W) - v.ox) / v.s), ay0 = Math.floor((v.H * (.2 + Math.random() * .6) - v.oy) / v.s);
         bird = { x: ax0, y: ay0, vx: (left ? 1 : -1) * (28 + Math.random() * 12), vy: (Math.random() - .5) * 8, ph: Math.random() * TAU };
@@ -350,8 +355,8 @@ const FX = (() => {
       const up = Math.sin(t * 7 + bird.ph) > 0;                // 翅膀一抬一落
       let seen = false;
       for (const [dx, dy] of up ? [[-3, -2], [-2, -1], [-1, 0], [0, 0], [1, 0], [2, -1], [3, -2]] : [[-3, 0], [-2, -1], [-1, 0], [0, 0], [1, 0], [2, -1], [3, 0]]) {
-        const ax = Math.round(bird.x) + dx, ay = Math.round(bird.y) + dy;
-        if (open(ax, ay)) { seen = true; px(ax, ay, rgb(INK_C), .85); }
+        const ax = Math.round(bird.x) + dx * 2, ay = Math.round(bird.y) + dy * 2;
+        if (open(ax, ay)) { seen = true; dot2(ax, ay, rgb(INK_C), .85); }
       }
       if (seen) said('fxbird', '一只鸟从纸上掠过去，只用了一笔。', 'A bird skims across the paper, painted in a single stroke.');
     },

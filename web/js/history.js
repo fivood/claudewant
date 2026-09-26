@@ -12,11 +12,14 @@ const ERAS = CIV.eras;                                     // 纪元叫什么看
 const HOUSE = G.theme === 'sky' ? {                          // 深空：城是行星（比一格大，sky.js 的 planet 画），房子是卫星，庙是方碑，路是航道上的航标灯
   town: ['....', '....', '....', '....'], house: ['....', '.WW.', '.WD.', '....'],
   temple: ['.KG.', '.KG.', '.KG.', '.KG.'], ruin: ['....', '....', '....', '....'], road: ['....', '.P..', '....', '....'],
+} : G.theme === 'ink' ? {                                    // 水墨：灰瓦白墙，庙是一座小塔，路是一串淡墨点
+  town: ['.RR.', 'RRRR', 'WDWW', 'WDWW'], house: ['....', '.RR.', 'RRRR', 'WWDW'],
+  temple: ['.R..', 'RRRR', '.WD.', 'RRRR'], ruin: ['W...', 'W.W.', 'WWW.', '....'], road: ['....', '.P..', '...P', '....'],
 } : {
   town: ['.RR.', 'RRRR', 'WWDW', 'WWDW'], house: ['....', '.RR.', 'RRRR', 'WDWW'],
   temple: ['.GG.', 'GWWG', 'GWWG', 'GGGG'], ruin: ['W...', 'W.W.', 'WWW.', '....'], road: ['.PP.', 'PPPP', 'PPPP', '.PP.'],
 };
-const HCOL = { W: [239, 228, 207], D: [91, 70, 54], G: [227, 181, 59], P: G.theme === 'sky' ? [140, 180, 245] : [205, 184, 142], K: [14, 14, 18] };
+const HCOL = { W: [239, 228, 207], D: [91, 70, 54], G: [227, 181, 59], P: G.theme === 'sky' ? [140, 180, 245] : G.theme === 'ink' ? [150, 146, 140] : [205, 184, 142], K: [14, 14, 18] };
 const LAND = t => t === 'grass' || t === 'sand' || t === 'forest';
 
 function mulberry(a) {

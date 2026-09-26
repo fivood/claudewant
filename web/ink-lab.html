@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>水墨试画</title>
+<!-- 开发时看水墨地貌用的：拼出一大片地图、外面裱一圈，换一张再看。不从首页链接。 -->
+<style>
+  body{margin:0;background:#e9e4da;font:13px/1.5 system-ui,sans-serif;color:#3a3530}
+  header{position:sticky;top:0;background:#e9e4dacc;padding:8px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:1}
+  button,select{font:inherit;padding:3px 10px}
+  main{padding:16px}
+  canvas{display:block;image-rendering:pixelated;box-shadow:0 2px 8px #0004}
+  #cells{margin-top:10px;color:#6d655c;max-width:1200px}
+</style>
+<header>
+  <button id="again">换一张</button>
+  <select id="size"><option value="1600x1100">400×275 格</option><option value="1000x700">250×175 格</option><option value="2400x1600">600×400 格</option></select>
+  <select id="sc"><option value="1">墨点 1 像素</option><option value="2" selected>墨点 2 像素（和别的地图一样粗）</option><option value="3">墨点 3 像素</option><option value="4">墨点 4 像素（一格一点）</option></select>
+  <select id="zoom"><option>1</option><option selected>2</option><option>3</option></select>
+  <label><input type="checkbox" id="framed" checked> 裱起来</label>
+  <span id="info"></span>
+</header>
+<main><canvas id="c"></canvas><div id="cells"></div></main>
+<script src="js/ink.js"></script>
+<script>
+let seed = (Math.random() * 2 ** 31) | 0;
+function draw() {
+  const [w, h] = document.getElementById('size').value.split('x').map(Number), z = +document.getElementById('zoom').value, t0 = performance.now();
+  const sc = +document.getElementById('sc').value, x0 = -w / 2, y0 = -h / 2, r = SHANSHUI.region(seed, x0, y0, w, h, sc);
+  let img = r.rgba, W = w, H = h;
+  if (document.getElementById('framed').checked) { const f = SHANSHUI.frame(r.rgba, w, h, seed); img = f.rgba; W = f.w; H = f.h; }
+  const c = document.getElementById('c');
+  c.width = W; c.height = H; c.style.width = W * z + 'px'; c.style.height = H * z + 'px';
+  c.getContext('2d').putImageData(new ImageData(img, W, H), 0, 0);
+  const seen = new Map();
+  for (let y = y0; y < y0 + h; y += 120 * sc) for (let x = x0; x < x0 + w; x += 150 * sc) { const k = SHANSHUI.cellAt(seed, x + 75 * sc, y + 60 * sc, sc); seen.set(k, (seen.get(k) || 0) + 1); }
+  document.getElementById('cells').textContent = '这张里的小景：' + [...seen].map(([k, n]) => n > 1 ? `${k}×${n}` : k).join('　');
+  document.getElementById('info').textContent = `#${seed} · 画这一张用了 ${Math.round(performance.now() - t0)} 毫秒`;
+}
+document.getElementById('again').onclick = () => { seed = (Math.random() * 2 ** 31) | 0; draw(); };
+for (const id of ['size', 'zoom', 'framed', 'sc']) document.getElementById(id).onchange = draw;
+draw();
+</script>
+</html>

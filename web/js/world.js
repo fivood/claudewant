@@ -203,20 +203,21 @@ const THEMES = {
     peak: tr('一块芯片。里面还有一整层更小的世界，也是平的。', 'A chip. There\'s a whole smaller world inside, also flat.'),
     snow: tr('焊锡，亮晶晶的。它凝固的那一刻，这块板子才算活了。', 'Solder, shining. The moment it set, the board came alive.'),
     rift: tr('一段走线烧断了。那段对话在这里出过错，电从这里漏了出去。', 'A burnt trace. The conversation went wrong here, and the current leaked out.') } },
-  ink: { name: tr('水墨', 'Ink Wash'), intro: tr('这张纸是一幅没画完的水墨。墨还没干。', 'This sheet is an unfinished ink painting. The ink is still wet.'), t: {
-    deep: [tr('淡墨的深潭', 'pale-ink pool'), [182, 184, 186], 'wave', [150, 152, 156]], water: [tr('留白的水', 'water left blank'), [238, 234, 222], 'wave', [205, 200, 188]],
-    sand: [tr('淡墨的滩', 'pale-ink shoal'), [214, 208, 194], 'none'], grass: [tr('淡赭的坡', 'ochre slope'), [206, 196, 172], 'dot', [176, 168, 150]],
-    forest: [tr('点苔的林', 'dotted grove'), [150, 150, 140], 'tree', [70, 72, 70], [120, 100, 80]], rock: [tr('皴过的石', 'textured rock'), [160, 156, 148], 'stroke', [96, 94, 92]],
-    peak: [tr('远山', 'distant hills'), [100, 100, 104], 'stroke', [50, 50, 54]], snow: [tr('山顶的留白', 'blank summit'), [246, 244, 236], 'none'],
+  // 水墨：整张纸是一幅画，一处处小景拼起来（ink.js）。格子的颜色从画上取，这里的颜色只给桌宠那条线和全图缩小时用
+  ink: { name: tr('水墨', 'Ink Wash'), intro: tr('这张纸是一幅水墨，一处一处的小景拼起来的。墨还没干。', 'This sheet is an ink painting, pieced together from one small scene after another. The ink is still wet.'), t: {
+    deep: [tr('瀑布下的潭', 'pool below the falls'), [150, 150, 152], 'none'], water: [tr('江水', 'river'), [232, 230, 224], 'none'],
+    sand: [tr('坡岸', 'bank'), [196, 192, 184], 'none'], grass: [tr('留白', 'blank paper'), [244, 242, 236], 'none'],
+    forest: [tr('林木', 'trees'), [100, 100, 96], 'none'], rock: [tr('山石', 'rock'), [146, 144, 140], 'none'],
+    peak: [tr('远山', 'distant hills'), [196, 196, 198], 'none'], snow: [tr('云雾', 'mist'), [248, 247, 244], 'none'],
     rift: [tr('一滴落错的墨', 'a stray drop of ink'), [26, 24, 26], 'diag', [196, 52, 40]] }, first: {
-    deep: tr('一潭淡墨。越深的水，画的人越舍不得下笔。', 'A pool of pale ink. The deeper the water, the less the painter dared to touch it.'),
-    water: tr('水是空着的。画的人没画它，所以它是水。', 'The water is empty. The painter didn\'t paint it, and that\'s why it\'s water.'),
-    sand: tr('淡墨扫过的滩，一笔就是一片。', 'A shoal swept in pale ink. One stroke, one shoal.'),
-    grass: tr('坡上只染了一层淡赭，像是画到一半去喝了口茶。', 'The slope has one thin wash of ochre, as if the painter stopped halfway for tea.'),
-    forest: tr('点苔。每一个墨点都是一棵树，谁也不比谁多一笔。', 'Dotted moss. Every dot is a tree, and none gets more than one stroke.'),
-    rock: tr('石头是皴出来的。一笔一笔，全是侧锋。', 'The rocks are built from texture strokes, one side-brushed line at a time.'),
+    deep: tr('瀑布底下一潭水。潭是白的，画的人没往这里下笔；四周的墨都往这里收。', 'A pool below the falls. It\'s white, because the painter never touched it; all the ink around it drains this way.'),
+    water: tr('江水。只画了几道水纹，剩下的留给看的人。', 'The river. Just a few ripple lines; the rest is left to whoever is looking.'),
+    sand: tr('坡岸，一笔扫过去就是一片地。', 'A bank. One sweep of the brush, and there\'s ground.'),
+    grass: tr('留白。什么都没画的地方，住的人最多——它们说这里最宽敞。', 'Blank paper. Where nothing is painted, the most people live. They say it\'s roomiest here.'),
+    forest: tr('一片林子。松针是一团一团的，杉是一层一层的。', 'A stand of trees. The pine needles come in clumps, the firs in layers.'),
+    rock: tr('山是一块块石头叠起来的。每一块都勾了边，边上点着苔。', 'The mountain is rock piled on rock. Every piece is outlined, with moss dotted along the edge.'),
     peak: tr('远山。越远越淡，淡到最后就和纸一样了。', 'Distant hills. The farther, the paler, until they\'re just paper.'),
-    snow: tr('山顶留白了。留白就是雪，这是它们的规矩。', 'The summit is left blank. Blank means snow; that\'s the rule here.'),
+    snow: tr('云雾。山脚化在这里，前山和后山靠它隔开。', 'Mist. The mountains dissolve into it at their feet; it keeps the near peaks apart from the far ones.'),
     rift: tr('一滴墨落错了地方，旁边还盖了个红印。那段对话在这里出过错。', 'A drop of ink in the wrong place, with a red seal stamped beside it. The conversation went wrong here.') } },
   blueprint: { name: tr('蓝图', 'Blueprint'), intro: tr('这张纸是一张蓝图。什么都还没造，但每样东西都标好了尺寸。', 'This sheet is a blueprint. Nothing\'s been built yet, but everything has its dimensions.'), t: {
     deep: [tr('标着「深」的区域', 'area marked DEEP'), [20, 48, 100], 'grid', [34, 66, 124]], water: [tr('水面（未施工）', 'water (not yet built)'), [30, 66, 134], 'wave', [150, 190, 240]],
@@ -269,6 +270,9 @@ const THEME_KEYS = Object.keys(THEMES).filter(k => k !== 'sky');
 G.theme = THEMES[G.theme] ? G.theme : SAVED ? 'earth' : SEED ? THEME_KEYS[Math.floor(h(G.seed, 7, 0x7e11) * THEME_KEYS.length)] : 'sky';
 const TH = THEMES[G.theme];
 const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3, snow: 5, rift: 4 };
+// 水墨：地形跟着画走（ink.js 拼出来的小景），那段对话的习惯换成小景的偏好：看得多的水多，动手多的山多，改写多的林子多
+const INKY = G.theme === 'ink', INK_KINDS = ['deep', 'water', 'sand', 'grass', 'forest', 'rock', 'peak', 'snow', 'rift'];
+if (INKY) SHANSHUI.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
 // 4×4 格子里哪些像素用花纹色：1 = 花纹色，2 = 第二花纹色。r 是这一格的随机数，让花纹不是每格都有
 const PAT = {
@@ -292,6 +296,10 @@ const PAT = {
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
   if (SKY) return SKY.tile(x, y);
+  if (INKY) {
+    const k = INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)];
+    return RIFT && (k === 'grass' || k === 'sand') && Math.abs(vn(x / 19, y / 19, G.seed + 40) - .5) < RIFT ? 'rift' : k;
+  }
   const e = fbm(x, y, G.seed);
   if (e < .33 + WET / 2) return 'deep';
   if (e < .395 + WET) return 'water';
@@ -334,16 +342,17 @@ const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed 
 function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
-  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && FCOL[Math.floor(r0 * 4)][0], sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
+  const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && (INKY ? INK_ROOF : FCOL[Math.floor(r0 * 4)][0]), sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
+  const ip = INKY && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const pv = pat(i, j, r0, x, y);
-    let c = sp ? sp[j * TP + i] : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
+    let c = sp ? sp[j * TP + i] : ip ? (INKC[0] = ip[io + (j * CH * TP + i) * 4], INKC[1] = ip[io + (j * CH * TP + i) * 4 + 1], INKC[2] = ip[io + (j * CH * TP + i) * 4 + 2], INKC) : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
     if (fl && fl[1][1][j][i] === '#') c = fl[0][0];
     if (rk && i > 0 && i < 3 && j > 0 && j < 3) c = RC[rk];
     const hc = house && house[j][i];
     if (pl) c = pl(i, j) || c;
     if (hc && hc !== '.') c = hc === 'R' ? roof : hk === 'ruin' ? RUIN_C : HCOL[hc];
-    const n = GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];
+    const n = ip ? 0 : GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];   // 水墨的纸自己带纹理
     let r = c[0] + n, g = c[1] + n, b = c[2] + n;
     if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
     const o = ((oy + j) * stride + ox + i) * 4;
@@ -351,6 +360,18 @@ function paintTile(x, y, d, stride, ox, oy) {
   }
 }
 const RUIN_C = [150, 144, 134];
+// 水墨：一块地图整块从画上取一次存起来（每块 128×128 个美术像素），最多留 96 块
+const inkChunks = new Map(), INKC = [0, 0, 0], INK_ROOF = [86, 82, 78];
+function inkPix(x, y) {
+  const cx = Math.floor(x / CH), cy = Math.floor(y / CH), k = cx + ',' + cy;
+  let r = inkChunks.get(k);
+  if (!r) {
+    r = SHANSHUI.region(G.seed, cx * CH * TP, cy * CH * TP, CH * TP, CH * TP).rgba;
+    if (inkChunks.size >= 96) inkChunks.delete(inkChunks.keys().next().value);
+    inkChunks.set(k, r);
+  }
+  return r;
+}
 // 把一整块画进 chunkBuf：没展开的格子留透明
 function fillChunk(cx, cy) {
   const d = chunkBuf.data;
