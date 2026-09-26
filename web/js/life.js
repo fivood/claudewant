@@ -104,6 +104,7 @@ function retarget(w) {
   w.tx = w.x + Math.cos(a) * 60; w.ty = w.y + Math.sin(a) * 60;
 }
 
+const MAZE_EXIT = MAZY && key(...MAZE.exit(G.seed));          // 蓝图迷宫的出口：展开到那里时说一句
 function reveal(cx, cy, r) {
   let gain = 0;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -120,6 +121,7 @@ function reveal(cx, cy, r) {
     if (ROUTE.has(k)) routeStep();
     if (WKEY.has(k)) discover(WKEY.get(k));
     if (SKY) SKY.reveal(k);
+    if (k === MAZE_EXIT && !G.seen.exit) { G.seen.exit = 1; say(tr('出口。另一间楼梯间，楼梯往下走。它们要走很久才能到这里；我是从上面直接看见的。', 'The exit. Another stairwell, the stairs going down. It will take them a long walk to get here; I just saw it from above.')); }
   }
   if (gain) earn(gain * mult() * buff());
   for (const m of MILES) if (rev.size >= m[0] && !G.seen['m' + m[0]]) { G.seen['m' + m[0]] = 1; say(m[1]); }

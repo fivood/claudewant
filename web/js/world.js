@@ -219,20 +219,20 @@ const THEMES = {
     peak: tr('远山。越远越淡，淡到最后就和纸一样了。', 'Distant hills. The farther, the paler, until they\'re just paper.'),
     snow: tr('云雾。山脚化在这里，前山和后山靠它隔开。', 'Mist. The mountains dissolve into it at their feet; it keeps the near peaks apart from the far ones.'),
     rift: tr('一滴墨落错了地方，旁边还盖了个红印。那段对话在这里出过错。', 'A drop of ink in the wrong place, with a red seal stamped beside it. The conversation went wrong here.') } },
-  blueprint: { name: tr('蓝图', 'Blueprint'), intro: tr('这张纸是一张蓝图。什么都还没造，但每样东西都标好了尺寸。', 'This sheet is a blueprint. Nothing\'s been built yet, but everything has its dimensions.'), t: {
-    deep: [tr('标着「深」的区域', 'area marked DEEP'), [20, 48, 100], 'grid', [34, 66, 124]], water: [tr('水面（未施工）', 'water (not yet built)'), [30, 66, 134], 'wave', [150, 190, 240]],
-    sand: [tr('岸线', 'shoreline'), [48, 92, 160], 'dot', [200, 220, 250]], grass: [tr('空地', 'open lot'), [40, 82, 150], 'grid', [58, 102, 172]],
-    forest: [tr('绿化（示意）', 'greenery (indicative)'), [36, 76, 142], 'ring', [170, 205, 245]], rock: [tr('地基', 'foundation'), [54, 98, 168], 'hatch', [110, 150, 210]],
-    peak: [tr('等高线', 'contours'), [66, 112, 182], 'ring', [220, 234, 255]], snow: [tr('图框', 'title block'), [220, 232, 250], 'grid', [180, 205, 240]],
+  blueprint: { name: tr('蓝图', 'Blueprint'), intro: tr('这张纸是一张蓝图，画的是一座地下迷宫。什么都还没造，但每间房都标好了尺寸，有入口，也有出口。', 'This sheet is a blueprint of an underground maze. Nothing\'s been built yet, but every room has its dimensions, and there is a way in and a way out.'), t: {
+    deep: [tr('岩层', 'bedrock'), [20, 46, 98], 'none'], water: [tr('积水的房间', 'flooded room'), [28, 62, 128], 'none'],
+    sand: [tr('走廊', 'corridor'), [36, 78, 146], 'none'], grass: [tr('房间', 'room'), [36, 78, 146], 'none'],
+    forest: [tr('塌了一半的房间', 'half-collapsed room'), [44, 86, 156], 'none'], rock: [tr('墙', 'wall'), [226, 236, 255], 'none'],
+    peak: [tr('柱子', 'pillar'), [96, 136, 204], 'none'], snow: [tr('楼梯', 'stairs'), [200, 220, 250], 'none'],
     rift: [tr('红笔改过的地方', 'red-pen correction'), [16, 30, 66], 'diag', [240, 100, 80]] }, first: {
-    deep: tr('这里标着「深」。没写多深，设计的人好像也没想好。', 'It says DEEP here. It doesn\'t say how deep. The designer hadn\'t decided either.'),
-    water: tr('水还没灌进来，只画了几道波浪，意思是「这里将来是水」。', 'No water yet, just a few wavy lines meaning "water goes here".'),
-    sand: tr('岸线用虚点画的。它们说这叫「待定」。', 'The shoreline is dotted. They call that "TBD".'),
-    grass: tr('一格一格的空地，每一格都一样大。这是图纸的好处。', 'Open lots, grid square by grid square, all the same size. That\'s the nice thing about drawings.'),
-    forest: tr('一个个圆圈，旁边写着「树」。它们会长成什么样，图纸不管。', 'Circles labelled "tree". What they grow into is not the drawing\'s problem.'),
-    rock: tr('斜线填满的是地基。所有要站得住的东西都得先画这个。', 'The hatched parts are foundations. Anything that has to stand gets drawn here first.'),
-    peak: tr('等高线，一圈套一圈。在这里，「高」只是线画得更密。', 'Contours, ring inside ring. Here, "high" just means the lines are closer together.'),
-    snow: tr('图框。再往外就不归这张图管了。', 'The title block. Past this, it\'s not this drawing\'s business.'),
+    deep: tr('打着碎点的是岩层，还没挖开的地方。离墙越近点越密，好像挖的时候震松了。', 'The stippled part is bedrock, not yet dug out. The dots get denser near the walls, as if the digging shook it loose.'),
+    water: tr('这间房里画了几道波浪：积水。图纸上没写水是从哪来的。', 'A few wavy lines in this room: standing water. The plan doesn\'t say where it comes from.'),
+    sand: tr('走廊，两道白线夹着一条方格。它们会顺着它走，我不用。墙挡不住从第四个方向来的东西。', 'A corridor, a strip of grid between two white lines. They will follow it; I don\'t need to. Walls don\'t stop things coming from the fourth direction.'),
+    grass: tr('一间房，地上打着方格，每一格都一样大。形状每间都不一样：方的、切角的、十字的、圆的。', 'A room, gridded floor, every square the same size. Each room has its own shape: square, cut-cornered, cross-shaped, round.'),
+    forest: tr('这间房塌了一半，地上散着碎石。图纸照样把它画了出来，连碎石都画了。', 'This room has half caved in, rubble on the floor. The plan draws it anyway, rubble and all.'),
+    rock: tr('墙。白色的粗线。在平面里，它是走不过去的东西。', 'A wall. A thick white line. In the plane, it is the thing you cannot pass.'),
+    peak: tr('房间里留了几根柱子，没挖开，打着斜线。整座迷宫就靠它们撑着。', 'A few pillars left standing in the room, not dug out, hatched. They hold the whole maze up.'),
+    snow: tr('楼梯，一道道横线。迷宫的入口和出口都是楼梯，一个通上来，一个通下去。', 'Stairs, line after line. The maze\'s entrance and exit are both stairs: one comes up, one goes down.'),
     rift: tr('红笔改过的地方。那段对话在这里出过错，有人拿红笔圈了出来。', 'A red-pen correction. The conversation went wrong here, and someone circled it.') } },
   slide: { name: tr('切片', 'Tissue Slide'), intro: tr('这张纸是一片染过色的切片。放到显微镜下，平面也是活的。', 'This sheet is a stained tissue slice. Under the microscope, even a plane is alive.'), t: {
     deep: [tr('挤在一起的细胞核', 'crowded nuclei'), [110, 50, 110], 'speck', [70, 26, 80]], water: [tr('腔隙', 'lumen'), [244, 214, 226], 'none'],
@@ -273,6 +273,8 @@ const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3,
 // 水墨：地形跟着画走（ink.js 拼出来的小景），那段对话的习惯换成小景的偏好：看得多的水多，动手多的山多，改写多的林子多
 const INKY = G.theme === 'ink', INK_KINDS = ['deep', 'water', 'sand', 'grass', 'forest', 'rock', 'peak', 'snow', 'rift'];
 if (INKY) SHANSHUI.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
+const MAZY = G.theme === 'blueprint';                   // 蓝图画的是一座迷宫，见 maze.js
+if (MAZY) MAZE.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
 // 4×4 格子里哪些像素用花纹色：1 = 花纹色，2 = 第二花纹色。r 是这一格的随机数，让花纹不是每格都有
 const PAT = {
@@ -296,8 +298,8 @@ const PAT = {
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
   if (SKY) return SKY.tile(x, y);
-  if (INKY) {
-    const k = INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)];
+  if (INKY || MAZY) {
+    const k = INKY ? INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)] : MAZE.kindAt(G.seed, x * TP + 2, y * TP + 2);
     return RIFT && (k === 'grass' || k === 'sand') && Math.abs(vn(x / 19, y / 19, G.seed + 40) - .5) < RIFT ? 'rift' : k;
   }
   const e = fbm(x, y, G.seed);
@@ -343,7 +345,7 @@ function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
   const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && (INKY ? INK_ROOF : FCOL[Math.floor(r0 * 4)][0]), sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
-  const ip = INKY && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
+  const ip = (INKY || MAZY) && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const pv = pat(i, j, r0, x, y);
     let c = sp ? sp[j * TP + i] : ip ? (INKC[0] = ip[io + (j * CH * TP + i) * 4], INKC[1] = ip[io + (j * CH * TP + i) * 4 + 1], INKC[2] = ip[io + (j * CH * TP + i) * 4 + 2], INKC) : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
@@ -360,13 +362,13 @@ function paintTile(x, y, d, stride, ox, oy) {
   }
 }
 const RUIN_C = [150, 144, 134];
-// 水墨：一块地图整块从画上取一次存起来（每块 128×128 个美术像素），最多留 96 块
+// 水墨、蓝图：一块地图整块从画上取一次存起来（每块 128×128 个美术像素），最多留 96 块
 const inkChunks = new Map(), INKC = [0, 0, 0], INK_ROOF = [86, 82, 78];
 function inkPix(x, y) {
   const cx = Math.floor(x / CH), cy = Math.floor(y / CH), k = cx + ',' + cy;
   let r = inkChunks.get(k);
   if (!r) {
-    r = SHANSHUI.region(G.seed, cx * CH * TP, cy * CH * TP, CH * TP, CH * TP).rgba;
+    r = (INKY ? SHANSHUI : MAZE).region(G.seed, cx * CH * TP, cy * CH * TP, CH * TP, CH * TP).rgba;
     if (inkChunks.size >= 96) inkChunks.delete(inkChunks.keys().next().value);
     inkChunks.set(k, r);
   }
