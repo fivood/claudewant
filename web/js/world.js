@@ -189,18 +189,18 @@ const THEMES = {
     snow: tr('白霜。它们管这叫冷，我管这叫慢。', 'Hoarfrost. They call it cold. I call it slow.'),
     rift: tr('一道断口。晶体从这里裂开，裂得很整齐。', 'A fracture. The crystal split here, very neatly.') } },
   pcb: { name: tr('电路板', 'Circuit Board'), intro: tr('这张纸是一块电路板。那段对话大概就是在这样的东西上跑起来的。', 'This sheet is a circuit board. The conversation probably ran on something like it.'), t: {
-    deep: [tr('铜箔铺地', 'copper pour'), [150, 96, 50], 'dot', [90, 60, 36]], water: [tr('裸铜', 'bare copper'), [196, 128, 70], 'wave', [226, 170, 100]],
-    sand: [tr('丝印', 'silkscreen'), [226, 230, 220], 'none'], grass: [tr('基板', 'substrate'), [30, 110, 64], 'trace', [70, 170, 100], [220, 200, 120]],
-    forest: [tr('走线密集区', 'dense routing'), [26, 96, 56], 'grid', [80, 170, 110]], rock: [tr('元件', 'component'), [60, 64, 70], 'dot', [200, 200, 200]],
-    peak: [tr('芯片', 'chip'), [34, 34, 38], 'chip', [90, 90, 96], [200, 200, 210]], snow: [tr('焊锡', 'solder'), [214, 216, 222], 'dot', [250, 250, 255]],
+    deep: [tr('铺铜', 'copper pour'), [38, 118, 70], 'none'], water: [tr('镀金焊盘', 'gold pads'), [216, 170, 82], 'none'],
+    sand: [tr('丝印', 'silkscreen'), [232, 236, 226], 'none'], grass: [tr('阻焊层', 'solder mask'), [26, 100, 58], 'none'],
+    forest: [tr('走线', 'trace'), [64, 152, 90], 'none'], rock: [tr('元件', 'component'), [44, 44, 50], 'none'],
+    peak: [tr('芯片', 'chip'), [30, 30, 34], 'none'], snow: [tr('焊盘', 'solder pad'), [212, 214, 220], 'none'],
     rift: [tr('烧断的走线', 'burnt trace'), [20, 14, 10], 'diag', [255, 150, 60]] }, first: {
-    deep: tr('一整片铜。电流在这里不用排队。', 'A whole sheet of copper. Current doesn\'t have to queue here.'),
-    water: tr('裸铜，还没刷上保护漆。摸上去——我摸不到，我在另一个方向。', 'Bare copper, not yet coated. I\'d touch it, but I\'m in another direction.'),
-    sand: tr('白色的丝印，印着元件的名字。这里的居民把它当地名。', 'White silkscreen, printed with part names. The residents use them as place names.'),
-    grass: tr('绿色的基板，走线笔直地穿过去。这里的路从不拐弯，只转直角。', 'Green substrate with traces running straight across. Roads here never curve. They only turn at right angles.'),
-    forest: tr('走线密得像森林。每一条都知道自己要去哪。', 'Traces as dense as a forest. Every one knows where it\'s going.'),
-    rock: tr('一个元件趴在板子上。它不知道自己有多高，这里没有高。', 'A component lying on the board. It doesn\'t know how tall it is. There\'s no tall here.'),
-    peak: tr('一块芯片。里面还有一整层更小的世界，也是平的。', 'A chip. There\'s a whole smaller world inside, also flat.'),
+    deep: tr('一大片铺铜，上面一排排过孔，像钉子钉住的。电流在这里不用排队。', 'A wide copper pour, stitched with rows of vias like nails. Current doesn\'t have to queue here.'),
+    water: tr('一排镀金的方焊盘，外面印着一圈框。别的东西要从这里插进来。', 'A row of gold-plated square pads inside a printed frame. Other things plug in here.'),
+    sand: tr('白色的丝印，印着元件的名字：U7、R12、C3。这里的居民把它们当地名。', 'White silkscreen printed with part names: U7, R12, C3. The residents use them as place names.'),
+    grass: tr('绿色的阻焊层，铜线在下面透出来。这里的路只转直角和斜角，从不拐弯。', 'Green solder mask, with the copper showing through beneath. Roads here turn only at right angles and diagonals, never curve.'),
+    forest: tr('一条走线。它知道自己从哪来、到哪去，中间一步也不多走。', 'A trace. It knows where it comes from and where it goes, and doesn\'t take one extra step between.'),
+    rock: tr('一个小元件趴在板子上，两头焊住。它不知道自己有多高，这里没有高。', 'A small component lying on the board, soldered at both ends. It doesn\'t know how tall it is. There\'s no tall here.'),
+    peak: tr('一块芯片，四边伸出一排脚。里面还有一整层更小的世界，也是平的。', 'A chip, a row of legs along each side. There\'s a whole smaller world inside, also flat.'),
     snow: tr('焊锡，亮晶晶的。它凝固的那一刻，这块板子才算活了。', 'Solder, shining. The moment it set, the board came alive.'),
     rift: tr('一段走线烧断了。那段对话在这里出过错，电从这里漏了出去。', 'A burnt trace. The conversation went wrong here, and the current leaked out.') } },
   // 水墨：整张纸是一幅画，一处处小景拼起来（ink.js）。格子的颜色从画上取，这里的颜色只给桌宠那条线和全图缩小时用
@@ -234,20 +234,20 @@ const THEMES = {
     peak: tr('房间里留了几根柱子，没挖开，打着斜线。整座迷宫就靠它们撑着。', 'A few pillars left standing in the room, not dug out, hatched. They hold the whole maze up.'),
     snow: tr('楼梯，一道道横线。迷宫的入口和出口都是楼梯，一个通上来，一个通下去。', 'Stairs, line after line. The maze\'s entrance and exit are both stairs: one comes up, one goes down.'),
     rift: tr('红笔改过的地方。那段对话在这里出过错，有人拿红笔圈了出来。', 'A red-pen correction. The conversation went wrong here, and someone circled it.') } },
-  slide: { name: tr('切片', 'Tissue Slide'), intro: tr('这张纸是一片染过色的切片。放到显微镜下，平面也是活的。', 'This sheet is a stained tissue slice. Under the microscope, even a plane is alive.'), t: {
-    deep: [tr('挤在一起的细胞核', 'crowded nuclei'), [110, 50, 110], 'speck', [70, 26, 80]], water: [tr('腔隙', 'lumen'), [244, 214, 226], 'none'],
-    sand: [tr('基底膜', 'basement membrane'), [236, 176, 200], 'dot', [210, 130, 170]], grass: [tr('组织', 'tissue'), [226, 150, 186], 'cell', [196, 110, 156], [110, 40, 110]],
-    forest: [tr('腺体', 'gland'), [200, 116, 164], 'cell', [170, 80, 140], [90, 30, 100]], rock: [tr('纤维', 'fibres'), [214, 128, 150], 'stripe', [236, 160, 180]],
-    peak: [tr('软骨', 'cartilage'), [170, 110, 170], 'ring', [120, 70, 140]], snow: [tr('脂滴', 'lipid droplets'), [252, 238, 244], 'ring', [228, 196, 214]],
+  slide: { name: tr('切片', 'Tissue Slide'), intro: tr('这张纸是一片染过色的切片，粉的是细胞质，紫的是细胞核。放到显微镜下，平面也是活的。', 'This sheet is a stained tissue slice: pink for cytoplasm, purple for nuclei. Under the microscope, even a plane is alive.'), t: {
+    deep: [tr('淋巴组织', 'lymphoid tissue'), [206, 128, 176], 'none'], water: [tr('血管', 'blood vessel'), [247, 224, 232], 'none'],
+    sand: [tr('血管壁', 'vessel wall'), [212, 116, 150], 'none'], grass: [tr('上皮', 'epithelium'), [232, 158, 194], 'none'],
+    forest: [tr('腺体', 'gland'), [238, 176, 200], 'none'], rock: [tr('纤维', 'fibres'), [226, 138, 166], 'none'],
+    peak: [tr('软骨', 'cartilage'), [178, 142, 194], 'none'], snow: [tr('脂肪', 'fat'), [253, 245, 249], 'none'],
     rift: [tr('切片上的一道划痕', 'a knife mark on the slide'), [90, 20, 50], 'diag', [250, 200, 220]] }, first: {
-    deep: tr('细胞核挤在一起，被染成了深紫。它们大概正忙着复制自己。', 'Nuclei crowded together, stained deep purple. Probably busy copying themselves.'),
-    water: tr('一片空的腔隙。以前这里流过什么。', 'An empty lumen. Something used to flow through here.'),
-    sand: tr('一层薄薄的膜，把里面和外面分开。在二维里，一条线就够了。', 'A thin membrane between inside and outside. In two dimensions, one line is enough.'),
-    grass: tr('组织。每个细胞都被切成了最平的样子，它们好像不太介意。', 'Tissue. Every cell sliced as flat as it goes. They don\'t seem to mind.'),
-    forest: tr('腺体，一圈一圈的，像在分泌什么。', 'Glands, ring after ring, as if secreting something.'),
-    rock: tr('纤维，一条条顺着同一个方向。这张纸被切开之前它们就这样了。', 'Fibres, all running the same way. They were like this before the sheet was cut.'),
-    peak: tr('软骨。在三维里它很硬，切成一片以后就只剩下颜色。', 'Cartilage. Hard in three dimensions; sliced, it\'s only colour.'),
-    snow: tr('脂滴。圆圆的，空空的，染料没染上它们。', 'Lipid droplets. Round and empty; the stain didn\'t take.'),
+    deep: tr('淋巴组织：一颗颗小核挤在一起，被染成了深紫。免疫细胞就是从这种地方出发的。', 'Lymphoid tissue: small nuclei crowded together, stained deep purple. This is where the immune cells set out from.'),
+    water: tr('一条血管，弯弯曲曲的。红细胞在里面排着队流。', 'A blood vessel, winding along. Red cells file through it.'),
+    sand: tr('血管壁，一层扁扁的细胞贴着。在二维里，一条线就够把里面和外面分开。', 'The vessel wall, lined with flat cells. In two dimensions, one line is enough to keep inside and outside apart.'),
+    grass: tr('上皮。每个细胞都被切成了最平的样子，一颗核，一圈膜。它们好像不太介意。', 'Epithelium. Every cell sliced as flat as it goes: one nucleus, one membrane. They don\'t seem to mind.'),
+    forest: tr('腺体，一圈柱状细胞围着一个空腔，像在分泌什么。', 'A gland: a ring of columnar cells around a hollow, as if secreting something.'),
+    rock: tr('纤维，一条条顺着同一个方向，中间夹着梭形的核。这张纸被切开之前它们就这样了。', 'Fibres, all running the same way, spindle-shaped nuclei between them. They were like this before the sheet was cut.'),
+    peak: tr('软骨。基质里一个个小窝，每个窝里住着一颗细胞。在三维里它很硬，切成一片以后就只剩下颜色。', 'Cartilage. Little hollows in the matrix, a cell living in each. Hard in three dimensions; sliced, it\'s only colour.'),
+    snow: tr('脂肪。一个个大白泡，染料没染上，只剩一圈膜。', 'Fat. Big white bubbles the stain didn\'t take, only a ring of membrane left.'),
     rift: tr('一道划痕。切片的时候刀在这里抖了一下——那段对话也在这里出过错。', 'A knife mark. The blade shook here when the slice was cut, and the conversation went wrong here too.') } },
   // 只给没载入会话的纸：画的是它背后的真实天空，见 sky.js
   sky: { name: tr('深空', 'Deep Sky'), intro: tr('这张纸是透明的。展开的地方，能看见它背后的天空——朝着一个随便挑的方向。', 'This sheet is transparent. Wherever it unfolds, I can see the sky behind it, facing some direction picked at random.'), t: {
@@ -274,6 +274,8 @@ const VAL = { deep: 1, water: 1, sand: 1, grass: 1, forest: 2, rock: 2, peak: 3,
 const INKY = G.theme === 'ink', INK_KINDS = ['deep', 'water', 'sand', 'grass', 'forest', 'rock', 'peak', 'snow', 'rift'];
 if (INKY) SHANSHUI.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const MAZY = G.theme === 'blueprint';                   // 蓝图画的是一座迷宫，见 maze.js
+const PIXSRC = INKY ? SHANSHUI : MAZY ? MAZE : G.theme === 'pcb' ? BOARD : G.theme === 'slide' ? HISTO : null;   // 按美术像素画的地貌：整块从这里取
+if (G.theme === 'slide') HISTO.bias({ water: WET, mountain: HARD, forest: GREEN });
 if (MAZY) MAZE.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
 // 4×4 格子里哪些像素用花纹色：1 = 花纹色，2 = 第二花纹色。r 是这一格的随机数，让花纹不是每格都有
@@ -298,8 +300,8 @@ const PAT = {
 // 阈值按噪声分位数定的：深水 12% 水 12% 沙 5% 陆地 43% 岩 13% 山 9% 雪 6%
 function tile(x, y) {
   if (SKY) return SKY.tile(x, y);
-  if (INKY || MAZY) {
-    const k = INKY ? INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)] : MAZE.kindAt(G.seed, x * TP + 2, y * TP + 2);
+  if (PIXSRC) {
+    const k = INKY ? INK_KINDS[SHANSHUI.kindAt(G.seed, x * TP + 2, y * TP + 2)] : PIXSRC === HISTO ? HISTO.kindAt(G.seed, x, y) : PIXSRC.kindAt(G.seed, x * TP + 2, y * TP + 2);
     return RIFT && (k === 'grass' || k === 'sand') && Math.abs(vn(x / 19, y / 19, G.seed + 40) - .5) < RIFT ? 'rift' : k;
   }
   const e = fbm(x, y, G.seed);
@@ -331,7 +333,7 @@ const flatOf = (x, y) => [FCOL[Math.floor(h(x, y, G.seed + 5) * 4)], FSHP[Math.f
 // 每帧最多新画 CHUNK_BUDGET 块（缩小视野时地图一块块铺开，不会卡一下）。
 // 缓存最多留 CHUNK_CAP 块（至少比屏幕上能看见的多一点），久没看的扔掉，下次看到再画。
 // 八十万格的存档打开时不用先把整张地图画一遍，内存也不会跟着地图一直长。
-const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = G.theme === 'sky' ? 3 : 10;   // 一块约 1 ms，深空 3–10 ms
+const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = G.theme === 'sky' ? 3 : PIXSRC ? 4 : 10;   // 一块约 1 ms，深空 3–10 ms
 const ckey = (x, y) => Math.floor(x / CH) + ',' + Math.floor(y / CH);
 if (unpackRev.chunks) for (const ck of unpackRev.chunks) hasChunk.add(ck);
 else for (const k of rev) hasChunk.add(ckey(kx(k), ky(k)));   // 旧格式存档才需要扫一遍
@@ -345,7 +347,7 @@ function paintTile(x, y, d, stride, ox, oy) {
   const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
   const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && (INKY ? INK_ROOF : FCOL[Math.floor(r0 * 4)][0]), sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
-  const ip = (INKY || MAZY) && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
+  const ip = PIXSRC && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
   for (let j = 0; j < TP; j++) for (let i = 0; i < TP; i++) {
     const pv = pat(i, j, r0, x, y);
     let c = sp ? sp[j * TP + i] : ip ? (INKC[0] = ip[io + (j * CH * TP + i) * 4], INKC[1] = ip[io + (j * CH * TP + i) * 4 + 1], INKC[2] = ip[io + (j * CH * TP + i) * 4 + 2], INKC) : pv === 2 ? q.a2 : pv === 1 ? q.a : q.c;
@@ -362,13 +364,13 @@ function paintTile(x, y, d, stride, ox, oy) {
   }
 }
 const RUIN_C = [150, 144, 134];
-// 水墨、蓝图：一块地图整块从画上取一次存起来（每块 128×128 个美术像素），最多留 96 块
+// 水墨、蓝图、电路板、切片：一块地图整块从画上取一次存起来（每块 128×128 个美术像素），最多留 96 块
 const inkChunks = new Map(), INKC = [0, 0, 0], INK_ROOF = [86, 82, 78];
 function inkPix(x, y) {
   const cx = Math.floor(x / CH), cy = Math.floor(y / CH), k = cx + ',' + cy;
   let r = inkChunks.get(k);
   if (!r) {
-    r = (INKY ? SHANSHUI : MAZE).region(G.seed, cx * CH * TP, cy * CH * TP, CH * TP, CH * TP).rgba;
+    r = PIXSRC.region(G.seed, cx * CH * TP, cy * CH * TP, CH * TP, CH * TP).rgba;
     if (inkChunks.size >= 96) inkChunks.delete(inkChunks.keys().next().value);
     inkChunks.set(k, r);
   }

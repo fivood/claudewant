@@ -173,54 +173,101 @@ const FX = (() => {
     },
   };
 
-  // --- 电路板：信号沿着走线跑，到路口有时拐弯；元件上的小灯一闪一闪。自己会发光，画在昼夜遮罩上面 ------------
-  // 走线和 world.js 的 PAT.trace 是同一套规则：每 4 行一条横线（格子里第 1 行像素），每 6 列一条竖线（第 2 列）
-  const traceH = (ax, ay) => { const x = Math.floor(ax / TP), y = Math.floor(ay / TP); return ay - y * TP === 1 && y % 4 === 0 && (x >> 2) % 5 !== 0 && kind(x, y) === 'grass'; };
-  const traceV = (ax, ay) => { const x = Math.floor(ax / TP), y = Math.floor(ay / TP); return ax - x * TP === 2 && x % 6 === 0 && (y >> 2) % 4 !== 1 && kind(x, y) === 'grass'; };
-  const onTrace = (ax, ay) => open(ax, ay) && (traceH(ax, ay) || traceV(ax, ay));
-  const pulses = [];
-  const LED = [[255, 70, 60], [80, 255, 120], [255, 190, 60]];
+  // --- 电路板：数据包沿着铜线跑（线只转直角和 45°），跑到焊盘上闪一下；LED 一闪一闪。自己会发光，画在昼夜遮罩上面。
+  //     Clawd 是四维的，它的截面落在板上会把几条线连到一起：走过的地方偶尔打出电火花，旁边的元件冒一缕青烟，留下一块焦痕 ------------
+  const bcls = (ax, ay) => open(ax, ay) ? BOARD.cls(G.seed, ax, ay) : -1;
+  const N8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  const pulses = [], sparks = [], smoke = [], scorch = [], flashes = [];
+  let nextShort = T0 + 6000;
   const pcb = {
     over(v) {
       const { now, t, px } = v;
-      eachChunk(v, (cx, cy) => {                             // 元件上的小灯
-        for (const [x, y, c, per, ph] of perChunk('led', cx, cy, (X, Y) => { const o = []; for (let j = 0; j < CH; j++) for (let i = 0; i < CH; i++) if (h(X + i, Y + j, G.seed + 400) < .35 && tile(X + i, Y + j) === 'rock') o.push([X + i, Y + j, rgb(LED[(h(X + i, Y + j, G.seed + 401) * 3) | 0]), .4 + h(X + i, Y + j, G.seed + 402) * 1.6, h(X + i, Y + j, G.seed + 403)]); return o; })) {
-          if (!rev.has(key(x, y)) || (t * per + ph) % 1 > .55) continue;
-          px(x * TP + 2, y * TP + 1, c, .95);
-          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) px(x * TP + 2 + dx, y * TP + 1 + dy, c, .22);
+      eachChunk(v, (cx, cy) => {                             // LED：红色的小灯，各闪各的
+        for (const [x, y, per, ph] of perChunk('led', cx, cy, (X, Y) => {
+          const o = [];
+          for (let j = 0; j < CH * TP; j++) for (let i = 0; i < CH * TP; i++) {
+            const ax = X * TP + i, ay = Y * TP + j;
+            if (BOARD.cls(G.seed, ax, ay) === 9 && BOARD.cls(G.seed, ax - 1, ay) !== 9 && BOARD.cls(G.seed, ax, ay - 1) !== 9) o.push([ax, ay, .3 + h(ax, ay, G.seed + 402) * 1.4, h(ax, ay, G.seed + 403)]);
+          }
+          return o;
+        })) {
+          if (!open(x, y) || (t * per + ph) % 1 > .5) continue;
+          for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) px(x + i, y + j, rgb([255, 120, 100]), .95);
+          for (let j = -2; j < 5; j++) for (let i = -2; i < 6; i++) if (i < 0 || i > 3 || j < 0 || j > 2) px(x + i, y + j, rgb([255, 70, 50]), .16);
         }
       });
-      for (let n = 0; n < 2 && pulses.length < 14; n++) {    // 信号：在屏幕上随便找一格，挪到最近的走线上
+      for (let n = 0; n < 2 && pulses.length < 16; n++) {    // 数据包：在屏幕上随便找一处，挪到附近的线上
         const p = spot(v.ox, v.oy, v.s, v.W, v.H);
         if (!p) break;
-        const tx = Math.floor(p[0] / TP), ty = Math.floor(p[1] / TP), hy = Math.round(ty / 4) * 4, vx = Math.round(tx / 6) * 6;
-        const cand = [[tx * TP + 1, hy * TP + 1, 1, 0], [vx * TP + 2, ty * TP + 1, 0, 1]].filter(([ax, ay]) => onTrace(ax, ay));
-        if (!cand.length) continue;
-        const [ax, ay, dx, dy] = cand[(Math.random() * cand.length) | 0], sg = Math.random() < .5 ? 1 : -1;
-        pulses.push({ x: ax, y: ay, dx: dx * sg, dy: dy * sg, acc: 0, t0: now, trail: [], v: 30 + Math.random() * 25 });
+        let at = null;
+        for (let r = 0; r < 6 && !at; r++) for (let dy = -r; dy <= r && !at; dy++) for (let dx = -r; dx <= r; dx++) if (bcls(p[0] + dx, p[1] + dy) === 1) { at = [p[0] + dx, p[1] + dy]; break; }
+        if (!at) continue;
+        const ds = N8.map((_, k) => k).filter(k => bcls(at[0] + N8[k][0], at[1] + N8[k][1]) === 1);
+        if (ds.length) pulses.push({ x: at[0], y: at[1], d: ds[(Math.random() * ds.length) | 0], acc: 0, t0: now, trail: [], v: 26 + Math.random() * 22 });
       }
       for (let i = pulses.length - 1; i >= 0; i--) {
         const q = pulses[i];
         q.acc += q.v * v.dt;
-        let alive = now - q.t0 < 7000;
+        let alive = now - q.t0 < 9000;
         while (alive && q.acc >= 1) {
           q.acc--;
-          if (traceH(q.x, q.y) && traceV(q.x, q.y) && Math.random() < .35) {   // 路口：有时拐弯
-            const s2 = Math.random() < .5 ? 1 : -1, ndx = q.dy ? s2 : 0, ndy = q.dx ? s2 : 0;
-            if (onTrace(q.x + ndx, q.y + ndy)) { q.dx = ndx; q.dy = ndy; }
+          const ok = [0, -1, 1, -2, 2].map(o => (q.d + o + 8) % 8).filter(k => { const nx = q.x + N8[k][0], ny = q.y + N8[k][1]; return bcls(nx, ny) === 1 && !q.trail.some(([a, b]) => a === nx && b === ny); });
+          if (!ok.length) {                                   // 跑到头了：接着焊盘的话，焊盘亮一下
+            const pad = N8.find(([dx, dy]) => [2, 7].includes(bcls(q.x + dx, q.y + dy)));
+            if (pad) flashes.push({ x: q.x + pad[0], y: q.y + pad[1], t0: now });
+            alive = false; break;
           }
-          if (!onTrace(q.x + q.dx, q.y + q.dy)) { alive = false; break; }
+          q.d = ok[0] === q.d || Math.random() < .75 ? ok[0] : ok[(Math.random() * ok.length) | 0];   // 岔口有时换条线
           q.trail.unshift([q.x, q.y]); q.trail.length = Math.min(q.trail.length, 6);
-          q.x += q.dx; q.y += q.dy;
+          q.x += N8[q.d][0]; q.y += N8[q.d][1];
         }
         if (!alive) { pulses.splice(i, 1); continue; }
         q.trail.forEach(([x, y], k) => px(x, y, rgb([255, 196, 90]), .7 * (1 - k / 6)));
         px(q.x, q.y, rgb([255, 250, 220]), 1);
-        if (v.age > 20000) said('fxsignal', '走线上有个亮点在跑，跑到路口有时会拐弯。那段对话当初大概就是这样，一格一格跑过去的。', 'A bright dot is running along the traces, sometimes turning at a junction. That conversation probably ran just like this, one square at a time.');
+        if (v.age > 20000) said('fxsignal', '线上有个亮点在跑，拐弯只拐直角和斜角，跑到头就在焊盘上闪一下。那段对话当初大概就是这样，一段一段跑过去的。', 'A bright dot runs along the traces, turning only at right angles and diagonals, and flashes on a pad when it gets there. That conversation probably ran just like this, one segment at a time.');
+      }
+      for (let i = flashes.length - 1; i >= 0; i--) {         // 焊盘亮一下
+        const f = flashes[i], a = 1 - (now - f.t0) / 400;
+        if (a <= 0) { flashes.splice(i, 1); continue; }
+        for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) px(f.x + dx, f.y + dy, rgb([255, 245, 200]), a * (dx || dy ? .5 : 1));
+      }
+      // 短路：Clawd 的截面把几条线连在了一起
+      const w = ws[0], wx = Math.round(w.x * TP), wy = Math.round(w.y * TP);
+      if (now > nextShort) {
+        nextShort = now + 4000 + Math.random() * 7000;
+        let hit = null;
+        for (let n = 0; n < 40 && !hit; n++) { const x = wx + Math.round((Math.random() - .5) * 16), y = wy + Math.round((Math.random() - .5) * 16), c = bcls(x, y); if (c === 1 || c === 2 || c === 8) hit = [x, y]; }
+        if (hit) {
+          for (let n = 0; n < 14; n++) { const a = Math.random() * TAU, sp = 10 + Math.random() * 30; sparks.push({ x: hit[0], y: hit[1], vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t0: now, life: 250 + Math.random() * 400 }); }
+          for (let n = 0; n < 6; n++) { const x = hit[0] + Math.round((Math.random() - .5) * 4), y = hit[1] + Math.round((Math.random() - .5) * 4); if (open(x, y)) scorch.push([x, y, .35 + Math.random() * .4]); }
+          if (scorch.length > 600) scorch.splice(0, scorch.length - 600);
+          if (Math.random() < .4) {                           // 旁边的元件被烧了，冒一缕烟
+            for (let n = 0; n < 60; n++) {
+              const x = hit[0] + Math.round((Math.random() - .5) * 28), y = hit[1] + Math.round((Math.random() - .5) * 28);
+              if ([3, 4, 10].includes(bcls(x, y))) { smoke.push({ x, y, t0: now, life: 5000, seed: Math.random() * 100 }); for (let k = 0; k < 5; k++) scorch.push([x + Math.round((Math.random() - .5) * 3), y + Math.round((Math.random() - .5) * 3), .5]); break; }
+            }
+          }
+          said('fxshort', '我走过的地方打出了一串火花。我的截面把两条线连到了一起——在它们那里，这叫短路。', 'Sparks flew where I passed. My cross-section joined two traces together; down there, that\'s called a short circuit.');
+        }
+      }
+      for (const [x, y, a] of scorch) if (open(x, y)) px(x, y, rgb([34, 22, 12]), a);
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i], k = (now - s.t0) / s.life;
+        if (k >= 1) { sparks.splice(i, 1); continue; }
+        const e = k * s.life / 1000, x = Math.round(s.x + s.vx * e), y = Math.round(s.y + s.vy * e + 20 * e * e);
+        px(x, y, rgb(k < .4 ? [255, 250, 220] : [255, 170, 60]), 1 - k);
+      }
+      for (let i = smoke.length - 1; i >= 0; i--) {           // 青烟：一团团往上飘，越飘越散
+        const s = smoke[i], age = now - s.t0;
+        if (age > s.life) { smoke.splice(i, 1); continue; }
+        for (let n = 0; n < 6; n++) {
+          const u = ((age / 1600 + n / 6) % 1), y = s.y - u * 18, x = s.x + Math.sin(u * 5 + s.seed + n) * (1 + u * 4), r = 1 + u * 2;
+          for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(Math.round(x + dx), Math.round(y + dy), rgb([176, 180, 176]), .32 * (1 - u) * Math.min(1, (s.life - age) / 1500));
+        }
+        said('fxsmoke', '有个元件冒烟了。一缕青烟飘起来，离开了纸面——那是它们没有的方向。对不起。', 'A component is smoking. A wisp drifts up off the sheet, in the one direction they don\'t have. Sorry.');
       }
     },
   };
-
   // --- 二向箔：压平还没结束，每隔一阵一圈余波从远处扫过，经过的地方条纹抖一下；被压进纸里的太阳边缘还在闪 ----------
   let wave = null, nextWave = T0 + 20000 + Math.random() * 20000;
   const foil = {
@@ -683,18 +730,51 @@ const FX = (() => {
     },
   };
 
-  // --- 切片：显微镜下平面也是活的。细胞质里的小颗粒顺着流动；细胞时不时一分为二；偶尔一个白细胞像变形虫一样爬过去 ------------
-  const TISSUE = k => k === 'grass' || k === 'forest' || k === 'deep';
-  const gran = [], divs = [];
-  let wbc = null, nextWbc = T0 + 20000 + Math.random() * 25000, nextDiv = T0 + 5000;
+  // --- 切片：显微镜下平面也是活的。血管里红细胞排着队流；细胞质里的小颗粒顺着流；细胞时不时分裂——染色体先排成一排，再拉向两头；
+  //     Clawd 是从第四个方向插进来的异物，它走过的地方在它们看来是伤口，白细胞一个个爬过来围住；偶尔一个白细胞追着一个细菌跑，最后把它吞掉 ------------
+  const TISSUE = k => k === 'grass' || k === 'forest' || k === 'deep' || k === 'rock';
+  const gran = [], divs = [], rbcs = [], wbcs = [];
+  let bact = null, nextWbc = T0 + 8000, nextDiv = T0 + 5000, nextBact = T0 + 30000 + Math.random() * 30000;
+  function amoeba(px, x, y, R, seed, t, f, inside) {           // 白细胞：边缘一直在变形，里面三叶的核
+    for (let dy = -R - 3; dy <= R + 3; dy++) for (let dx = -R - 3; dx <= R + 3; dx++) {
+      const d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), edge = R * (.8 + .4 * vn(Math.cos(a) * 1.5 + t * .6, Math.sin(a) * 1.5, seed));
+      const ax = Math.round(x) + dx, ay = Math.round(y) + dy;
+      if (d > edge || !open(ax, ay)) continue;
+      px(ax, ay, rgb(d > edge - 1 ? [220, 186, 214] : [252, 244, 250]), .9 * f);
+    }
+    for (let n = 0; n < 3; n++) {
+      const a = n * 2.1 + t * .3, nx = Math.round(x + Math.cos(a) * 1.6), ny = Math.round(y + Math.sin(a) * 1.6);
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (open(nx + dx, ny + dy)) px(nx + dx, ny + dy, rgb([120, 60, 140]), .85 * f);
+    }
+    if (inside) px(Math.round(x) + 1, Math.round(y) - 1, rgb([60, 40, 120]), f);   // 吞进去的细菌
+  }
+  const crawl = (w, tx, ty, sp, dt, t) => {                    // 朝目标爬，边爬边晃
+    const a = Math.atan2(ty - w.y, tx - w.x) + (vn(t * .4, 0, w.seed) - .5) * 1.6, d = Math.hypot(tx - w.x, ty - w.y);
+    if (d > 1) { w.x += Math.cos(a) * Math.min(sp * dt, d); w.y += Math.sin(a) * Math.min(sp * dt, d); }
+    return d;
+  };
   const slide = {
     under(v) {
       const { now, t, px } = v;
-      for (let n = 0; n < 3 && gran.length < 60; n++) {
+      for (let n = 0; n < 4 && rbcs.length < 45; n++) {       // 红细胞：只在血管里，顺着血管流，往中线靠
+        const p = spot(v.ox, v.oy, v.s, v.W, v.H);
+        if (p && HISTO.inVessel(G.seed, p[0], p[1])) rbcs.push({ x: p[0], y: p[1], t0: now, life: 8000 + Math.random() * 8000, sp: 6 + Math.random() * 4 });
+      }
+      for (let i = rbcs.length - 1; i >= 0; i--) {
+        const r = rbcs[i], age = now - r.t0, [fx, fy, cx, cy, off] = HISTO.flow(G.seed, r.x, r.y);
+        if (age > r.life || !HISTO.inVessel(G.seed, Math.round(r.x), Math.round(r.y))) { rbcs.splice(i, 1); continue; }
+        const pull = off * 60;
+        r.x += (fx * r.sp + cx * pull) * v.dt; r.y += (fy * r.sp + cy * pull) * v.dt;
+        const a = Math.min(1, age / 600, (r.life - age) / 600), x = Math.round(r.x), y = Math.round(r.y);
+        for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) if (open(x + dx, y + dy)) px(x + dx, y + dy, rgb([196, 44, 70]), (dx && dy ? .35 : .9) * a);   // 圆饼：四边实、四角虚
+        if (open(x, y)) px(x, y, rgb([226, 110, 128]), .9 * a);   // 中间凹下去，淡一点
+      }
+      if (rbcs.length && v.age > 15000) said('fxrbc', '血管里红细胞排着队往一个方向流，一个个像压扁的小圆饼。', 'In the vessel, red cells file along in one direction, each one like a little flattened disc.');
+      for (let n = 0; n < 3 && gran.length < 50; n++) {
         const p = spot(v.ox, v.oy, v.s, v.W, v.H);
         if (p && TISSUE(tileAt(...p))) gran.push({ x: p[0], y: p[1], t0: now, life: 3000 + Math.random() * 3000 });
       }
-      for (let i = gran.length - 1; i >= 0; i--) {             // 顺着一片慢慢转的流场漂
+      for (let i = gran.length - 1; i >= 0; i--) {             // 细胞质里的颗粒顺着一片慢慢转的流场漂
         const g2 = gran[i], k = (now - g2.t0) / g2.life;
         if (k >= 1) { gran.splice(i, 1); continue; }
         const a = vn(g2.x / 40, g2.y / 40 + t * .05, G.seed + 700) * TAU * 2;
@@ -702,48 +782,65 @@ const FX = (() => {
         const ax = Math.round(g2.x), ay = Math.round(g2.y);
         if (open(ax, ay)) px(ax, ay, rgb([110, 40, 110]), Math.sin(k * Math.PI) * .6);
       }
-      if (now > nextDiv) {                                      // 一个细胞核拉长、分成两个，中间长出一道膜
+      if (now > nextDiv) {                                      // 分裂：染色体排成一排 → 拉向两头 → 两颗核，中间长出一道膜
         nextDiv = now + 5000 + Math.random() * 7000;
         const p = divs.length < 3 && spot(v.ox, v.oy, v.s, v.W, v.H);
-        if (p && TISSUE(tileAt(...p))) divs.push({ x: Math.floor(p[0] / TP) * TP + 2, y: Math.floor(p[1] / TP) * TP + 2, a: Math.random() * Math.PI, t0: now });
+        if (p && TISSUE(tileAt(...p))) divs.push({ x: p[0], y: p[1], a: Math.random() * Math.PI, t0: now });
       }
       for (let i = divs.length - 1; i >= 0; i--) {
         const d = divs[i], age = (now - d.t0) / 1000;
-        if (age > 6) { divs.splice(i, 1); continue; }
-        const f = age < 4 ? 1 : 1 - (age - 4) / 2, sep = Math.min(1, age / 2) * 3, c = Math.cos(d.a), sn = Math.sin(d.a);
-        for (const sg of [-1, 1]) for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-          const ax = Math.round(d.x + c * sep * sg) + dx - 1, ay = Math.round(d.y + sn * sep * sg) + dy - 1;
-          if (open(ax, ay)) px(ax, ay, rgb([90, 30, 100]), .85 * f);
+        if (age > 7) { divs.splice(i, 1); continue; }
+        const f = Math.min(1, age / .6, (7 - age) / 1.5), c = Math.cos(d.a), sn = Math.sin(d.a), dot = (x, y, col, a) => { const ax = Math.round(x), ay = Math.round(y); if (open(ax, ay)) px(ax, ay, rgb(col), a); };
+        for (let dy = -5; dy <= 5; dy++) for (let dx = -6; dx <= 6; dx++) {   // 分裂中的细胞鼓成圆的，淡一点
+          const u = dx * c + dy * sn, w = -dx * sn + dy * c, sep = Math.min(1, Math.max(0, age - 2.4) / 1.6);
+          if ((u / (5 + sep * 1.5)) ** 2 + (w / (4 - sep * 1.2 * (1 - Math.abs(u) / 7))) ** 2 <= 1) dot(d.x + dx, d.y + dy, [244, 196, 216], .7 * f);
         }
-        if (age > 1.2) for (let k = -3; k <= 3; k++) { const ax = Math.round(d.x - sn * k), ay = Math.round(d.y + c * k); if (open(ax, ay)) px(ax, ay, rgb([196, 110, 156]), .8 * f * Math.min(1, (age - 1.2) / .8)); }
+        const spread = age < 1.4 ? 0 : Math.min(3.5, (age - 1.4) * 2.2);   // 染色体：先排在中间，再被拉开
+        for (let k = -3; k <= 3; k++) for (const sg of spread ? [-1, 1] : [0]) {
+          const bend = spread ? Math.abs(k) * .3 : 0;
+          dot(d.x + c * (sg * spread - sg * bend) - sn * k, d.y + sn * (sg * spread - sg * bend) + c * k, [96, 30, 110], .95 * f);
+        }
+        if (age > 3.6) for (let k = -4; k <= 4; k++) dot(d.x - sn * k, d.y + c * k, [196, 110, 156], .85 * f * Math.min(1, (age - 3.6) / .8));
+        if (age > 2 && v.age > 15000) said('fxmit', '一个细胞在分裂：染色体先在中间排成一排，再被拉向两头，中间长出一道膜。', 'A cell is dividing: the chromosomes line up in the middle, get pulled to either end, and a membrane grows between them.');
       }
-      if (!wbc && now > nextWbc) {
+      // 白细胞发现了 Clawd 插进来的地方：在它附近冒出来，爬向它刚才站的那一点，围成一圈（Clawd 走得比它们快得多，追不上）
+      const w0 = ws[0], cxw = w0.x * TP, cyw = w0.y * TP;
+      if (now > nextWbc && wbcs.filter(w => !w.prey).length < 8) {
+        nextWbc = now + 2000 + Math.random() * 2500;
+        const a = Math.random() * TAU, d = 14 + Math.random() * 16, x = Math.round(cxw + Math.cos(a) * d), y = Math.round(cyw + Math.sin(a) * d);
+        if (open(x, y)) wbcs.push({ x, y, tx: cxw, ty: cyw, ring: Math.random() * TAU, t0: now, life: 30000 + Math.random() * 20000, seed: (Math.random() * 1e6) | 0, sp: 3 + Math.random() * 1.5 });
+      }
+      if (!bact && now > nextBact) {                            // 细菌：一小截杆，乱窜；派一个白细胞去追
+        nextBact = now + 50000 + Math.random() * 40000;
         const p = spot(v.ox, v.oy, v.s, v.W, v.H);
-        if (p) wbc = { x: p[0], y: p[1], hd: Math.random() * TAU, t0: now, life: 22000, seed: (Math.random() * 1e6) | 0 };
-        else nextWbc = now + 5000;
+        if (p) {
+          bact = { x: p[0], y: p[1], hd: Math.random() * TAU, t0: now };
+          const a = Math.random() * TAU;
+          wbcs.push({ x: p[0] + Math.cos(a) * 24, y: p[1] + Math.sin(a) * 24, t0: now, life: 60000, seed: (Math.random() * 1e6) | 0, sp: 5.2, prey: true });
+        }
       }
-      if (!wbc) return;
-      const w = wbc, age = now - w.t0;
-      if (age > w.life) { wbc = null; nextWbc = now + 30000 + Math.random() * 30000; return; }
-      w.hd += (vn(t * .3, 0, w.seed) - .5) * v.dt * 2;
-      w.x += Math.cos(w.hd) * 4 * v.dt; w.y += Math.sin(w.hd) * 4 * v.dt;
-      const f = Math.min(1, age / 1500, (w.life - age) / 1500), R = 5;
-      let seen = false;
-      for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) {   // 边缘一直在变形
-        const d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), edge = R * (.8 + .4 * vn(Math.cos(a) * 1.5 + t * .6, Math.sin(a) * 1.5, w.seed));
-        const ax = Math.round(w.x) + dx, ay = Math.round(w.y) + dy;
-        if (d > edge || !open(ax, ay)) continue;
-        seen = true;
-        px(ax, ay, rgb(d > edge - 1 ? [220, 186, 214] : [252, 244, 250]), .9 * f);
+      if (bact) {
+        bact.hd += (Math.random() - .5) * 6 * v.dt;
+        bact.x += Math.cos(bact.hd) * 4.6 * v.dt; bact.y += Math.sin(bact.hd) * 4.6 * v.dt;
+        if (now - bact.t0 > 45000 || !open(Math.round(bact.x), Math.round(bact.y))) bact = null;
+        else for (let k = -1; k <= 1; k++) { const ax = Math.round(bact.x + Math.cos(bact.hd) * k), ay = Math.round(bact.y + Math.sin(bact.hd) * k); if (open(ax, ay)) px(ax, ay, rgb([60, 40, 120]), .95); }
       }
-      for (let n = 0; n < 3; n++) {                             // 分叶的细胞核
-        const a = n * 2.1 + t * .3, nx = Math.round(w.x + Math.cos(a) * 1.8), ny = Math.round(w.y + Math.sin(a) * 1.8);
-        for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (open(nx + dx, ny + dy)) px(nx + dx, ny + dy, rgb([120, 60, 140]), .85 * f);
+      let near = false;
+      for (let i = wbcs.length - 1; i >= 0; i--) {
+        const w = wbcs[i], age = now - w.t0;
+        if (age > w.life || Math.hypot(w.x - cxw, w.y - cyw) > 260) { wbcs.splice(i, 1); continue; }
+        if (w.prey && bact) {
+          if (crawl(w, bact.x, bact.y, w.sp, v.dt, t) < 3) { bact = null; w.prey = false; w.ate = now; said('fxbact', '一个白细胞追着一个细菌跑。细菌拐来拐去，白细胞跟着拐，最后一口把它吞了下去。', 'A white cell chased a bacterium. The bacterium zigzagged, the white cell zigzagged after it, and in the end it swallowed it whole.'); }
+        } else {
+          w.prey = false; w.ring ??= Math.random() * TAU;
+          if (w.tx === undefined) { w.tx = w.x; w.ty = w.y; }   // 吃完细菌的就地歇着
+          if (crawl(w, w.tx + Math.cos(w.ring) * 5, w.ty + Math.sin(w.ring) * 5, w.sp, v.dt, t) < 4) near = true;
+        }
+        amoeba(px, w.x, w.y, 4, w.seed, t, Math.min(1, age / 1500, (w.life - age) / 1500), w.ate && now - w.ate < 6000);
       }
-      if (seen) said('fxwbc', '一个白细胞慢慢爬过来，边走边改形状。它在巡逻。', 'A white blood cell crawls slowly past, changing shape as it goes. It\'s on patrol.');
+      if (near) said('fxwbc', '白细胞一个个爬到我刚才站过的地方，围成一圈。我是从第四个方向插进来的，在它们看来那里有个伤口。', 'One by one, white cells crawl to where I just stood and gather round it. I came in from the fourth direction; to them, there\'s a wound there.');
     },
   };
-
   const THEME = { earth, dune, pcb, foil, solaris, crystal, ink, blueprint, slide };
   function frame(ox, oy, tp, s, W, H, layer) {
     const now = performance.now();
