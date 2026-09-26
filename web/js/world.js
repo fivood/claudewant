@@ -174,10 +174,10 @@ const THEMES = {
     snow: tr('拟态体。它学着我的样子长，长得一点也不像。', 'A mimoid. It\'s growing in my image, and doesn\'t look like me at all.'),
     rift: tr('海里的一道裂口。海把它合上之前，我往里看了一眼。', 'A split in the ocean. I looked inside before it closed.') } },
   crystal: { name: tr('晶化', 'Crystallized'), intro: tr('这张纸上的东西都在慢慢变成晶体。', 'Everything on this sheet is slowly turning to crystal.'), t: {
-    deep: [tr('冻住的河', 'frozen river'), [70, 110, 150], 'spike', [140, 190, 230]], water: [tr('结晶的水', 'crystal water'), [130, 180, 210], 'spike', [200, 230, 250]],
-    sand: [tr('石英砂', 'quartz sand'), [226, 222, 214], 'dot', [250, 250, 255]], grass: [tr('晶草', 'crystal grass'), [150, 200, 190], 'spike', [210, 240, 235]],
-    forest: [tr('晶林', 'crystal forest'), [90, 160, 170], 'spike', [190, 240, 245]], rock: [tr('玄武岩', 'basalt'), [80, 80, 92], 'none'],
-    peak: [tr('晶簇', 'crystal cluster'), [140, 120, 180], 'spike', [220, 200, 250]], snow: [tr('白霜', 'hoarfrost'), [236, 242, 248], 'dot', [255, 255, 255]],
+    deep: [tr('冻住的河', 'frozen river'), [70, 110, 150], 'none', [140, 190, 230]], water: [tr('结晶的水', 'crystal water'), [130, 180, 210], 'none', [200, 230, 250]],
+    sand: [tr('石英砂', 'quartz sand'), [226, 222, 214], 'none', [250, 250, 255]], grass: [tr('晶草', 'crystal grass'), [150, 200, 190], 'none', [210, 240, 235]],
+    forest: [tr('晶林', 'crystal forest'), [90, 160, 170], 'none', [190, 240, 245]], rock: [tr('玄武岩', 'basalt'), [80, 80, 92], 'none'],
+    peak: [tr('晶簇', 'crystal cluster'), [140, 120, 180], 'none', [220, 200, 250]], snow: [tr('白霜', 'hoarfrost'), [236, 242, 248], 'none', [255, 255, 255]],
     rift: [tr('断口', 'fracture'), [30, 26, 40], 'diag', [240, 240, 255]] }, first: {
     deep: tr('河被冻住了，冻成了一整块晶体。水流的样子还留在里面。', 'The river froze into one solid crystal. The shape of the current is still inside.'),
     water: tr('结晶的水。每一滴都停在它最后的形状上。', 'Crystal water. Every drop stopped in its final shape.'),
