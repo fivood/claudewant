@@ -94,9 +94,9 @@ import { loadFile, worldOf } from './parse.js';
 
 const $ = id => document.getElementById(id);
 const go = s => {
-  if (!s) { try { localStorage.removeItem('clawd-seed'); } catch {} location.href = 'game.html'; return; }   // 桌面版不再回到上次的会话
+  if (!s) { try { localStorage.removeItem('clawd-seed'); localStorage.removeItem('clawd-next'); } catch {} location.href = 'game.html'; return; }   // 桌面版不再回到上次的会话
   const w = worldOf(s);
-  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); } catch { /* 没存上就只用种子 */ }
+  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); localStorage.setItem('clawd-next', w.seed); } catch { /* 没存上就只用网址里的种子 */ }   // clawd-next 见 world.js
   location.href = `game.html?seed=${w.seed}`;
 };
 

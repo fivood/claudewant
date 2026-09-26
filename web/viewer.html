@@ -288,7 +288,7 @@ $('dl').onclick = () => {
 
 $('play').onclick = () => {
   const w = worldOf(sessions[active]);
-  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); } catch { /* 没存上就只用种子 */ }
+  try { localStorage.setItem('clawd-4d-world:' + w.seed, JSON.stringify(w)); localStorage.setItem('clawd-next', w.seed); } catch { /* 没存上就只用网址里的种子 */ }   // clawd-next 见 world.js
   open(`game.html?seed=${w.seed}`, '_blank');
 };
 

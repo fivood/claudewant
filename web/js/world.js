@@ -6,7 +6,11 @@ const cv = $('cv'), ctx = cv.getContext('2d');
 let pet = false;                                           // 桌面版的桌宠模式
 // ?seed= 来自会话查看器：每条会话一张纸，各存各的档。
 // 桌面版每次都从 game.html 启动，所以记住上次读的会话，下次打开还在那张纸上
-const URL_SEED = Math.floor(+new URLSearchParams(location.search).get('seed')) || 0;
+// 有的静态服务器（比如本地的 serve）把 game.html 跳成 /game 时会丢掉 ?seed=，导入的会话就又回到了原来那张纸。
+// 所以首页和会话查看器还会在 clawd-next 里留一份种子：这里读一次就删掉。
+let NEXT = 0;
+try { NEXT = +localStorage.getItem('clawd-next') || 0; localStorage.removeItem('clawd-next'); } catch { /* 无痕模式：只靠网址 */ }
+const URL_SEED = Math.floor(+new URLSearchParams(location.search).get('seed')) || NEXT;
 let SEED = URL_SEED;
 try {
   if (window.__TAURI__) SEED ? localStorage.setItem('clawd-seed', SEED) : SEED = +localStorage.getItem('clawd-seed') || 0;
