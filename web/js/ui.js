@@ -55,6 +55,18 @@ $('reset').onclick = () => {
   location.href = 'game.html';
 };
 $('fillBtn').onclick = fillHoles;
+// 换一种地貌：同一张纸（同一个种子、同一段会话）换成另一种画法。地形、历史都跟着换，所以这张纸的探索进度清空；读过的会话还在
+{
+  const sel = $('themeSel');
+  for (const k of Object.keys(THEMES)) sel.add(new Option(tr('地貌：', 'Terrain: ') + THEMES[k].name, k, false, k === G.theme));   // 按钮样式没有下拉箭头，前面写明是什么
+  sel.onchange = () => {
+    const k = sel.value;
+    if (!confirm(tr(`把这张纸换成「${THEMES[k].name}」？这张纸的探索进度会清空，读过的会话还在。`, `Redraw this sheet as ${THEMES[k].name}? Progress on this sheet will be cleared; the loaded session stays.`))) { sel.value = G.theme; return; }
+    wiped = true;
+    try { localStorage.setItem(SAVE, JSON.stringify({ seed: G.seed, theme: k })); if (SEED) localStorage.setItem('clawd-next', SEED); } catch { /* 无痕模式 */ }
+    location.reload();
+  };
+}
 
 // --- 收起 / 精简：每个窗口标题栏上的 – 收成一条；「精简」只留最要紧的一行 --------------
 // 手机屏幕小，窗口会挡住纸面，所以要能收；状态记在本机，下次打开还是那样。
