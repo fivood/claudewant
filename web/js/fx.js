@@ -740,13 +740,13 @@ const FX = (() => {
       const d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), edge = R * (.8 + .4 * vn(Math.cos(a) * 1.5 + t * .6, Math.sin(a) * 1.5, seed));
       const ax = Math.round(x) + dx, ay = Math.round(y) + dy;
       if (d > edge || !open(ax, ay)) continue;
-      px(ax, ay, rgb(d > edge - 1 ? [220, 186, 214] : [252, 244, 250]), .9 * f);
+      px(ax, ay, rgb(d > edge - 1 ? [222, 204, 216] : [250, 246, 248]), .9 * f);
     }
     for (let n = 0; n < 3; n++) {
       const a = n * 2.1 + t * .3, nx = Math.round(x + Math.cos(a) * 1.6), ny = Math.round(y + Math.sin(a) * 1.6);
-      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (open(nx + dx, ny + dy)) px(nx + dx, ny + dy, rgb([120, 60, 140]), .85 * f);
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (open(nx + dx, ny + dy)) px(nx + dx, ny + dy, rgb([130, 104, 156]), .85 * f);
     }
-    if (inside) px(Math.round(x) + 1, Math.round(y) - 1, rgb([60, 40, 120]), f);   // 吞进去的细菌
+    if (inside) px(Math.round(x) + 1, Math.round(y) - 1, rgb([92, 84, 140]), f);   // 吞进去的细菌
   }
   const crawl = (w, tx, ty, sp, dt, t) => {                    // 朝目标爬，边爬边晃
     const a = Math.atan2(ty - w.y, tx - w.x) + (vn(t * .4, 0, w.seed) - .5) * 1.6, d = Math.hypot(tx - w.x, ty - w.y);
@@ -766,8 +766,8 @@ const FX = (() => {
         const pull = off * 60;
         r.x += (fx * r.sp + cx * pull) * v.dt; r.y += (fy * r.sp + cy * pull) * v.dt;
         const a = Math.min(1, age / 600, (r.life - age) / 600), x = Math.round(r.x), y = Math.round(r.y);
-        for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) if (open(x + dx, y + dy)) px(x + dx, y + dy, rgb([196, 44, 70]), (dx && dy ? .35 : .9) * a);   // 圆饼：四边实、四角虚
-        if (open(x, y)) px(x, y, rgb([226, 110, 128]), .9 * a);   // 中间凹下去，淡一点
+        for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) if (open(x + dx, y + dy)) px(x + dx, y + dy, rgb([190, 104, 118]), (dx && dy ? .35 : .9) * a);   // 圆饼：四边实、四角虚
+        if (open(x, y)) px(x, y, rgb([222, 160, 166]), .9 * a);   // 中间凹下去，淡一点
       }
       if (rbcs.length && v.age > 15000) said('fxrbc', '血管里红细胞排着队往一个方向流，一个个像压扁的小圆饼。', 'In the vessel, red cells file along in one direction, each one like a little flattened disc.');
       for (let n = 0; n < 3 && gran.length < 50; n++) {
@@ -780,7 +780,7 @@ const FX = (() => {
         const a = vn(g2.x / 40, g2.y / 40 + t * .05, G.seed + 700) * TAU * 2;
         g2.x += Math.cos(a) * 5 * v.dt; g2.y += Math.sin(a) * 5 * v.dt;
         const ax = Math.round(g2.x), ay = Math.round(g2.y);
-        if (open(ax, ay)) px(ax, ay, rgb([110, 40, 110]), Math.sin(k * Math.PI) * .6);
+        if (open(ax, ay)) px(ax, ay, rgb([134, 106, 150]), Math.sin(k * Math.PI) * .6);
       }
       if (now > nextDiv) {                                      // 分裂：染色体排成一排 → 拉向两头 → 两颗核，中间长出一道膜
         nextDiv = now + 5000 + Math.random() * 7000;
@@ -793,14 +793,14 @@ const FX = (() => {
         const f = Math.min(1, age / .6, (7 - age) / 1.5), c = Math.cos(d.a), sn = Math.sin(d.a), dot = (x, y, col, a) => { const ax = Math.round(x), ay = Math.round(y); if (open(ax, ay)) px(ax, ay, rgb(col), a); };
         for (let dy = -5; dy <= 5; dy++) for (let dx = -6; dx <= 6; dx++) {   // 分裂中的细胞鼓成圆的，淡一点
           const u = dx * c + dy * sn, w = -dx * sn + dy * c, sep = Math.min(1, Math.max(0, age - 2.4) / 1.6);
-          if ((u / (5 + sep * 1.5)) ** 2 + (w / (4 - sep * 1.2 * (1 - Math.abs(u) / 7))) ** 2 <= 1) dot(d.x + dx, d.y + dy, [244, 196, 216], .7 * f);
+          if ((u / (5 + sep * 1.5)) ** 2 + (w / (4 - sep * 1.2 * (1 - Math.abs(u) / 7))) ** 2 <= 1) dot(d.x + dx, d.y + dy, [238, 216, 226], .7 * f);
         }
         const spread = age < 1.4 ? 0 : Math.min(3.5, (age - 1.4) * 2.2);   // 染色体：先排在中间，再被拉开
         for (let k = -3; k <= 3; k++) for (const sg of spread ? [-1, 1] : [0]) {
           const bend = spread ? Math.abs(k) * .3 : 0;
-          dot(d.x + c * (sg * spread - sg * bend) - sn * k, d.y + sn * (sg * spread - sg * bend) + c * k, [96, 30, 110], .95 * f);
+          dot(d.x + c * (sg * spread - sg * bend) - sn * k, d.y + sn * (sg * spread - sg * bend) + c * k, [112, 84, 138], .95 * f);
         }
-        if (age > 3.6) for (let k = -4; k <= 4; k++) dot(d.x - sn * k, d.y + c * k, [196, 110, 156], .85 * f * Math.min(1, (age - 3.6) / .8));
+        if (age > 3.6) for (let k = -4; k <= 4; k++) dot(d.x - sn * k, d.y + c * k, [202, 164, 182], .85 * f * Math.min(1, (age - 3.6) / .8));
         if (age > 2 && v.age > 15000) said('fxmit', '一个细胞在分裂：染色体先在中间排成一排，再被拉向两头，中间长出一道膜。', 'A cell is dividing: the chromosomes line up in the middle, get pulled to either end, and a membrane grows between them.');
       }
       // 白细胞发现了 Clawd 插进来的地方：在它附近冒出来，爬向它刚才站的那一点，围成一圈（Clawd 走得比它们快得多，追不上）
@@ -823,7 +823,7 @@ const FX = (() => {
         bact.hd += (Math.random() - .5) * 6 * v.dt;
         bact.x += Math.cos(bact.hd) * 4.6 * v.dt; bact.y += Math.sin(bact.hd) * 4.6 * v.dt;
         if (now - bact.t0 > 45000 || !open(Math.round(bact.x), Math.round(bact.y))) bact = null;
-        else for (let k = -1; k <= 1; k++) { const ax = Math.round(bact.x + Math.cos(bact.hd) * k), ay = Math.round(bact.y + Math.sin(bact.hd) * k); if (open(ax, ay)) px(ax, ay, rgb([60, 40, 120]), .95); }
+        else for (let k = -1; k <= 1; k++) { const ax = Math.round(bact.x + Math.cos(bact.hd) * k), ay = Math.round(bact.y + Math.sin(bact.hd) * k); if (open(ax, ay)) px(ax, ay, rgb([92, 84, 140]), .95); }
       }
       let near = false;
       for (let i = wbcs.length - 1; i >= 0; i--) {

@@ -235,10 +235,10 @@ const THEMES = {
     snow: tr('楼梯，一道道横线。迷宫的入口和出口都是楼梯，一个通上来，一个通下去。', 'Stairs, line after line. The maze\'s entrance and exit are both stairs: one comes up, one goes down.'),
     rift: tr('红笔改过的地方。那段对话在这里出过错，有人拿红笔圈了出来。', 'A red-pen correction. The conversation went wrong here, and someone circled it.') } },
   slide: { name: tr('切片', 'Tissue Slide'), intro: tr('这张纸是一片染过色的切片，粉的是细胞质，紫的是细胞核。放到显微镜下，平面也是活的。', 'This sheet is a stained tissue slice: pink for cytoplasm, purple for nuclei. Under the microscope, even a plane is alive.'), t: {
-    deep: [tr('淋巴组织', 'lymphoid tissue'), [206, 128, 176], 'none'], water: [tr('血管', 'blood vessel'), [247, 224, 232], 'none'],
-    sand: [tr('血管壁', 'vessel wall'), [212, 116, 150], 'none'], grass: [tr('上皮', 'epithelium'), [232, 158, 194], 'none'],
-    forest: [tr('腺体', 'gland'), [238, 176, 200], 'none'], rock: [tr('纤维', 'fibres'), [226, 138, 166], 'none'],
-    peak: [tr('软骨', 'cartilage'), [178, 142, 194], 'none'], snow: [tr('脂肪', 'fat'), [253, 245, 249], 'none'],
+    deep: [tr('淋巴组织', 'lymphoid tissue'), [208, 178, 198], 'none'], water: [tr('血管', 'blood vessel'), [244, 233, 236], 'none'],
+    sand: [tr('血管壁', 'vessel wall'), [212, 170, 186], 'none'], grass: [tr('上皮', 'epithelium'), [226, 192, 204], 'none'],
+    forest: [tr('腺体', 'gland'), [234, 210, 216], 'none'], rock: [tr('纤维', 'fibres'), [224, 188, 198], 'none'],
+    peak: [tr('软骨', 'cartilage'), [188, 174, 200], 'none'], snow: [tr('脂肪', 'fat'), [248, 244, 243], 'none'],
     rift: [tr('切片上的一道划痕', 'a knife mark on the slide'), [90, 20, 50], 'diag', [250, 200, 220]] }, first: {
     deep: tr('淋巴组织：一颗颗小核挤在一起，被染成了深紫。免疫细胞就是从这种地方出发的。', 'Lymphoid tissue: small nuclei crowded together, stained deep purple. This is where the immune cells set out from.'),
     water: tr('一条血管，弯弯曲曲的。红细胞在里面排着队流。', 'A blood vessel, winding along. Red cells file through it.'),

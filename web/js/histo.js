@@ -41,11 +41,11 @@ const HISTO = (() => {
     vor[0] = d1; vor[1] = d2; vor[2] = hs(bi, bj, s + 2); vor[3] = ax - bx; vor[4] = ay - by;
     return vor;
   }
-  const C = {
-    cyto: [232, 158, 194], memb: [198, 108, 156], nuc: [104, 38, 118], nucL: [134, 64, 146],
-    lymph: [206, 128, 176], lumen: [250, 236, 242], stroma: [238, 176, 200],
-    fib: [226, 138, 166], fibD: [204, 112, 146], matrix: [178, 142, 194], lac: [242, 230, 242],
-    fat: [253, 245, 249], fatM: [222, 156, 186], wall: [212, 116, 150], blood: [247, 224, 232],
+  const C = {                                                 // 褪过色的 HE：粉和紫都压低了饱和度，对比也放软，看久了不累
+    cyto: [226, 192, 204], memb: [202, 164, 182], nuc: [128, 98, 146], nucL: [152, 124, 164],
+    lymph: [208, 178, 198], lumen: [246, 238, 240], stroma: [234, 210, 216],
+    fib: [224, 188, 198], fibD: [208, 170, 184], matrix: [188, 174, 200], lac: [241, 235, 240],
+    fat: [248, 244, 243], fatM: [216, 188, 200], wall: [212, 170, 186], blood: [244, 233, 236],
   };
   function pixel(seed, ax, ay, k) {
     switch (k) {
@@ -53,7 +53,7 @@ const HISTO = (() => {
         const [d1, d2, r, qx, qy] = voronoi(ax, ay, 9, seed + 60);
         if (d2 - d1 < 1.1) return C.memb;
         if ((qx / 1.9) ** 2 + (qy / 1.4) ** 2 < 1) return r < .08 ? C.nucL : C.nuc;
-        return shade(C.cyto, (r - .5) * 16);
+        return shade(C.cyto, (r - .5) * 10);
       }
       case 'deep': {                                          // 淋巴组织：一颗颗小核挤着
         const [d1] = voronoi(ax, ay, 5, seed + 61);
@@ -85,7 +85,7 @@ const HISTO = (() => {
         const R = 2.4 + r * 1.2;
         if (d1 < R) return Math.abs(qx - (r < .4 ? 0 : .8)) < 1.2 && Math.abs(qy) < 1 ? C.nuc : C.lac;
         if (d1 < R + .9) return C.nucL;
-        return shade(C.matrix, (vn(ax / 5, ay / 5, seed + 70) - .5) * 14);
+        return shade(C.matrix, (vn(ax / 5, ay / 5, seed + 70) - .5) * 8);
       }
       case 'snow': {                                          // 脂肪：大白泡，一圈膜，偶尔膜上贴着一颗扁核
         const [d1, d2, r] = voronoi(ax, ay, 15, seed + 71);
