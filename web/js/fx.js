@@ -255,6 +255,57 @@ const FX = (() => {
   // --- 索拉里斯：海在呼吸，整片海面一明一暗地起伏；偶尔 Clawd 附近的海面漾开一圈圈涟漪，中心跟着它挪——海在看它 --------------
   let gaze = null, nextGaze = T0 + 25000 + Math.random() * 25000;
   const SEA = k => k === 'deep' || k === 'water';
+  // 涟漪只在海里走、绕不过陆地，碰到岸再弹回来。先算好：从中心在海里走到每个像素最短要多远（d1），
+  // 回波从每段岸边、按涟漪到那儿的时刻出发，再走到每个像素要多远（d2）。按远近分桶，画的时候只挑正好走到的那一桶
+  const STEPS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414],
+    ...[[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]].map(([x, y]) => [x, y, 2.236])];
+  // 按 Q×Q 个像素一格来算（省四分之三的工夫），画出来一格就是一段两像素宽的圈
+  const Q = 2;
+  function ripples(cx, cy, R) {
+    const Rc = Math.round(R / Q), N = Rc * 2 + 1, x0 = cx - Rc * Q, y0 = cy - Rc * Q, sea = new Uint8Array(N * N), d1 = new Float64Array(N * N).fill(Infinity), d2 = new Float64Array(N * N).fill(Infinity);   // 要用 64 位：32 位存进去会往上舍入，同一点会被当成找到了更短的路、反复入堆停不下来
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) sea[j * N + i] = open(x0 + i * Q, y0 + j * Q) && SEA(tileAt(x0 + i * Q, y0 + j * Q)) ? 1 : 0;
+    const c = Rc * N + Rc;
+    if (!sea[c]) return null;
+    const hv = new Float64Array(N * N * 6), hi = new Int32Array(N * N * 6);   // 最短路用的小顶堆（同一点可能进好几次）
+    const run = (d, seeds) => {
+      let n = 0;
+      const push = (v2, i) => { let k = n++; while (k) { const p = (k - 1) >> 1; if (hv[p] <= v2) break; hv[k] = hv[p]; hi[k] = hi[p]; k = p; } hv[k] = v2; hi[k] = i; };
+      const pop = () => {                                        // 取出堆顶放进 top、ti
+        top = hv[0]; ti = hi[0];
+        const v2 = hv[--n], i = hi[n];
+        let k = 0;
+        for (;;) { const a = 2 * k + 1; if (a >= n) break; const m = a + 1 < n && hv[a + 1] < hv[a] ? a + 1 : a; if (hv[m] >= v2) break; hv[k] = hv[m]; hi[k] = hi[m]; k = m; }
+        hv[k] = v2; hi[k] = i;
+      };
+      let top = 0, ti = 0;
+      for (const [i, v2] of seeds) if (v2 < d[i] && n < hv.length) { d[i] = v2; push(v2, i); }
+      while (n) {
+        pop();
+        const v2 = top, i = ti;
+        if (v2 > d[i]) continue;
+        const x = i % N, y = (i / N) | 0;
+        for (const [dx, dy, w] of STEPS) {                       // 八个邻格加上「日」字格，走出来的圈才圆
+          const nx = x + dx, ny = y + dy, nn = ny * N + nx;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N || !sea[nn] || (w > 2 && !sea[y * N + x + Math.sign(dx)] && !sea[(y + Math.sign(dy)) * N + x])) continue;
+          const nv = v2 + w * Q;                               // 距离按像素算
+          if (nv < d[nn] && n < hv.length) { d[nn] = nv; push(nv, nn); }
+        }
+      }
+    };
+    run(d1, [[c, 0]]);
+    const shore = [];                                            // 岸：海里挨着陆地的那一圈
+    for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+      const i = y * N + x;
+      if (sea[i] && d1[i] < Infinity && (!sea[i - 1] || !sea[i + 1] || !sea[i - N] || !sea[i + N])) shore.push([i, d1[i]]);
+    }
+    run(d2, shore);
+    const b1 = [], b2 = [];
+    for (let i = 0; i < N * N; i++) {
+      if (d1[i] < Infinity) (b1[Math.floor(d1[i])] ||= []).push(i);
+      if (d2[i] < Infinity && d2[i] > d1[i] + 3) (b2[Math.floor(d2[i])] ||= []).push(i);   // 紧贴着岸的那点和来波重了，不画
+    }
+    return { x0, y0, N, b1, b2, max: Math.max(b1.length, b2.length), echo: shore.length ? Math.min(...shore.map(s => s[1])) : Infinity };
+  }
   const solaris = {
     under(v) {
       const { now, t, px } = v;
@@ -272,20 +323,24 @@ const FX = (() => {
         if (!gaze) nextGaze = now + 5000;
       }
       if (!gaze) return;
-      const age = now - gaze.t0;
-      if (age > gaze.life) { gaze = null; nextGaze = now + 35000 + Math.random() * 35000; return; }
-      const nx = gaze.x + (wx - gaze.x) * .6 * v.dt, ny = gaze.y + (wy - gaze.y) * .6 * v.dt;   // 中心慢慢跟过去，只在海上走
-      if (SEA(tileAt(nx, ny))) { gaze.x = nx; gaze.y = ny; }
-      const fade = Math.min(1, age / 1500, (gaze.life - age) / 1500);
-      for (let r = 0; r < 3; r++) {
-        const R = (age / 1000 * 5 + r * 6) % 18;
-        if (R < 1) continue;
-        for (let a = 0; a < TAU; a += .8 / R) {
-          const ax = Math.round(gaze.x + Math.cos(a) * R), ay = Math.round(gaze.y + Math.sin(a) * R);
-          if (open(ax, ay) && SEA(tileAt(ax, ay))) px(ax, ay, rgb([190, 255, 240]), .55 * (1 - R / 18) * fade);
+      if (!gaze.f) gaze.f = ripples(gaze.x, gaze.y, 120);          // 起来的那一刻算一次
+      const g2 = gaze.f, age = now - gaze.t0, r = age / 1000 * 16;   // 一秒走 16 个美术像素
+      if (!g2 || r - 20 > g2.max) { gaze = null; nextGaze = now + 35000 + Math.random() * 35000; return; }
+      const col = rgb([190, 255, 240]), cell = (i, a) => {       // 一格 Q×Q 个像素，一笔画
+        const ax = g2.x0 + (i % g2.N) * Q, ay = g2.y0 + ((i / g2.N) | 0) * Q;
+        if (a > .01 && open(ax, ay)) { ctx.globalAlpha = a; ctx.fillStyle = col; ctx.fillRect(ax * v.s + v.ox, ay * v.s + v.oy, v.s * Q, v.s * Q); }
+      };
+      for (let k = 0; k < 3; k++) {                             // 三圈，一圈比一圈晚；越走越淡，回波更淡
+        const rr = Math.floor(r - k * 9);
+        if (rr < 1) continue;
+        const f = .6 * Math.max(.3, 1 - rr / (g2.max + 10)) * (1 - k * .2), fe = .42 * (1 - k * .2);   // 回波不跟着来波一起淡，免得看不见
+        for (const b of [rr, rr + 1]) {                         // 距离落在这两个像素里的格子，正好一圈
+          for (const i of g2.b1[b] || []) cell(i, f);
+          for (const i of g2.b2[b] || []) cell(i, fe);
         }
       }
-      said('fxgaze', '我附近的海面漾开一圈圈涟漪，中心一直跟着我挪。它在看我。', 'Rings of ripples spread across the sea near me, and their centre keeps following me. It\'s watching me.');
+      if (g2.b2.length && r > g2.echo) said('fxecho', '涟漪碰到岸又弹了回来。海在看我，也在听自己的回声。', 'The ripples hit the shore and came back. The sea is watching me, and listening to its own echo.');
+      said('fxgaze', '我附近的海面漾开一圈圈涟漪，一直漫到岸边。它在看我。', 'Rings of ripples spread across the sea near me, all the way to the shore. It\'s watching me.');
     },
   };
 
