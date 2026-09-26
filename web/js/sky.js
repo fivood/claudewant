@@ -481,7 +481,7 @@ const SKY = G.theme === 'sky' && (() => {
   }
   const METEOR = [255, 214, 150], clock = performance.now();
   let meteor = null, sat = null, nextM = clock + 90000 + Math.random() * 60000, nextS = clock + 120000;   // 刚开局全是白纸，流星一来准烧在远处孤零零一格，先等纸展开一点
-  const onSky = (ax, ay) => rev.has(key(Math.floor(ax / TP), Math.floor(ay / TP)));   // 美术像素坐标上是不是已经展开的天
+  const onSky = FX.open;                                     // 美术像素坐标上是不是已经展开的天（和别的地貌共用，见 fx.js）
   // 流星烧的洞：从穿过的那一点往外烧，前沿不规则、越烧越慢；贴着前沿一圈跳动的火光，外面一圈焦痕，还会蹦出火星。
   // 烧完火光三秒内冷下去，焦痕记进存档（G.burns）一直留在纸上，直到那片纸被展开。
   const fires = [], sparks = [];
@@ -500,13 +500,8 @@ const SKY = G.theme === 'sky' && (() => {
       if (heat > 0 && e < 2.5) px(ax, ay, EMBER[Math.min(4, (h(ax, ay, f.seed + flick) * 3 + (1 - heat) * 2 + out) | 0)], heat * (.6 + .4 * n));
     }
   }
-  function spot(ox, oy, s, W, H, want) {                    // 屏幕上随便找一个美术像素，want：要天（true）还是要白纸（false）
-    for (let n = 0; n < 40; n++) {
-      const ax = Math.floor((Math.random() * W - ox) / s), ay = Math.floor((Math.random() * H - oy) / s);
-      if (onSky(ax, ay) === want) return [ax, ay];
-    }
-    return null;
-  }
+  const spot = FX.spot;
+
   function ignite(m, now) {                                   // 流星把纸点着了：从穿过的那一格开始往外烧
     m.burnt = true;
     const R = 2 + Math.random() * 2;
@@ -515,7 +510,7 @@ const SKY = G.theme === 'sky' && (() => {
   }
   function fx(ox, oy, tp, s, W, H) {
     const now = performance.now(), t = now / 1000, g = ctx;
-    const px = (ax, ay, c, a) => { if (a <= .01) return; g.globalAlpha = Math.min(1, a); g.fillStyle = c; g.fillRect(ax * s + ox, ay * s + oy, s, s); };
+    const px = FX.pen(ox, oy, s, g);
     // 亮星的呼吸
     g.globalCompositeOperation = 'lighter';
     const x0 = Math.floor(-ox / tp) - 1, y0 = Math.floor(-oy / tp) - 1, x1 = Math.ceil((W - ox) / tp), y1 = Math.ceil((H - oy) / tp);
