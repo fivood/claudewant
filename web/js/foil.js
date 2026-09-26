@@ -47,28 +47,32 @@ const FOIL = (() => {
     }
     return Math.atan2(fy, fx);
   }
-  const SG = 5;                                               // 笔触的间距
+  const SG = 6;                                               // 笔触的间距
+  // 像画画一样：先按地形铺一层底色，再把一笔笔按随机的先后盖上去（每笔是顺着流向拉长的细椭圆，两边暗、中间一道亮脊）
   function region(seed, x0, y0, w, h) {
-    const M = 12, gi0 = Math.floor((x0 - M) / SG), gj0 = Math.floor((y0 - M) / SG), GW = Math.floor((x0 + w + M) / SG) - gi0 + 1, GH = Math.floor((y0 + h + M) / SG) - gj0 + 1;
-    const S = new Float32Array(GW * GH * 6), col = new Array(GW * GH);   // 每一笔：位置、方向、长、宽
-    for (let gj = 0; gj < GH; gj++) for (let gi = 0; gi < GW; gi++) {
-      const i = gi0 + gi, j = gj0 + gj, sx = (i + .1 + hs(i, j, seed + 920) * .8) * SG, sy = (j + .1 + hs(i, j, seed + 921) * .8) * SG, a = flow(seed, sx, sy), n = gj * GW + gi, o = n * 6;
-      const p = planetAt(seed, sx, sy), pal = p ? RINGS[p.ring][1] : PAL[kindOf(Math.floor(sx / 4), Math.floor(sy / 4))] || PAL.grass;
-      S[o] = sx; S[o + 1] = sy; S[o + 2] = Math.cos(a); S[o + 3] = Math.sin(a); S[o + 4] = 1 / (4.5 + hs(i, j, seed + 922) * 4); S[o + 5] = 1 / (1.6 + hs(i, j, seed + 923) * .7);   // 存倒数，下面省除法
-      col[n] = pal[Math.floor(hs(i, j, seed + 924) * pal.length)];
-    }
-    const rgba = new Uint8ClampedArray(w * h * 4);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const ax = x0 + x, ay = y0 + y, ci = Math.floor(ax / SG) - gi0, cj = Math.floor(ay / SG) - gj0;
-      let d1 = 1e9, d2 = 1e9, best = 0, bv = 0;
-      for (let gj = cj - 2; gj <= cj + 2; gj++) for (let gi = ci - 2; gi <= ci + 2; gi++) {
-        const o = (gj * GW + gi) * 6, dx = ax - S[o], dy = ay - S[o + 1];
-        if (dx * dx + dy * dy > 100) continue;                // 太远的笔够不着这个像素
-        const u = (dx * S[o + 2] + dy * S[o + 3]) * S[o + 4], v = (-dx * S[o + 3] + dy * S[o + 2]) * S[o + 5], d = u * u + v * v;
-        if (d < d1) { d2 = d1; d1 = d; best = gj * GW + gi; bv = v; } else if (d < d2) d2 = d;
+    const M = 16, rgba = new Uint8ClampedArray(w * h * 4), strokes = [];
+    for (let ty = Math.floor(y0 / 4); ty * 4 < y0 + h; ty++) for (let tx = Math.floor(x0 / 4); tx * 4 < x0 + w; tx++) {   // 底色
+      const c = (PAL[kindOf(tx, ty)] || PAL.grass)[0];
+      for (let y = Math.max(y0, ty * 4); y < Math.min(y0 + h, ty * 4 + 4); y++) for (let x = Math.max(x0, tx * 4); x < Math.min(x0 + w, tx * 4 + 4); x++) {
+        const o = ((y - y0) * w + x - x0) * 4;
+        rgba[o] = c[0] * .85; rgba[o + 1] = c[1] * .85; rgba[o + 2] = c[2] * .85; rgba[o + 3] = 255;
       }
-      const c = col[best], k = d1 / d2 > .78 ? .8 : Math.abs(bv) < .45 && d1 < .7 ? 1.12 : 1, o = (y * w + x) * 4;   // 笔缝暗一点，笔脊亮一点
-      rgba[o] = c[0] * k; rgba[o + 1] = c[1] * k; rgba[o + 2] = c[2] * k; rgba[o + 3] = 255;
+    }
+    for (let j = Math.floor((y0 - M) / SG); j * SG < y0 + h + M; j++) for (let i = Math.floor((x0 - M) / SG); i * SG < x0 + w + M; i++) {
+      const sx = (i + .1 + hs(i, j, seed + 920) * .8) * SG, sy = (j + .1 + hs(i, j, seed + 921) * .8) * SG, p = planetAt(seed, sx, sy);
+      const pal = p ? RINGS[p.ring][1] : PAL[kindOf(Math.floor(sx / 4), Math.floor(sy / 4))] || PAL.grass;
+      strokes.push([hs(i, j, seed + 925), sx, sy, flow(seed, sx, sy), 7 + hs(i, j, seed + 922) * 6, 1.1 + hs(i, j, seed + 923) * .5, pal[Math.floor(hs(i, j, seed + 924) * pal.length)]]);
+    }
+    strokes.sort((a, b) => a[0] - b[0]);                      // 先后随机，免得排成格子
+    for (const [, sx, sy, a, L, W, c] of strokes) {
+      const cs = Math.cos(a), sn = Math.sin(a), ex = L * Math.abs(cs) + W * Math.abs(sn), ey = L * Math.abs(sn) + W * Math.abs(cs);
+      const xa = Math.max(x0, Math.floor(sx - ex)), xb = Math.min(x0 + w - 1, Math.ceil(sx + ex)), ya = Math.max(y0, Math.floor(sy - ey)), yb = Math.min(y0 + h - 1, Math.ceil(sy + ey));
+      for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+        const dx = x + .5 - sx, dy = y + .5 - sy, u = (dx * cs + dy * sn) / L, v = (-dx * sn + dy * cs) / W;
+        if (u * u + v * v > 1) continue;
+        const k = Math.abs(v) > .72 || Math.abs(u) > .9 ? .82 : Math.abs(v) < .35 ? 1.12 : 1, o = ((y - y0) * w + x - x0) * 4;
+        rgba[o] = c[0] * k; rgba[o + 1] = c[1] * k; rgba[o + 2] = c[2] * k;
+      }
     }
     return { rgba };
   }
