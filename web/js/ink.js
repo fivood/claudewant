@@ -620,11 +620,15 @@ const SHANSHUI = (() => {
     return k;
   }
   // 这一块里的瀑布：[x, 上端 y, 下端 y, 半宽]，单位美术像素
+  // 瀑布单独记一份（很小，不用丢）：缩到最小时屏幕上的小景比画的缓存多，每帧重画小景只为查瀑布会卡死
+  const fallsCache = new Map();
   function falls(seed, x0, y0, w, h, sc = 2) {
     const out = [];
     for (const [i, j] of cellsOver(Math.floor(x0 / sc), Math.floor(y0 / sc), Math.ceil(w / sc), Math.ceil(h / sc))) {
-      const v = cell(seed, i, j);
-      for (const [fx, a, b, hw] of v.falls) out.push([(v.x + fx) * sc, (v.y + a) * sc, (v.y + b) * sc, hw * sc]);
+      const k = seed + ':' + i + ',' + j;
+      let f = fallsCache.get(k);
+      if (!f) { const v = cell(seed, i, j); f = v.falls.map(([fx, a, b, hw]) => [(v.x + fx) * sc, (v.y + a) * sc, (v.y + b) * sc, hw * sc]); if (fallsCache.size > 8192) fallsCache.clear(); fallsCache.set(k, f); }
+      out.push(...f);
     }
     return out;
   }

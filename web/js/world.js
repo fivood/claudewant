@@ -334,7 +334,7 @@ const flatOf = (x, y) => [FCOL[Math.floor(h(x, y, G.seed + 5) * 4)], FSHP[Math.f
 // 每帧最多新画 CHUNK_BUDGET 块（缩小视野时地图一块块铺开，不会卡一下）。
 // 缓存最多留 CHUNK_CAP 块（至少比屏幕上能看见的多一点），久没看的扔掉，下次看到再画。
 // 八十万格的存档打开时不用先把整张地图画一遍，内存也不会跟着地图一直长。
-const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = G.theme === 'sky' ? 3 : PIXSRC ? 4 : 10;   // 一块约 1 ms，深空 3–10 ms
+const chunks = new Map(), hasChunk = new Set(), CHUNK_CAP = 160, CHUNK_BUDGET = G.theme === 'sky' ? 3 : INKY ? 1 : PIXSRC ? 4 : 10;   // 一块约 1 ms，深空 3–10 ms，按像素画的 3–5 ms，水墨碰上新小景要几十 ms
 const ckey = (x, y) => Math.floor(x / CH) + ',' + Math.floor(y / CH);
 if (unpackRev.chunks) for (const ck of unpackRev.chunks) hasChunk.add(ck);
 else for (const k of rev) hasChunk.add(ckey(kx(k), ky(k)));   // 旧格式存档才需要扫一遍
