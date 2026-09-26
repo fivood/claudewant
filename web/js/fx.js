@@ -596,6 +596,48 @@ const FX = (() => {
   // --- 蓝图：设计的人还在改，从纸面上方俯身往下画。一支看不见的笔在图上画线，画到一半停下，线头有尺寸标记；偶尔冒出一个红笔圈 ------------
   const pens = [], circles = [];
   let nextPen = T0 + 3000, nextCircle = T0 + 20000 + Math.random() * 20000;
+  // 迷宫里的居民：一个个小人在走廊和房间里乱转，只能踩地面，碰到墙就拐，岔口随便挑一条。身后拖一小截淡淡的脚印
+  const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]], mazers = [];
+  let nextMazer = 0;
+  const lead = (x, y, d) => {                                 // 往 d 挪一个像素，新露出来的那一排都得是地面
+    for (let k = -2; k <= 1; k++) {
+      const [ax, ay] = d === 0 ? [x + 2, y + k] : d === 2 ? [x - 3, y + k] : d === 1 ? [x + k, y + 2] : [x + k, y - 3];
+      if (!MAZE.walk(G.seed, ax, ay)) return false;
+    }
+    return true;
+  };
+  function mazeWalk(v) {
+    const { now, px } = v;
+    if (now > nextMazer && mazers.length < 10) {
+      nextMazer = now + 400;
+      const p = spot(v.ox, v.oy, v.s, v.W, v.H);
+      if (p && [0, 1, 2, 3].every(d => lead(p[0], p[1], d) || lead(p[0] - DIRS[d][0], p[1] - DIRS[d][1], d))) {
+        const k = Math.floor(Math.random() * 12);
+        mazers.push({ x: p[0], y: p[1], d: Math.floor(Math.random() * 4), acc: 0, sp: 5 + Math.random() * 5, c: FCOL[k % 4][0], sh: FSHP[k % 3][1], trail: [], t0: now, life: 40000 + Math.random() * 60000 });
+      }
+    }
+    const x0 = -v.ox / v.s - 40, y0 = -v.oy / v.s - 40, x1 = (v.W - v.ox) / v.s + 40, y1 = (v.H - v.oy) / v.s + 40;
+    for (let i = mazers.length - 1; i >= 0; i--) {
+      const q = mazers[i], age = now - q.t0;
+      if (age > q.life || q.x < x0 || q.x > x1 || q.y < y0 || q.y > y1) { mazers.splice(i, 1); continue; }
+      q.acc += q.sp * v.dt;
+      while (q.acc >= 1) {
+        q.acc--;
+        const ok = [0, 1, 2, 3].filter(d => lead(q.x, q.y, d)), back = (q.d + 2) % 4;
+        if (!ok.length) break;
+        if (!ok.includes(q.d) || Math.random() < .06) {       // 撞墙了，或者路过岔口想换条路：别往回走，除非只剩回头路
+          const side = ok.filter(d => d !== back);
+          q.d = side.length ? side[Math.floor(Math.random() * side.length)] : back;
+        }
+        q.trail.push([q.x, q.y]); if (q.trail.length > 10) q.trail.shift();
+        q.x += DIRS[q.d][0]; q.y += DIRS[q.d][1];
+      }
+      const a = Math.min(1, age / 800, (q.life - age) / 1500);
+      q.trail.forEach(([x, y], n) => { if (n % 2 === 0 && open(x, y)) px(x, y, rgb(q.c), .25 * a * n / q.trail.length); });
+      for (let j = 0; j < 4; j++) for (let k = 0; k < 4; k++) if (q.sh[j][k] === '#' && open(q.x - 2 + k, q.y - 2 + j)) px(q.x - 2 + k, q.y - 2 + j, rgb(q.c), a);
+    }
+    if (mazers.length && v.age > 25000) said('fxmaze', '它们在迷宫里转来转去，碰到墙就拐，到了岔口随便挑一条。它们看不见出口在哪儿，我看得见。', 'They wander the maze, turning at every wall, picking any branch at a fork. They can\'t see where the exit is. I can.');
+  }
   const blueprint = {
     under(v) {
       const { now, px } = v;
@@ -636,6 +678,7 @@ const FX = (() => {
           if (open(ax, ay)) px(ax, ay, rgb([240, 100, 80]), .9 * a);
         }
       }
+      if (MAZY) mazeWalk(v);
       if (pens.length && v.age > 20000) said('fxpen', '图上有一支看不见的笔在画线，画到一半停住了。设计的人还在改，从纸面上方俯身往下画。', 'An invisible pen is drawing lines on the plan and stops halfway. Someone is still revising it, leaning down from above the sheet.');
     },
   };

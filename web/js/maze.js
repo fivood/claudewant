@@ -147,5 +147,6 @@ const MAZE = (() => {
   }
   // 出口在哪（格子坐标，出口楼梯间的中心）
   const exit = seed => { const [ex, ey] = exitOf(seed); return [ex * CS / 4, ey * CS / 4]; };
-  return { region, kindAt, exit, bias, cell };
+  const walk = (seed, ax, ay) => { const k = cls(seed, ax, ay); return k > 0 && k !== 4; };   // 这个像素能不能走（居民走得，墙和柱子走不得）
+  return { region, kindAt, exit, bias, cell, walk };
 })();
