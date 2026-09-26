@@ -344,8 +344,15 @@ const chunkBuf = new ImageData(CH * TP, CH * TP), tileBuf = new ImageData(TP, TP
 const GRAIN = new Float32Array(64 * 64).map((_, i) => (h(i & 63, i >> 6, G.seed + 3) - .5) * 12);
 
 // 把一格画进像素缓冲区 d（每行 stride 个像素，从 ox, oy 开始）。每格要查的东西在循环外查一次。
+// 地球的地貌晕渲：光从左上来，朝光的坡亮、背光的坡暗，山势一眼看得出来；水面是平的不打光
+const RELIEF = G.theme === 'earth';
+const relief = (x, y, t) => {
+  if (!RELIEF || t === 'deep' || t === 'water') return 0;
+  const gx = fbm(x + 1, y, G.seed) - fbm(x - 1, y, G.seed), gy = fbm(x, y + 1, G.seed) - fbm(x, y - 1, G.seed);
+  return Math.max(-34, Math.min(34, -(gx + gy) * 900));
+};
 function paintTile(x, y, d, stride, ox, oy) {
-  const t = tile(x, y), q = T[t], pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
+  const t = tile(x, y), q = T[t], sh = relief(x, y, t), pat = PAT[q.p], r0 = h(x, y, G.seed + 11), colour = L('color') > 0, k = key(x, y);
   const fl = L('life') > 0 && isFlat(x, y, t) && flatOf(x, y), rk = ROUTE.get(k);
   const hk = seen() && TOWN.get(k), house = hk && HOUSE[hk], roof = house && (INKY ? INK_ROOF : FCOL[Math.floor(r0 * 4)][0]), sp = SKY && SKY.paint(x, y), pl = sp && seen() && SKY.planet(x, y);
   const ip = PIXSRC && t !== 'rift' && inkPix(x, y), io = ip && ((y - Math.floor(y / CH) * CH) * TP * CH * TP + (x - Math.floor(x / CH) * CH) * TP) * 4;
@@ -357,7 +364,7 @@ function paintTile(x, y, d, stride, ox, oy) {
     const hc = house && house[j][i];
     if (pl) c = pl(i, j) || c;
     if (hc && hc !== '.') c = hc === 'R' ? roof : hk === 'ruin' ? RUIN_C : HCOL[hc];
-    const n = ip ? 0 : GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)];   // 水墨的纸自己带纹理
+    const n = (ip ? 0 : GRAIN[(((y * TP + j) & 63) << 6) | ((x * TP + i) & 63)]) + (c === q.c || c === q.a || c === q.a2 ? sh : 0);   // 水墨的纸自己带纹理；晕渲只打在地面上，房子和居民不打
     let r = c[0] + n, g = c[1] + n, b = c[2] + n;
     if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
     const o = ((oy + j) * stride + ox + i) * 4;
