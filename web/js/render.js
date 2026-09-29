@@ -141,7 +141,8 @@ function draw() {
   const W = cv.width, H = cv.height, s = Math.max(1, Math.round(G.z * dpr)), tp = TP * s;
   const ox = Math.round(W / 2 - cam.x * tp), oy = Math.round(H / 2 - cam.y * tp);
   ctx.imageSmoothingEnabled = false;
-  const dl = daylight(), c = tint(dl);
+  // 墨水屏上只画白天：夜里是整屏乘一层深蓝，灰度屏上就是一片黑，还拖残影。只改画面，昼夜对收益的影响照旧
+  const dl = EINK ? 1 : daylight(), c = tint(dl);
   ctx.fillStyle = blank(PAPER, [10, 10, 12], dl, c);
   ctx.fillRect(0, 0, W, H);
 
@@ -175,12 +176,18 @@ function draw() {
 cv.addEventListener('wheel', e => {
   e.preventDefault();
   G.z = Math.min(8, Math.max(1, G.z + (e.deltaY < 0 ? 1 : -1)));
+  einkAt = -Infinity;                                      // 缩放了就马上重画，别等下一轮
 }, { passive: false });
 
 // --- 主循环 ------------------------------------------------------------------
 let last = performance.now(), secT = 0, hudT = 0, saveT = 0, civT = 0;
 // 挂机游戏一开就是几小时，不需要 60 帧：完整画面 30 帧，桌宠 20 帧。模拟按真实经过的时间走，少画几帧不影响进度
+// 墨水屏每秒只刷得动几次，连续的动画只会变成一片残影：画面、HUD、纪年每 EINK_MS 才重画一次，模拟的步子不变。
+// 步子不能跟着放大：下面 dt 每步最多算 0.1 秒，Clawd 每走到一个路点这一步剩下的距离也会丢掉，步子越大丢得越多。
+// 重画才是贵的那部分，光走模拟很便宜。
 const FRAME_MS = () => pet ? 50 : 33;
+const EINK_MS = 3000;
+let einkAt = -Infinity;
 function frame(now) {
   if (now - last < FRAME_MS() - 2) { requestAnimationFrame(frame); return; }
   let dt = (now - last) / 1000;
@@ -222,12 +229,14 @@ function frame(now) {
   const phase = dl < .5 ? 'night' : 'day';
   if (G.phase && G.phase !== phase) { bubbleAt = -1e9; say(phase === 'night' ? tr('天黑了。纸面上的城一个个亮起灯。它们不知道光从哪来，也不知道它为什么会走。', 'Night. The towns on the paper light up one by one. They don\'t know where the light comes from, or why it leaves.') : tr('天亮了。光又从那个它们不存在的方向照了下来。', 'Morning. The light is back, from the direction they don\'t have.'), { bubble: true }); }
   G.phase = phase;
-  if ((hudT += dt) >= .2) { hudT = 0; decide(); hud(); }
-  if ((civT += dt) >= 1) { civT = 0; annals(); }
+  const paint = !EINK || now - einkAt >= EINK_MS;
+  if (EINK && paint) einkAt = now;
+  if ((hudT += dt) >= .2) { hudT = 0; decide(); if (!EINK) hud(); }
+  if (EINK ? paint : (civT += dt) >= 1) { civT = 0; annals(); }
   if ((saveT += dt) >= 10) { saveT = 0; save(); }   // 大存档一次约 50 ms；关页面、切走时另外会存
   if ((museAt -= dt) <= 0) { museAt = 60 + Math.random() * 60; muse(); }   // 独白 1–2 分钟一句
 
   if (pet) petTick(dt);
-  draw();
+  if (paint) { draw(); if (EINK) hud(); }
   requestAnimationFrame(frame);
 }

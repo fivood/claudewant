@@ -72,6 +72,7 @@ $('fillBtn').onclick = fillHoles;
 // 手机屏幕小，窗口会挡住纸面，所以要能收；状态记在本机，下次打开还是那样。
 const UIP = (() => { try { return JSON.parse(localStorage.getItem('clawd-ui')) || {}; } catch { return {}; } })();
 UIP.fold ??= {};
+UIP.compact ??= EINK;                                      // Kindle 竖屏只有手机那么宽，完整窗口会把 Clawd 盖住；自己切过就听自己的
 const saveUI = () => { try { localStorage.setItem('clawd-ui', JSON.stringify(UIP)); } catch { /* 无痕模式 */ } };
 function barButton(bar, cls, onclick) {
   const b = document.createElement('button');

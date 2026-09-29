@@ -4,7 +4,7 @@ English · [中文](README.md)
 
 A four-dimensional creature (Clawd) falls into an endlessly unfolding two-dimensional world and starts from a blank sheet. A pixel idle game; there's nothing you have to do.
 
-- **Web**: https://claude.70015.net
+- **Web**: https://claude.70015.net. Once opened online, it keeps working offline. On e-ink browsers such as the Kindle's it switches to e-ink mode (redraws every 3 seconds, daytime only, compact windows); `?eink=1` / `?eink=0` turns it on or off by hand.
 - **Desktop (pet)**: download `SiweiLaike_*_x64-setup.exe` from [Releases](https://github.com/fivood/claudewant/releases/latest). Clawd lives on top of your taskbar, pacing back and forth and talking. Click it to open the full game; close the window and it shrinks back. Updates itself.
 - **Session viewer**: https://claude.70015.net/viewer turns AI coding-assistant session logs into readable conversations.
 

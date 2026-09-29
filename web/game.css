@@ -122,3 +122,6 @@ html.pet #pet{cursor:pointer}
   .scroll{display:none}
   .grip{display:none}
 }
+/* 墨水屏（Kindle）：闪烁、跳动的动画在墨水屏上只会一直局部刷新留残影；折纸时的白闪会整屏闪一下；Paperwhite 没有喇叭，电台收起来 */
+.eink *{animation:none!important;transition:none!important}
+.eink #flash,.eink #radio{display:none}

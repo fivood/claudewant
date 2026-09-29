@@ -4,7 +4,7 @@
 
 一只四维生物（Clawd）掉进了一个无限展开的二维世界，从一片空白开始行动。像素挂机游戏，不需要操作。
 
-- **网页版**：https://claude.70015.net
+- **网页版**：https://claude.70015.net —— 联网打开过一次以后断网也能玩。Kindle 这类墨水屏浏览器上会自动切成墨水屏模式（每 3 秒画一次、只画白天、窗口精简），也可以用 `?eink=1` / `?eink=0` 手动开关。
 - **桌面版（桌宠）**：到 [Releases](https://github.com/fivood/claudewant/releases/latest) 下载 `SiweiLaike_*_x64-setup.exe`。Clawd 会住在任务栏上面来回走、说话；点它展开完整游戏，关掉窗口又缩回去。之后自动更新。
 - **会话查看器**：https://claude.70015.net/viewer —— 把 AI 编程助手的会话记录变成能读的对话。
 

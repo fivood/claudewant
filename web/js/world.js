@@ -4,6 +4,15 @@
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 let pet = false;                                           // 桌面版的桌宠模式
+// 墨水屏模式（Kindle 的浏览器）：?eink=1 打开、?eink=0 关掉，记在本机；没指定过就看是不是 Kindle。
+// 首页跳进游戏时网址参数会丢，所以要记下来。
+let EINK = false;
+try {
+  const q = new URLSearchParams(location.search).get('eink');
+  if (q != null) localStorage.setItem('clawd-eink', q === '1' ? '1' : '0');
+  EINK = (localStorage.getItem('clawd-eink') ?? (/Kindle/i.test(navigator.userAgent) ? '1' : '0')) === '1';
+} catch { EINK = new URLSearchParams(location.search).get('eink') === '1'; }   // 无痕模式：只认网址
+if (EINK) document.documentElement.classList.add('eink');
 // ?seed= 来自会话查看器：每条会话一张纸，各存各的档。
 // 桌面版每次都从 game.html 启动，所以记住上次读的会话，下次打开还在那张纸上
 // 有的静态服务器（比如本地的 serve）把 game.html 跳成 /game 时会丢掉 ?seed=，导入的会话就又回到了原来那张纸。

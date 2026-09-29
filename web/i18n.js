@@ -3,6 +3,9 @@
 //   data-en="…"        英文下换掉 textContent（<title> 也行）      data-en-title / -label / -placeholder  换 title / aria-label / placeholder
 //   data-lang="zh|en"  整块只在那种语言下显示（带标签的长段落用这个）
 // 普通脚本，放在各页其他脚本前面加载；parse.js 是模块，读 globalThis.tr，在 node 里没有就用中文。
+// 离线：网页版装一个 service worker 把整站存下来（见 sw.js）。放这里是因为每个页面都最先加载这个文件。
+// 桌面版的页面本来就在本地，不用。
+if ('serviceWorker' in navigator && !window.__TAURI__ && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* 不支持或被禁用：照常在线玩 */ });
 const LANG = (() => { try { return localStorage.getItem('clawd-lang'); } catch { return null; } })() || (/^zh/i.test(navigator.language) ? 'zh' : 'en');
 const tr = (zh, en) => LANG === 'en' ? en : zh;
 document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-CN';
