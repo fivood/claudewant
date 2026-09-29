@@ -468,7 +468,7 @@ export function annalsOf(s) {
   main.forEach((turn, i) => {
     if (turn.role === 'assistant' && turn.model && !/synthetic/.test(turn.model)) {
       const m = modelName(turn.model);
-      if (m !== out.model.at(-1)?.[1]) out.model.push([T(i), m]);
+      if (m !== out.model[out.model.length - 1]?.[1]) out.model.push([T(i), m]);   // 不用 .at(-1)：Kindle 的浏览器没有
     }
     for (const b of turn.blocks) {
       if (turn.role === 'user' && b.kind === 'text' && NAY.test(b.text.trim())) {

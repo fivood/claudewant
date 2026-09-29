@@ -32,6 +32,7 @@ web/          the site itself (static, no build): index start page, game, viewer
               civ residents of each terrain · history the flat history · wonders road/wonders/full map · radio · pet desktop pet · start
 src-tauri/    desktop shell (Tauri 2), serves web/ directly
 test.mjs      parser tests
+build.mjs     lowers web/ for the Kindle browser (about Chromium 74) into dist/ before deploying
 ```
 
 ## Development
@@ -44,7 +45,7 @@ npm install && npx tauri dev      # run the desktop app locally
 
 All text is written as `tr('中文', 'English')`; static page text uses `data-en` attributes. See `web/i18n.js`.
 
-Deploy the site: `wrangler pages deploy web --project-name=claude --branch=main`
+Deploy the site: `npm run deploy` (runs `build.mjs` to produce dist/, then deploys dist/). Write modern syntax as usual, esbuild lowers it; but avoid functions Chrome 74 lacks, like `.at()` or `replaceAll`: the build refuses them.
 
 Release the desktop app: bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json` to the same new version, commit, and push a `v<version>` tag. GitHub Actions builds and publishes it, and installed copies update themselves.
 

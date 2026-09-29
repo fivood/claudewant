@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "node test.mjs",
+    "deploy": "node build.mjs && npx wrangler pages deploy dist --project-name=claude --branch=main --commit-dirty=true",
     "tauri": "tauri"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "esbuild": "^0.28.2"
   }
 }

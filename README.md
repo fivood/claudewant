@@ -32,6 +32,7 @@ web/          网页本体（纯静态，无构建）：index 开始页、game �
               civ 每种地貌的居民 · history 二维历史 · wonders 对话之路/会话奇观/全图 · radio 电台 · pet 桌宠 · start 开始
 src-tauri/    桌面版外壳（Tauri 2），前端直接用 web/
 test.mjs      解析器测试
+build.mjs     部署前把 web/ 降成 Kindle 浏览器（约 Chromium 74）也能跑的版本，输出 dist/
 ```
 
 ## 开发
@@ -44,7 +45,7 @@ npm install && npx tauri dev      # 本地跑桌面版
 
 文字都写成 `tr('中文', 'English')`，页面上的静态文字用 `data-en`，见 `web/i18n.js`。
 
-发布网页：`wrangler pages deploy web --project-name=claude --branch=main`
+发布网页：`npm run deploy`（先 `build.mjs` 转出 dist/，再部署 dist/）。源码照常写新语法，esbuild 会降；但 `.at()`、`replaceAll` 这类 Chrome 74 没有的函数别用，构建会拦下来。
 
 发布桌面版：把 `src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`、`package.json` 里的版本号改成同一个新版本，提交后推一个 `v<版本号>` 标签，GitHub Actions 会打包并发布，已安装的客户端会自己更新。
 
