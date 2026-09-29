@@ -288,6 +288,13 @@ if (G.theme === 'foil') FOIL.use(tile);                  // 二向箔的地形�
 if (G.theme === 'slide') HISTO.bias({ water: WET, mountain: HARD, forest: GREEN });
 if (MAZY) MAZE.bias({ water: WET / .06, mountain: HARD / .07, forest: GREEN / .25 });
 const T = Object.fromEntries(Object.entries(TH.t).map(([k, [name, c, p, a, a2]]) => [k, { name, c, p, a, a2, v: VAL[k] }]));
+// 墨水屏的灰阶：灰度屏上只剩亮度，只差色相的地形会糊成同一种灰（地球的草地和岩石都是亮度 150 上下）。
+// 按原色的明暗把这张纸上的地形排好，平均摊到 225（浅）到 55（深）之间，一种一档；花纹比底色反着差 60，照样看得出。
+const einkLum = c => c[0] * .3 + c[1] * .59 + c[2] * .11;
+const EGRAY = (() => {
+  const ks = Object.keys(T).sort((a, b) => einkLum(T[b].c) - einkLum(T[a].c));
+  return Object.fromEntries(ks.map((k, i) => [k, 225 - i * 170 / Math.max(1, ks.length - 1)]));
+})();
 // 4×4 格子里哪些像素用花纹色：1 = 花纹色，2 = 第二花纹色。r 是这一格的随机数，让花纹不是每格都有
 const PAT = {
   none: () => 0,
@@ -382,6 +389,11 @@ function paintTile(x, y, d, stride, ox, oy) {
     const sd = c === q.c || c === q.a || c === q.a2 ? sh : 0;   // 晕渲：背光的一面偏蓝一点
     let r = c[0] + n + sd, g = c[1] + n + sd, b = c[2] + n + (sd < 0 ? sd * .6 : sd);
     if (!colour) r = g = b = 90 + (r * .3 + g * .59 + b * .11) * .6;
+    // 墨水屏上「色彩」升级换成分得开的灰阶：地形各占一档，其余（房子、路、居民、深空、水墨的画）拉大对比。
+    // 没买色彩之前还是上面那层淡灰，升级在灰度屏上也看得出区别
+    else if (EINK) r = g = b = c === q.c || c === q.a || c === q.a2
+      ? (c === q.c ? EGRAY[t] : EGRAY[t] > 140 ? EGRAY[t] - 60 : EGRAY[t] + 60) + n + sd
+      : 128 + (r * .3 + g * .59 + b * .11 - 128) * 1.4;
     const o = ((oy + j) * stride + ox + i) * 4;
     d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
   }

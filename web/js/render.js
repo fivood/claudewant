@@ -186,7 +186,7 @@ let last = performance.now(), secT = 0, hudT = 0, saveT = 0, civT = 0;
 // 步子不能跟着放大：下面 dt 每步最多算 0.1 秒，Clawd 每走到一个路点这一步剩下的距离也会丢掉，步子越大丢得越多。
 // 重画才是贵的那部分，光走模拟很便宜。
 const FRAME_MS = () => pet ? 50 : 33;
-const EINK_MS = 3000;
+const EINK_MS = 10000;                                     // 3 秒在 Kindle 上闪得太勤；镜头翻页时另外马上重画，不会看着 Clawd 走出屏幕
 let einkAt = -Infinity;
 function frame(now) {
   if (now - last < FRAME_MS() - 2) { requestAnimationFrame(frame); return; }
@@ -211,16 +211,25 @@ function frame(now) {
     const w = ws[0], a = Math.random() * TAU, d = 70 + Math.random() * 90;
     w.x += Math.cos(a) * d; w.y += Math.sin(a) * d;
     retarget(w);
-    cam.x = w.x; cam.y = w.y;
+    cam.x = w.x; cam.y = w.y; einkAt = -Infinity;
     $('flash').style.transition = 'none';
     $('flash').style.opacity = 1;
     requestAnimationFrame(() => { $('flash').style.transition = ''; $('flash').style.opacity = 0; });
     if (!G.seen.fold1) { G.seen.fold1 = 1; say(tr('我把纸对折了一下，从这一头直接踩到了那一头。', 'I folded the paper and stepped straight from one end to the other.')); }
   }
 
-  const f = Math.min(1, dt * 4);
-  cam.x += (ws[0].x - cam.x) * f;
-  cam.y += (ws[0].y - cam.y) * f;
+  if (EINK) {
+    // 墨水屏上镜头不跟着走：一挪整屏每个像素都变，Kindle 就整屏闪一下。停着不动，只有 Clawd 附近几格在变；
+    // 它走出屏幕中间那块再一步翻过去，马上重画
+    const tp = TP * Math.max(1, Math.round(G.z * dpr));
+    if (Math.abs(ws[0].x - cam.x) * tp > cv.width * .3 || Math.abs(ws[0].y - cam.y) * tp > cv.height * .3) {
+      cam.x = ws[0].x; cam.y = ws[0].y; einkAt = -Infinity;
+    }
+  } else {
+    const f = Math.min(1, dt * 4);
+    cam.x += (ws[0].x - cam.x) * f;
+    cam.y += (ws[0].y - cam.y) * f;
+  }
 
   if ((secT += dt) >= 1) { G.rate = G.rate * .8 + secGain / secT * .2; secGain = 0; secT = 0; }
   advance(false);
