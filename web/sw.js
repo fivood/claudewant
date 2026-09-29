@@ -21,7 +21,9 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  e.respondWith(fetch(req).then(res => {
+  // cache: 'no-cache'：浏览器自己的 HTTP 缓存里可能还有几小时内「仍算新鲜」的旧脚本，联网时一律找服务器确认。
+  // 页面导航不能这么传（带 init 重建 navigate 请求会直接抛错），页面本来就是 max-age=0
+  e.respondWith((req.mode === 'navigate' ? fetch(req) : fetch(req, { cache: 'no-cache' })).then(res => {
     if (res.ok && !res.redirected) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
     return res;
   }).catch(async () => {
