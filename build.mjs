@@ -4,6 +4,7 @@
 // 所以最后扫一遍，用到了就不让部署。2026-09 在 Kindle（固件 5.18.6）上实测过：没有 ?.、??、??=、.at()、
 // replaceAll、Promise.allSettled；有 ES 模块、类的私有字段、matchAll、Service Worker。
 import { transform } from 'esbuild';
+import { createHash } from 'node:crypto';
 import { cpSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
@@ -28,7 +29,18 @@ for (const f of walk('dist')) {
   writeFileSync(f, parts.join('') + html.slice(at));
 }
 
-const MISSING = /\.at\(|\.replaceAll\(|Promise\.(allSettled|any)\b|structuredClone|Object\.hasOwn|\.findLast(Index)?\(|\.toSorted\(|\.toReversed\(/;
+// 页面引用的脚本、样式加上内容哈希（parse.js?v=…）：文件一改地址就变，浏览器只能重新拿。
+// 靠响应头不行——70015.net 这个域在 Cloudflare 上的「浏览器缓存 TTL」会把 js/css 改成 max-age=14400，
+// 页面是新的、脚本却是 4 小时前的，2026-09 Kindle 上点 START 没反应就是这样。页面本身不缓存，所以总能拿到新地址。
+const ver = rel => `${rel}?v=${createHash('sha1').update(readFileSync(join('dist', rel))).digest('hex').slice(0, 8)}`;
+for (const f of walk('dist').filter(f => extname(f) === '.html')) {
+  writeFileSync(f, readFileSync(f, 'utf8')
+    .replace(/(<script\b[^>]*\bsrc=")([^"?:]+\.js)"/g, (_, a, p) => `${a}${ver(p)}"`)
+    .replace(/(<link\b[^>]*\bhref=")([^"?:]+\.css)"/g, (_, a, p) => `${a}${ver(p)}"`)
+    .replace(/(\bfrom\s*["']\.\/)([^"'?]+\.js)(["'])/g, (_, a, p, q) => `${a}${ver(p)}${q}`));
+}
+
+const MISSING =/\.at\(|\.replaceAll\(|Promise\.(allSettled|any)\b|structuredClone|Object\.hasOwn|\.findLast(Index)?\(|\.toSorted\(|\.toReversed\(/;
 const hits = walk('dist').filter(f => /\.(js|html)$/.test(f)).flatMap(f =>
   readFileSync(f, 'utf8').split('\n').flatMap((l, i) => MISSING.test(l) ? [`${f}:${i + 1}  ${l.trim().slice(0, 100)}`] : []));
 if (hits.length) {
